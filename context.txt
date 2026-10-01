@@ -1,0 +1,51 @@
+Contexto del Startup
+## 1. Síntesis de la Startup
+Nombre provisional: PropMap 3D (o un nombre comercial similar).
+
+Propuesta de valor: Una plataforma inmobiliaria todo en uno basada en mapas interactivos y recorridos en 3D, que optimiza la búsqueda para el usuario final y funciona como un software CRM y de prospección avanzada para agentes inmobiliarios.
+
+Características clave:
+
+Mapa Interactivo: Visualización geográfica de departamentos, casas y terrenos en alquiler o venta.
+
+Inmersión 3D: Renderizados o tours virtuales detallados de los inmuebles.
+
+B2B (Herramienta para Agentes): Software especializado para que los corredores gestionen carteras, prospecten y muestren propiedades de manera interactiva.
+
+Directorio de Propietarios: Acceso optimizado a contactos directos (bajo cumplimiento de privacidad).
+
+Asistente Virtual (IA): Chatbot inteligente para asesorar a los compradores/inquilinos en tiempo real sobre precios, zonas y financiamiento.
+
+## 2. Ideas de Mejora e Innovación
+Filtros de Estilo de Vida: No solo buscar por precio o habitaciones, sino por cercanía a parques, colegios, tiempo de tráfico en hora punta o índice de seguridad de la zona.
+
+Validación de Propietarios con IA: Integrar un sistema que verifique la identidad de los dueños (vía Reniec o similares en Perú) para evitar estafas muy comunes en alquileres digitales.
+
+Alianzas con Tasadores: Ofrecer una opción para que un tasador certifique el valor real del terreno o departamento directamente en la plataforma.
+
+Gamificación para el Asistente: Que el asistente virtual guíe al usuario mediante un test de personalidad/necesidades para recomendarle su "zona ideal" en Lima o provincias.
+
+## 3. Público Objetivo (Target)
+B2C (Usuarios finales): Jóvenes profesionales, parejas o familias (25 a 45 años) nativos digitales que buscan alquilar o comprar sin depender exclusivamente de llamadas o visitas a ciegas.
+
+B2B (Agentes Inmobiliarios Independientes y Pequeñas Inmobiliarias): Profesionales que necesitan destacar con herramientas tecnológicas modernas para cerrar tratos más rápido y justificar sus comisiones.
+
+Propietarios Directos: Personas que quieren publicitar su inmueble de forma rápida pero segura, sin caer necesariamente en exclusividades abusivas con agencias tradicionales.
+
+## 4. Modelo de Retorno de Ingresos (Monetización)
+Suscripción SaaS para Agentes: Cobro de una membresía mensual o anual (freemium) para que los agentes accedan a la herramienta avanzada de prospección, mapas exclusivos y gestión de clientes.
+
+Destacados y Publicidad Patrocinada: Cobrar a inmobiliarias o propietarios para que sus departamentos o terrenos aparezcan en los primeros puestos del mapa o con marcos tridimensionales llamativos.
+
+Comisión por Cierre (Marketplace): Un porcentaje pequeño (fee de éxito) si la transacción se concreta a través del contacto directo facilitado en la plataforma.
+
+B2B Leads (Pagos por Contacto): Venta de paquetes de "créditos de contacto" para que los agentes desbloqueen leads calificados de dueños que buscan vender o alquilar.
+
+## 5. Competencia en el Perú (Actual y Referentes)
+Portales Tradicionales (AdondeVivir / Urbania): Son los gigantes actuales. Tienen mapas, pero su fuerte son las listas tradicionales y carecen de un enfoque profundo en herramientas 3D integradas o de una herramienta B2B de prospección tan robusta para agentes.
+
+NexInmo / CRM Inmobiliarios: Software enfocado netamente en la gestión interna de agencias (CRM), pero sin el gancho visual del mapa interactivo masivo ni el buscador B2C integrado.
+
+Agencias Proptech Emergentes: Startups locales que usan recorridos 3D (como algunas constructoras para preventas), pero suelen hacerlo solo para sus propios proyectos y no como una plataforma abierta para todo el mercado.
+Realizacion:
+Lo que se desea es trabajar este modelo desde cero aprendiendo a la vez fundamentos nacesarios para un programadora aprendiendo lo que respecta a backend, frontend, seguridad de datos, ect, paso a paso con el fin de mejorar en mis practicas como programador
