@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RolUsuario {
+  CLIENTE
+  PROPIETARIO
+  AGENTE
+  ADMIN
+}
+
+enum TipoPropiedad {
+  VENTA
+  ALQUILER
+}
+
+enum EstadoContacto {
+  NUEVO
+  EN_PROCESO
+  CERRADO
+}
+
+model Usuario {
+  id              Int        @id @default(autoincrement())
+  nombre          String
+  email           String     @unique
+  contrasena_hash String
+  rol             RolUsuario @default(CLIENTE)
+  fecha_creacion  DateTime   @default(now())
+
+  propiedades          Propiedad[]
+  contactosComoCliente Contacto[] @relation("ClienteContactos")
+  contactosComoAgente  Contacto[] @relation("AgenteContactos")
+}
+
+model Propiedad {
+  id              Int           @id @default(autoincrement())
+  usuario_id      Int           
+  titulo          String
+  descripcion     String
+  precio          Decimal       
+  tipo            TipoPropiedad
+  
+  latitud         Float?        
+  longitud        Float?
+  
+  habitaciones    Int
+  banos           Int
+  tour_3d_url     String?       
+  fecha_creacion  DateTime      @default(now())
+
+  usuario         Usuario       @relation(fields: [usuario_id], references: [id])
+  contactos       Contacto[]
+}
+
+model Contacto {
+  id              Int            @id @default(autoincrement())
+  propiedad_id    Int
+  cliente_id      Int
+  agente_id       Int
+  mensaje         String
+  estado          EstadoContacto @default(NUEVO)
+  fecha_creacion  DateTime       @default(now())
+
+  propiedad       Propiedad      @relation(fields: [propiedad_id], references: [id])
+  cliente         Usuario        @relation("ClienteContactos", fields: [cliente_id], references: [id])
+  agente          Usuario        @relation("AgenteContactos", fields: [agente_id], references: [id])
+}
+

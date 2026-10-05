@@ -4,17 +4,17 @@ Este documento detalla el paso a paso que seguiremos para construir **INMOVER** 
 
 ## Fase 1: Fundamentos y Arquitectura 🏗️
 *El objetivo aquí es preparar las bases y entender las reglas del juego.*
-- [x] **Aprender:** ¿Qué es Frontend, Backend, API y Base de Datos?
-- [x] **Aprender:** Git y Control de Versiones (Cómo guardar nuestro progreso).
+- [ ] **Aprender:** ¿Qué es Frontend, Backend, API y Base de Datos?
+- [ ] **Aprender:** Git y Control de Versiones (Cómo guardar nuestro progreso).
 - [x] **Definición técnica:** Elegir el lenguaje principal (Elegido: Full-Stack JavaScript/TypeScript con Node.js y React).
 - [ ] **Diseño de Base de Datos (Modelo Entidad-Relación):** Diseñar cómo se guardarán los usuarios, propiedades, y agentes.
 
 ## Fase 2: Backend y Base de Datos (El Motor) ⚙️
 *Crearemos el cerebro de la aplicación, donde se guardan y procesan los datos.*
-- [ ] **Aprender:** Configuración de un servidor web básico.
-- [ ] **Aprender:** Bases de datos relacionales (PostgreSQL) e introducción a datos espaciales (PostGIS) para los mapas.
-- [ ] **Desarrollo:** Crear la base de datos de Propiedades.
-- [ ] **Desarrollo:** Crear las rutas (APIs) para crear, leer, actualizar y eliminar propiedades (CRUD).
+- [x] **Aprender:** Configuración de un servidor web básico.
+- [x] **Aprender:** Bases de datos relacionales (PostgreSQL) e introducción a datos espaciales (PostGIS) para los mapas.
+- [x] **Desarrollo:** Crear la base de datos de Propiedades.
+- [x] **Desarrollo:** Crear las rutas (APIs) para crear, leer, actualizar y eliminar propiedades (CRUD).
 
 ## Fase 3: Seguridad y Autenticación 🔐
 *Protegeremos la plataforma y diferenciaremos entre Usuarios y Agentes.*
