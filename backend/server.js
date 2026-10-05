@@ -1,14 +1,13 @@
 // ========================================
 // 🚀 SERVIDOR PRINCIPAL DE INMOVER
 // ========================================
-// Este archivo es el "punto de entrada" de nuestro backend.
-// Su trabajo es simple: configurar Express y conectar las rutas.
 
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
 // Importamos nuestras rutas organizadas
+import authRoutes from './src/routes/authRoutes.js';
 import usuarioRoutes from './src/routes/usuarioRoutes.js';
 import propiedadRoutes from './src/routes/propiedadRoutes.js';
 
@@ -21,12 +20,14 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Ruta raíz (saludo de bienvenida)
+// Ruta raíz
 app.get('/', (req, res) => {
     res.json({
         proyecto: 'INMOVER API',
         estado: '✅ Funcionando',
+        version: '2.0 - Con Autenticación',
         rutas: {
+            auth: '/api/auth (registro, login, perfil)',
             usuarios: '/api/usuarios',
             propiedades: '/api/propiedades'
         }
@@ -34,17 +35,17 @@ app.get('/', (req, res) => {
 });
 
 // Conectamos las rutas
-// Todo lo que empiece con /api/usuarios va al archivo de rutas de usuarios
+app.use('/api/auth', authRoutes);
 app.use('/api/usuarios', usuarioRoutes);
-// Todo lo que empiece con /api/propiedades va al archivo de rutas de propiedades
 app.use('/api/propiedades', propiedadRoutes);
 
 // Encender el servidor
 app.listen(PORT, () => {
     console.log(`=========================================`);
-    console.log(`🚀 INMOVER Backend v1.0`);
+    console.log(`🚀 INMOVER Backend v2.0 (con Auth)`);
     console.log(`🌐 http://localhost:${PORT}`);
     console.log(`📦 Rutas disponibles:`);
+    console.log(`   - /api/auth      (registro y login)`);
     console.log(`   - /api/usuarios`);
     console.log(`   - /api/propiedades`);
     console.log(`=========================================`);

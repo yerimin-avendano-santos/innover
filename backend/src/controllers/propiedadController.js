@@ -132,3 +132,4 @@ export const eliminarPropiedad = async (req, res) => {
         res.status(500).json({ error: 'Error al eliminar la propiedad' });
     }
 };
+

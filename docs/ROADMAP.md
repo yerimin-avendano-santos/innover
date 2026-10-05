@@ -18,9 +18,9 @@ Este documento detalla el paso a paso que seguiremos para construir **INMOVER** 
 
 ## Fase 3: Seguridad y Autenticación 🔐
 *Protegeremos la plataforma y diferenciaremos entre Usuarios y Agentes.*
-- [ ] **Aprender:** ¿Qué es un JWT (JSON Web Token), Encriptación de contraseñas (Bcrypt) y Ciberseguridad básica.
-- [ ] **Desarrollo:** Sistema de Registro y Login.
-- [ ] **Desarrollo:** Validación de roles (Usuario normal vs. Agente Inmobiliario vs. Propietario).
+- [x] **Aprender:** ¿Qué es un JWT (JSON Web Token), Encriptación de contraseñas (Bcrypt) y Ciberseguridad básica.
+- [x] **Desarrollo:** Sistema de Registro y Login.
+- [x] **Desarrollo:** Validación de roles (Usuario normal vs. Agente Inmobiliario vs. Propietario).
 - [ ] **Idea del Startup:** Preparar el terreno para la "Validación con Reniec/IA".
 
 ## Fase 4: Frontend y Mapas Interactivos (La Cara del Proyecto) 🎨

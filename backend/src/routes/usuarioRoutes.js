@@ -20,3 +20,4 @@ router.put('/:id', actualizarUsuario);     // PUT    /api/usuarios/1
 router.delete('/:id', eliminarUsuario);    // DELETE /api/usuarios/1
 
 export default router;
+
