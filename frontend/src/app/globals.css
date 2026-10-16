@@ -1,0 +1,404 @@
+/* ========================================
+   INNOVER · Sistema de diseño
+   ========================================
+
+   Este archivo es la única fuente de verdad sobre color, tipografía y
+   espacio. Un componente NUNCA debería escribir un color suelto como
+   `#008B8B`: si lo hace, ese color no se cambia desde aquí y el sistema
+   se desincroniza en dos semanas.
+
+   ── Tailwind v4: dónde van las cosas ──
+   Tailwind 4 usa "CSS-first": no necesita el archivo tailwind.config.js.
+   Lo que se declara dentro de `@theme` se convierte automáticamente en
+   utilidades de Tailwind:
+
+       --color-papel: #f4f3ef;   →   bg-papel, text-papel, border-papel
+
+   Por eso el `tailwind.config.js` de formato v3 que había antes no
+   servía para nada: v4 ya no lo lee.
+
+   ── Por qué estos colores ──
+   INNOVER muestra planos de propiedades: medidas, superficies y coordenadas.
+   Por eso la paleta viene de un plano catastral, no de un
+   dashboard genérico: papel técnico, grafito, y un único color de señal.
+   ======================================== */
+
+@import 'tailwindcss';
+
+/* ========================================
+   1. TOKENS
+   ======================================== */
+@theme {
+  /* --- Superficies ---
+     Tres niveles, no cinco. Cada uno tiene un trabajo concreto. */
+  --color-tinta: #14181a;        /* Texto principal. Grafito, no negro puro. */
+  --color-papel: #f7f6f2;        /* Fondo de la página. Tinta de papel técnico. */
+  --color-papel-alto: #ffffff;   /* Tarjetas que deben levantarse del fondo. */
+  --color-papel-hundido: #eceae3; /* Zonas hundidas: campos, deshabilitados. */
+
+  /* --- Texto secundario ---
+     Derivan de la tinta aclarándose. Nunca un gris arbitrario. */
+  --color-tinta-70: #4a5257;
+  --color-tinta-50: #737c82;
+  --color-tinta-30: #a8afb3;
+
+  /* --- Líneas ---
+     El plano catastral vive de líneas finas. Este es su color. */
+  --color-linea: #d9d6cd;
+  --color-linea-fuerte: #b9b5a9;
+
+  /* --- Color de señal ---
+     Un solo color para todo lo que significa "esto es una acción" o
+     "esto está seleccionado". Si hubiera dos, competirían entre sí. */
+  --color-senal: #0f6b70;        /* Petróleo. Botones, enlaces, selección. */
+  --color-senal-hondo: #0a4d51;
+  --color-senal-suave: #e3efef;
+
+  /* --- Destaque pagado ---
+     El modelo de negocio cobra por resaltar publicaciones. Ese dinero
+     necesita un color reconocible y separado del color de acción, para
+     que un usuario no confunda "destacado" con "seleccionado". */
+  --color-latón: #96702a;
+  --color-latón-suave: #f6efdd;
+
+  /* --- Estados --- */
+  --color-alerta: #a8321f;
+  --color-alerta-suave: #fbeceb;
+  --color-exito: #2c6b4a;
+
+  /* --- Tipografía ---
+     Dos pesos de la misma familia. Una variable, dos ejes de uso. */
+  --font-sans: var(--font-archivo), 'Segoe UI', system-ui, sans-serif;
+
+  /* La escala sigue Elements of Typographic Style (ratio 1.25).
+     Los nombres son semánticos, no numéricos:
+     `text-cuerpo` sobrevive a un rediseño; `text-4xl` no. */
+  --text-micro: 0.6875rem;   /* 11px  — metadatos, unidades */
+  --text-menor: 0.8125rem;   /* 13px  — texto de apoyo */
+  --text-cuerpo: 0.9375rem;  /* 15px  — cuerpo del texto */
+  --text-normal: 1.0625rem;  /* 17px  — texto de lectura larga */
+  --text-grande: 1.375rem;   /* 22px  — títulos de tarjeta */
+  --text-titulo: 1.875rem;   /* 30px  — títulos de sección */
+  --text-display: 2.75rem;   /* 44px  — portada */
+
+  --leading-apretado: 1.15;
+  --leading-cuerpo: 1.6;
+
+  /* --- Espaciado ---
+     Escala de 4px. Un solo número raro que aparece en el sistema
+     hace que dos personas discrepen. */
+  --spacing: 0.25rem;
+
+  /* --- Radios ---
+     Tres, con tres trabajos distintos. */
+  --radius-chico: 3px;      /* Campos, chips */
+  --radius-medio: 6px;      /* Botones, tarjetas */
+  --radius-grande: 12px;    /* Paneles grandes */
+}
+
+/* ========================================
+   2. BASE
+   ======================================== */
+@layer base {
+  * {
+    border-color: var(--color-linea);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-papel);
+    color: var(--color-tinta);
+    font-family: var(--font-sans);
+    font-size: var(--text-cuerpo);
+    line-height: var(--leading-cuerpo);
+    /* Ligera anticipación en los cuerpos de texto largos.
+       Es un detalle de artesanía tipográfica que casi nadie nota
+       pero se nota cuando falta. */
+    font-feature-settings: 'kern' 1, 'liga' 1, 'cv05' 1;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* El foco por teclado tiene que ser visible y coherente.
+     Quitarlo deja a los usuarios de teclado sin poder navegar,
+     y ese es un fallo de accesibilidad, no una preferencia. */
+  :focus-visible {
+    outline: 2px solid var(--color-senal);
+    outline-offset: 2px;
+    border-radius: var(--radius-chico);
+  }
+
+  /* Los números de precio y superficie van SIEMPRE alineados.
+     `tnum` = "tabular numerals": todos los dígitos miden lo mismo,
+     así una columna de precios se lee como columna y no como un
+     temblor de dígitos desiguales. */
+  .cifra {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  h1, h2, h3 {
+    line-height: var(--leading-apretado);
+    /* Los titulares se aprietan un poco más que el cuerpo.
+       Las mayúsculas y tildes necesitan un poco más de aire. */
+    letter-spacing: -0.015em;
+  }
+}
+
+/* ========================================
+   3. COMPONENTES
+   ======================================== */
+@layer components {
+  /* --- Botón ---
+     Un solo estilo base; la variante cambia el fondo, no la forma.
+     Eso es lo que hace que un botón de "Publicar" y uno de "Cancelar"
+     se sientan igual de firmes en la página. */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.125rem;
+    border-radius: var(--radius-medio);
+    font-size: var(--text-cuerpo);
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease,
+      color 120ms ease;
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-principal {
+    background-color: var(--color-senal);
+    color: white;
+  }
+
+  .btn-principal:hover:not(:disabled) {
+    background-color: var(--color-senal-hondo);
+  }
+
+  .btn-secundario {
+    background-color: transparent;
+    color: var(--color-tinta);
+    border-color: var(--color-linea-fuerte);
+  }
+
+  .btn-secundario:hover:not(:disabled) {
+    background-color: var(--color-papel-hundido);
+  }
+
+  .btn-fantasma {
+    background-color: transparent;
+    color: var(--color-senal);
+    padding-inline: 0.5rem;
+  }
+
+  .btn-fantasma:hover:not(:disabled) {
+    background-color: var(--color-senal-suave);
+  }
+
+  /* --- Campo de formulario ---
+     El foco usa `border-color`, no `box-shadow`. Un halo de sombra
+     sobre un campo de texto se ve como "error" en muchos designs. */
+  .campo {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    background-color: var(--color-papel-alto);
+    border: 1px solid var(--color-linea-fuerte);
+    border-radius: var(--radius-medio);
+    color: var(--color-tinta);
+    font-size: var(--text-cuerpo);
+    font-family: inherit;
+    transition: border-color 120ms ease;
+  }
+
+  .campo::placeholder {
+    color: var(--color-tinta-30);
+  }
+
+  .campo:focus {
+    outline: none;
+    border-color: var(--color-senal);
+  }
+
+  .campo[aria-invalid='true'] {
+    border-color: var(--color-alerta);
+  }
+
+  /* --- Etiqueta ---
+     Sentence case, nunca MAYÚSCULAS. "Nombre completo" se lee;
+     "NOMBRE COMPLETO" grita y además es un tell de plantilla. */
+  .etiqueta {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: var(--text-menor);
+    font-weight: 500;
+    color: var(--color-tinta-70);
+  }
+
+  /* --- Tarjeta de propiedad ---
+     Sin sombra difusa. Una ficha técnica real no flota: descansa
+     sobre papel con un filete. */
+  .ficha {
+    background-color: var(--color-papel-alto);
+    border: 1px solid var(--color-linea);
+    border-radius: var(--radius-medio);
+    transition: border-color 120ms ease;
+  }
+
+  .ficha:hover {
+    border-color: var(--color-linea-fuerte);
+  }
+
+  /* --- Distintivo ---
+     Ejemplo: "Verificado", "Destacado", "Nuevo". */
+  .distintivo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-chico);
+    font-size: var(--text-micro);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+
+  .distintivo-latón {
+    background-color: var(--color-latón-suave);
+    color: var(--color-latón);
+  }
+
+  .distintivo-senal {
+    background-color: var(--color-senal-suave);
+    color: var(--color-senal-hondo);
+  }
+
+  .distintivo-neutro {
+    background-color: var(--color-papel-hundido);
+    color: var(--color-tinta-70);
+  }
+
+  /* --- Marcador del mapa ---
+     Lo dibuja Mapbox, así que vive aquí para poder cambiarlo sin
+     tocar el componente React. */
+  .marcador {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-chico);
+    border: 1.5px solid white;
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgb(20 24 26 / 0.3);
+    transition: transform 120ms ease;
+  }
+
+  .marc:hover .marcador {
+    transform: scale(1.12);
+  }
+
+  /* Globos de Mapbox */
+  .mapboxgl-popup-content {
+    padding: 0 !important;
+    border-radius: var(--radius-medio) !important;
+    box-shadow: 0 8px 24px rgb(20 24 26 / 0.16) !important;
+    overflow: hidden;
+  }
+
+  .mapboxgl-popup-close-button {
+    padding: 4px 8px;
+    font-size: 16px;
+    color: var(--color-tinta-50);
+  }
+
+  .mapboxgl-ctrl-attrib {
+    font-size: 10px;
+  }
+}
+
+/* ========================================
+   4. MOVIMIENTO
+   ========================================
+   Una sola animación, y responde a una acción del usuario: la aparición
+   del mapa al cargar. No hay entradas animadas en cada sección, porque
+   eso es lo que hace que una página parezca plantilla. */
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.mapa-aparece {
+  animation: aparecer 400ms ease-out;
+}
+
+@keyframes subir-panel {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.panel-aparece {
+  animation: subir-panel 200ms ease-out;
+}
+
+/* Si el usuario pidió menos movimiento, no le damos ninguno. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ========================================
+   5. UTILIDADES
+   ======================================== */
+
+/* Oculta el scrollbar sin dejar de permitir el scroll.
+   Se usa en la tira horizontal de filtros en móvil. */
+.sin-barra::-webkit-scrollbar {
+  display: none;
+}
+
+.sin-barra {
+  scrollbar-width: none;
+}
+
+/* Texto solo para lectores de pantalla. */
+.solo-lector {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
