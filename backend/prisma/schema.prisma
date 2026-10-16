@@ -1,3 +1,14 @@
+// ========================================
+// 🗄️ ESQUEMA DE DATOS DE INNOVER
+// ========================================
+// Este archivo es el "plano de la base de datos":
+// Prisma lo lee y genera el código que habla con PostgreSQL.
+//
+// 📌 Convenciones:
+//   - Los nombres de tablas y campos van en snake_case (tradición de PostgreSQL).
+//   - Cada modelo tiene comentarios explicando qué guarda y por qué.
+//   - Las decisiones de diseño que "se ven raro" están justificadas aquí.
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,68 +18,429 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ========================================
+// TIPOS (enums)
+// Un enum es una lista cerrada de valores permitidos.
+// PostgreSQL los guarda como un tipo propio, así que nadie puede inventarse
+// un valor nuevo por error desde el código.
+// ========================================
+
+/// Rol del usuario dentro de la plataforma.
+/// ⚠️ REGLA DE ORO: un usuario NUNCA elige su propio rol al registrarse.
+///    Ver src/controllers/authController.js -> registroUsuario()
 enum RolUsuario {
+  /// Busca propiedades (el usuario final, B2C)
   CLIENTE
+
+  /// Publica sus propiedades (propietario directo)
   PROPIETARIO
+
+  /// Gesta cartera de clientes y propiedades (el cliente B2B que paga)
   AGENTE
+
+  /// Administra la plataforma. Solo se asigna manualmente en la base de datos.
   ADMIN
 }
 
-enum TipoPropiedad {
+/// ¿La propiedad se vende o se alquila?
+enum TipoOperacion {
   VENTA
   ALQUILER
 }
 
+/// ¿Qué clase de inmueble es? El negocio promete "departamentos, casas y
+/// terrenos" (ver context.txt), así que el dato tiene que existir.
+enum TipoInmueble {
+  DEPARTAMENTO
+  CASA
+  TERRENO
+  OFICINA
+  LOCAL_COMERCIAL
+  OTRO
+}
+
+/// En qué estado comercial está la propiedad.
+/// Sin esto no se puede distinguir "publicada y disponible" de "ya se vendió",
+/// que es la pregunta #1 de quien busca vivienda.
+enum EstadoPropiedad {
+  /// El dueño la está armando, todavía no se muestra al público
+  BORRADOR
+
+  /// Visible en el mapa y en los buscadores
+  PUBLICADA
+
+  /// Ya se cerró la operación
+  VENDIDA
+
+  /// Ya se firmó el alquiler
+  ALQUILADA
+
+  /// El dueño la retiró del mercado
+  RETIRADA
+}
+
+/// Estado de un lead del CRM.
 enum EstadoContacto {
   NUEVO
   EN_PROCESO
   CERRADO
+  DESCARTADO
 }
+
+/// Plan comercial del usuario. Es INDEPENDIENTE del rol.
+///
+/// 📌 POR QUÉ EL PLAN NO ES UN ROL
+///
+/// El rol dice QUÉ HACE alguien en la plataforma (compra, vende, intermedia).
+/// El plan dice QUÉ PUEDE PAGAR. Son dos ejes distintos y mezclarlos lleva a
+/// un callejón: ¿qué rol tendría "agente con plan gratis"? Si el plan fuera un
+/// rol habría que inventar `AGENTE_PRO`, `AGENTE_GRATIS`, `PROPIETARIO_PRO`...
+/// y cada combinación nueva multiplicaría los valores.
+///
+/// Con el plan aparte, un PROPIETARIO con plan PRO tiene el mismo tratamiento
+/// que un AGENTE con plan PRO — que es lo que se quiere: quien paga, recibe.
+enum PlanUsuario {
+  /// Plan por defecto. Publica y recibe contactos, sin extras.
+  GRATIS
+
+  /// Plan de pago. Incluye recorrido 3D y destaque de publicaciones.
+  /// Solo lo asigna un ADMIN (o, más adelante, la pasarela de cobros).
+  PRO
+}
+
+/// Estado de una solicitud para ser AGENTE.
+///
+/// 📌 POR QUÉ ESTO ANTES NO EXISTÍA
+///
+/// `POST /api/auth/solicitar-agente` recibía el documento y el mensaje, guardaba
+/// el documento en el usuario y respondía `estado: 'PENDIENTE'`. Ese "PENDIENTE"
+/// era un literal en el JSON de respuesta: no había ninguna fila que guardara
+/// la solicitud, así que no había cola que revisar ni forma de rechazar con un
+/// motivo. El mensaje del solicitante se tiraba a la basura.
+enum EstadoSolicitud {
+  /// Esperando revisión. Un usuario solo puede tener una a la vez.
+  PENDIENTE
+
+  /// Aprobada: el usuario pasa a AGENTE.
+  APROBADA
+
+  /// Rechazada con motivo. Puede volver a solicitarlo corrigiendo.
+  RECHAZADA
+}
+
+// ========================================
+// MODELO: Usuario
+// ========================================
 
 model Usuario {
-  id              Int        @id @default(autoincrement())
-  nombre          String
-  email           String     @unique
-  contrasena_hash String
-  rol             RolUsuario @default(CLIENTE)
-  fecha_creacion  DateTime   @default(now())
+  id     Int    @id @default(autoincrement())
+  nombre String
 
-  propiedades          Propiedad[]
+  /// Correo único. Se guarda SIEMPRE en minúsculas: ver src/utils/email.js.
+  /// Si se permitieran "Ana@x.com" y "ana@x.com" serían dos cuentas distintas.
+  email String @unique
+
+  /// Hash bcrypt. NUNCA la contraseña en texto plano.
+  /// OJO: este campo no se llama "password" a propósito, para que en logs
+  /// y respuestas de error quede claro que es un hash, no un secreto legible.
+  contrasena_hash String
+
+  rol            RolUsuario @default(CLIENTE)
+  telefono       String?
+  avatar_url     String?
+
+  /// Plan comercial. NO se acepta del body en ningún endpoint: lo cambia un
+  /// ADMIN, igual que el rol. Aceptarlo del usuario sería regalar el producto.
+  plan PlanUsuario @default(GRATIS)
+
+  /// Hasta cuándo vale el plan de pago.
+  ///
+  /// 📌 POR QUÉ UNA FECHA Y NO SOLO UN BOOLEANO
+  ///
+  /// Un plan PRO sin fecha de fin es una suscripción que no se acaba nunca: el
+  /// usuario deja de pagar y conserva las ventajas para siempre. Es el error
+  /// clásico de modelar suscripciones, y no se nota hasta que hay clientes.
+  ///
+  /// `null` significa "sin vencimiento" — para cortesías y cuentas internas.
+  /// Con fecha, `tienePlanPro()` la compara contra el momento actual.
+  ///
+  /// ⚠️ Hoy NADIE la rellena automáticamente: no hay pasarela de cobros. La
+  /// escribe un ADMIN al conceder el plan. Cuando exista el cobro, el webhook
+  /// del proveedor será quien la actualice.
+  plan_vence DateTime?
+
+  /// Si el dueño verifica su identidad contra RENIEC (idea del startup).
+  /// 'telefono' y 'avatar_url' son opcionales porque un CLIENTE
+  /// que solo navega el mapa no necesita darlos.
+  documento_identidad  String?
+  identidad_verificada Boolean @default(false)
+
+  /// Baja lógica en vez de borrar el registro.
+  /// ¿Por qué? Porque las propiedades y los leads históricos deben seguir
+  /// teniendo autor. Si borrás la fila, rompés las relaciones.
+  activo Boolean @default(true)
+
+  fecha_creacion  DateTime  @default(now())
+  fecha_actualizacion DateTime @updatedAt
+  ultimo_acceso   DateTime?
+
+  propiedades      Propiedad[]
   contactosComoCliente Contacto[] @relation("ClienteContactos")
   contactosComoAgente  Contacto[] @relation("AgenteContactos")
+  contactosComoPropietario Contacto[] @relation("PropietarioContactos")
+
+  /// Solicitudes de agente que ESTE usuario ha presentado.
+  solicitudesAgente SolicitudAgente[] @relation("SolicitanteAgente")
+
+  /// Solicitudes que ESTE usuario (un ADMIN) ha resuelto. Es la auditoría:
+  /// sin ella no se puede responder "¿quién aprobó a este agente?".
+  solicitudesRevisadas SolicitudAgente[] @relation("RevisorAgente")
+
+  // El login busca por email, así que este índice acelera esa consulta.
+  @@index([rol, activo])
+  @@map("Usuario")
 }
+
+// ==========================================
+// MODELO: Distrito
+// ==========================================
+// La ciudad se piensa por distritos, y el valor de un inmueble depende casi
+// por completo de la zona (en Huánuco: el centro, Amarilis, Cayhuayna...).
+// Separarlo en su propia tabla permite filtrar por zona y calcular
+// estadísticas por distrito, que es el roadmap del producto.
+
+model Distrito {
+  id     Int    @id @default(autoincrement())
+  nombre String @unique
+
+  /// 📌 POR QUÉ HACEN FALTA region Y provincia
+  ///
+  /// "Huánuco" es a la vez el nombre de un distrito, de una provincia y de una
+  /// región. Sin estos dos campos, un distrito llamado "Huánuco" en otra región
+  /// chocaría contra el `@unique` de `nombre`, y no habría forma de saber a
+  /// cuál de los tres niveles pertenece cada fila.
+  ///
+  /// Son opcionales porque el producto arranca con una sola región: el día que
+  /// se abra una segunda, se rellenan y se filtra por ellos. Exigirlos ahora
+  /// obligaría a inventar datos para las zonas que aún no existen.
+  region    String?
+  provincia String?
+
+  /// Punto para centrar el mapa cuando el usuario elige una zona que todavía
+  /// no tiene propiedades publicadas. Ej.: -9.9293, -76.2395.
+  latitud_centro  Float?
+  longitud_centro Float?
+
+  propiedades Propiedad[]
+
+  @@index([region, provincia])
+  @@map("Distrito")
+}
+
+// ========================================
+// MODELO: Propiedad
+// ========================================
 
 model Propiedad {
-  id              Int           @id @default(autoincrement())
-  usuario_id      Int           
-  titulo          String
-  descripcion     String
-  precio          Decimal       
-  tipo            TipoPropiedad
-  
-  latitud         Float?        
-  longitud        Float?
-  
-  habitaciones    Int
-  banos           Int
-  tour_3d_url     String?       
-  fecha_creacion  DateTime      @default(now())
+  id     Int @id @default(autoincrement())
 
-  usuario         Usuario       @relation(fields: [usuario_id], references: [id])
-  contactos       Contacto[]
+  /// Quién publica y quién es el dueño.
+  usuario_id Int
+  usuario     Usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  /// Identificador legible para URLs: /propiedad/depa-amarilis-con-patio
+  /// Se genera a partir del título, ver src/utils/slug.js
+  slug String @unique
+
+  titulo      String
+  descripcion String
+
+  /// DECIMAL y no FLOAT a propósito.
+  /// Un FLOAT guarda 275000.10 como 275000.0999999999 y te suma centavos
+  /// fantasma al sumar precios. Para dinero, siempre Decimal.
+  precio Decimal @db.Decimal(12, 2)
+
+  /// Moneda en la que está el precio. En Perú se tasan en soles (PEN) pero
+  /// muchas propiedades se piden en dólares (USD).
+  moneda String @default("PEN") @db.VarChar(3)
+
+  tipo TipoOperacion @default(VENTA)
+
+  /// snake_case como todo lo demás: "tipo_inmueble", no "tipoInmueble".
+  /// Mezclar estilos en un mismo esquema obliga a escribir comillas en
+  /// cualquier consulta SQL y es una fuente clásica de errores.
+  tipo_inmueble TipoInmueble @default(DEPARTAMENTO)
+
+  estado EstadoPropiedad @default(PUBLICADA)
+
+  /// Superficie en metros cuadrados. Es EL dato central de una búsqueda
+  /// inmobiliaria, y no estaba en el modelo original.
+  area_m2 Decimal? @db.Decimal(10, 2)
+
+  /// Cantidades. 0 significa "no aplica" (un terreno no tiene baños).
+  /// Nullable sería más correcto semánticamente, pero 0 mantiene los
+  /// filtros simples y no rompe los renders del frontend.
+  habitaciones Int @default(0)
+  banos        Int @default(0)
+  parkederos   Int @default(0)
+
+  // --- Ubicación ---
+  distrito_id Int?
+  distrito   Distrito? @relation(fields: [distrito_id], references: [id], onDelete: SetNull)
+  direccion  String?
+
+  /// Se mantiene en float para que Prisma pueda escribirlo fácil,
+  /// y un TRIGGER de la base de datos (ver migración 002) lo copia a la
+  /// columna `locacion` de tipo geography(Point) de PostGIS.
+  /// Así tenemos las dos cosas: escrituras simples desde Prisma y consultas
+  /// espaciales/indexadas en PostGIS.
+  latitud  Float?
+  longitud Float?
+
+  /// Columna espacial real, administrada por PostGIS.
+  /// `Unsupported` le dice a Prisma: "existe en la base de datos, pero yo no
+  /// sé leerla ni escribirla". Se accede con $queryRaw.
+  locacion Unsupported("geography(Point, 4326)")?
+
+  /// URL del recorrido 3D embebido (Matterport, Sketchfab, etc.)
+  ///
+  /// ⛔ SOLO SE ESCRIBE CON PLAN PRO. No es una regla de la interfaz: el
+  /// controller lo verifica contra el usuario del token antes de guardar.
+  /// Esconder el campo en el formulario no protege nada — cualquiera puede
+  /// mandar el JSON a mano.
+  tour_3d_url String?
+
+  /// Lista de URLs de imágenes. Postgres guarda los arrays nativamente.
+  imagenes String[] @default([])
+
+  /// Destaque pagado: la propiedad sale primero en los listados, por encima
+  /// de las demás aunque sea más antigua (ver los `orderBy` del controller).
+  ///
+  /// ⛔ Antes solo lo escribía un ADMIN. Ahora también un usuario con plan PRO
+  /// activo, porque el destaque va incluido en el plan. Al bajar de plan, un
+  /// ADMIN debe limpiar los destaques de ese usuario — para eso está
+  /// `sincronizarDestacados()` en usuarioController.js.
+  destacado Boolean @default(false)
+
+  /// Contador de visitas. Es la base del ranking de popularidad del CRM.
+  vistas Int @default(0)
+
+  fecha_creacion     DateTime @default(now())
+  fecha_actualizacion DateTime @updatedAt
+
+  contactos Contacto[]
+
+  // Índices para los filtros más frecuentes del buscador.
+  // Sin ellos, un `WHERE estado = 'PUBLICADA' AND precio BETWEEN ...`
+  // sobre 100k filas revuelve la tabla entera.
+  @@index([estado, tipo, precio])
+  @@index([tipo_inmueble])
+  @@index([distrito_id])
+  @@index([destacado, fecha_creacion])
+  @@index([usuario_id])
+  @@index([fecha_creacion])
+  @@map("Propiedad")
 }
+
+// ========================================
+// MODELO: Contacto (Lead del CRM B2B)
+// ========================================
 
 model Contacto {
-  id              Int            @id @default(autoincrement())
-  propiedad_id    Int
-  cliente_id      Int
-  agente_id       Int
-  mensaje         String
-  estado          EstadoContacto @default(NUEVO)
-  fecha_creacion  DateTime       @default(now())
+  id     Int @id @default(autoincrement())
 
-  propiedad       Propiedad      @relation(fields: [propiedad_id], references: [id])
-  cliente         Usuario        @relation("ClienteContactos", fields: [cliente_id], references: [id])
-  agente          Usuario        @relation("AgenteContactos", fields: [agente_id], references: [id])
+  propiedad_id Int
+  propiedad   Propiedad @relation(fields: [propiedad_id], references: [id], onDelete: Cascade)
+
+  /// Quién preguntó. No puede ser el mismo dueño, se valida en el controller.
+  cliente_id Int
+  cliente   Usuario @relation("ClienteContactos", fields: [cliente_id], references: [id], onDelete: Cascade)
+
+  /// A quién le llega el lead.
+  /// Puede ser el agente asignado, o el dueño si el inmueble es directo.
+  agente_id Int?
+  agente   Usuario? @relation("AgenteContactos", fields: [agente_id], references: [id], onDelete: SetNull)
+
+  propietario_id Int?
+  propietario   Usuario? @relation("PropietarioContactos", fields: [propietario_id], references: [id], onDelete: SetNull)
+
+  mensaje String
+  estado  EstadoContacto @default(NUEVO)
+
+  /// Contacto del cliente (teléfono/email) congelado en el momento del lead.
+  /// Si el cliente actualiza su perfil después, el agente igual debe poder
+  /// llamarle con los datos que dejó cuando escribió el mensaje.
+  telefono_contacto String?
+  email_contacto    String?
+
+  fecha_creacion     DateTime  @default(now())
+  fecha_actualizacion DateTime @updatedAt
+
+  @@index([agente_id, estado])
+  @@index([propiedad_id])
+  @@index([cliente_id])
+  @@index([fecha_creacion])
+  @@map("Contacto")
 }
 
+// ========================================
+// MODELO: SolicitudAgente
+// ========================================
+// La cola de "quiero ser agente inmobiliario".
+//
+// 📌 POR QUÉ ES UNA TABLA Y NO UNA COLUMNA DEL USUARIO
+//
+// La tentación es poner `solicitud_estado` en Usuario y acabar. Pero entonces:
+//
+//   1. Se pierde el HISTORIAL. Si alguien pide ser agente tres veces —dos
+//      rechazadas y una aprobada— no hay forma de saber por qué se rechazaron
+//      las anteriores. Eso importa cuando el usuario reclama.
+//   2. No se puede guardar el documento QUE PRESENTÓ en cada intento. Si
+//      corrige el DNI de un intento a otro, la columna del usuario solo
+//      conserva el último y se pierde qué se revisó.
+//   3. No hay auditoría. "¿Quién aprobó a este agente?" no tiene respuesta.
+//
+// Una fila por intento resuelve las tres cosas, y de paso convierte la cola de
+// admin en una consulta trivial: `WHERE estado = 'PENDIENTE'`.
+
+model SolicitudAgente {
+  id Int @id @default(autoincrement())
+
+  /// Quién solicita. En cascada: si se borra el usuario, sus solicitudes
+  /// no tienen sentido (y el borrado de usuarios es lógico, así que esto
+  /// casi nunca se ejecuta — es una red de seguridad).
+  usuario_id Int
+  usuario   Usuario @relation("SolicitanteAgente", fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  /// DNI o RUC que presenta para que le verifiquen. Se guarda POR INTENTO,
+  /// no solo en el usuario: así queda registrado qué documento se revisó.
+  documento String
+
+  /// Por qué quiere ser agente. Antes este campo se recibía y se descartaba:
+  /// se devolvía en el JSON de respuesta y nunca llegaba a la base. El admin
+  /// no tenía forma de leerlo, así que "revisar la solicitud" era a ciegas.
+  mensaje String?
+
+  estado EstadoSolicitud @default(PENDIENTE)
+
+  /// Qué ADMIN la resolvió. `SetNull` en vez de cascada: si se borra la cuenta
+  /// del admin, la solicitud debe seguir existiendo (con revisor desconocido)
+  /// porque es el historial del solicitante, no del admin.
+  revisor_id Int?
+  revisor   Usuario? @relation("RevisorAgente", fields: [revisor_id], references: [id], onDelete: SetNull)
+
+  /// Por qué se rechazó. Obligatorio en la práctica al rechazar: sin esto el
+  /// usuario no sabe qué corregir y vuelve a mandar lo mismo.
+  motivo_rechazo String?
+
+  fecha_creacion   DateTime  @default(now())
+  /// Cuándo se resolvió. `null` mientras esté PENDIENTE.
+  fecha_resolucion DateTime?
+
+  /// La cola del panel de admin: "dame las pendientes, de la más vieja a la
+  /// más nueva". Sin este índice, cada carga del panel recorre la tabla.
+  @@index([estado, fecha_creacion])
+  /// Para responder "¿cuál es la solicitud de este usuario?".
+  @@index([usuario_id])
+  @@map("SolicitudAgente")
+}
