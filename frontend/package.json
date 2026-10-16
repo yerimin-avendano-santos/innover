@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "verificar:contraste": "node scripts/verificar-contraste.mjs",
-    "verificar:tokens": "node scripts/verificar-tokens.mjs"
+    "verificar:tokens": "node scripts/verificar-tokens.mjs",
+    "verificar:clases": "node scripts/verificar-clases.mjs"
   },
   "dependencies": {
     "mapbox-gl": "^3.32.0",

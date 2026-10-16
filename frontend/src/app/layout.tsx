@@ -57,10 +57,7 @@ export default function RootLayout({
     <html lang="es-PE" className={`${inter.variable} h-full`}>
       <body className="flex min-h-full flex-col">
         <ProveedorAuth>
-          <a
-            href="#contenido"
-            className="solo-lector focus:not-solo-lector focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-medio focus:bg-senal focus:px-4 focus:py-2 focus:text-white"
-          >
+          <a href="#contenido" className="saltar-contenido">
             Saltar al contenido
           </a>
 

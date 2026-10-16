@@ -24,6 +24,7 @@ Todo se ejecuta **desde la raíz** salvo el typecheck.
 | Verificar geografía | `npm run verificar:geo` |
 | Verificar contraste | `npm run verificar:contraste --workspace=frontend` |
 | Verificar tokens | `npm run verificar:tokens --workspace=frontend` (tras `build`) |
+| Verificar clases | `npm run verificar:clases --workspace=frontend` (tras `build`) |
 
 ### Typecheck — usa esta forma exacta
 
@@ -41,14 +42,16 @@ cd frontend && .\node_modules\.bin\tsc.cmd --noEmit
 npm run build
 npm run verificar:contraste --workspace=frontend   # paleta legible, lee globals.css
 npm run verificar:tokens  --workspace=frontend     # ningún token huérfano (necesita build)
+npm run verificar:clases  --workspace=frontend     # ninguna clase muerta (necesita build)
 npm run prueba        # requiere el backend levantado
 ```
 
 `next build` ya incluye typecheck, así que `build` es la prueba definitiva.
 
-Los dos `verificar:*` son del frontend y cubren lo que ni el linter ni el
-compilador pueden ver: un color que no se lee y un token que se renombró y
-dejó de pintarse. Ninguna de las dos cosas da error — solo se ve mal.
+Los tres `verificar:*` son del frontend y cubren lo que ni el linter ni el
+compilador pueden ver: un color que no se lee, un token que se renombró y
+dejó de pintarse, y una clase escrita mal. Ninguna de las tres cosas da
+error — solo se ven mal, y suele ser en una pantalla que casi nadie abre.
 
 ---
 
@@ -184,10 +187,14 @@ Parece una contradicción y no lo es. El turquesa claro del logo (`#00D2B8`) da 
 
 Así que el turquesa de marca se reserva para lo que sí lo soporta —rellenos, franjas, el estado activo sobre azul marino— y `--color-senal` es ese mismo turquesa oscurecido hasta pasar el umbral (5,8:1). El botón de marca (`.btn-turquesa`) gira el par: fondo turquesa y texto en marino, 7,4:1.
 
-**Los dos `verificar:*` existen por esto y no son opcionales:**
+**Los tres `verificar:*` existen por esto y no son opcionales.** Ninguno de
+los tres fallos posibles da error: solo se ven mal.
 
 - `npm run verificar:contraste --workspace=frontend` — calcula el contraste de 30 combinaciones **leyendo `globals.css`**, no una copia de los valores. Si alguien cambia un color por uno que no se lee, falla.
 - `npm run verificar:tokens --workspace=frontend` — comprueba que **todo token declarado se usa** y, sobre todo, que ninguno usado con `var()` se queda sin emitir. Tailwind v4 elimina los tokens que ninguna utilidad usa: si uno se usa solo dentro de `var()`, desaparece y **el color no se pinta, sin ningún error**.
+- `npm run verificar:clases --workspace=frontend` — busca en `className` las clases que **no llegan al CSS compilado**: un nombre renombrado que se olvidó en un sitio, una errata, o una utilidad que no existe. ⚠️ Necesita `build` previo, igual que `verificar:tokens`: compara contra lo que Tailwind generó.
+
+  Este comprobador ya encontró un fallo real y escondido: el enlace "Saltar al contenido" usaba `focus:not-solo-lector`, y `not-solo-lector` **no es una variante que Tailwind conozca** —ahí espera el nombre de una variante, no el de una clase—. La utilidad no se generaba nunca, así que el enlace se quedaba recortado a 1 px incluso enfocado: invisible justo para quien navega con teclado. Y sin un solo error que lo delatara.
 
 ### Reglas al tocar el sistema
 

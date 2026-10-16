@@ -235,6 +235,11 @@ const INTENTOS_QUE_GASTA = 6;
   const cabecera = r.headers.get('ratelimit-remaining');
   const restantes = cabecera === null ? null : Number(cabecera);
 
+  // 📌 La cabecera cuenta la petición EN CURSO, así que un backend recién
+  // reiniciado informa de 9 y no de 10: la décima ranura es este mismo
+  // login, que no llega a gastarla. No hay nada consumido ni está mal
+  // contado — el aviso es conservador por uno, que es la dirección segura.
+
   if (restantes !== null && !Number.isNaN(restantes)) {
     if (restantes < INTENTOS_QUE_GASTA) {
       console.log(rojo('\n⛔ Quedan muy pocos intentos de login antes del bloqueo automático.\n'));
