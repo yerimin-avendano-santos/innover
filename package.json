@@ -1,0 +1,25 @@
+{
+  "name": "innover",
+  "version": "3.0.0",
+  "private": true,
+  "description": "INNOVER: plataforma inmobiliaria PropTech con mapa interactivo y CRM para agentes",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=backend",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspace=frontend",
+    "lint": "npm run lint --workspace=frontend",
+    "prueba": "npm run prueba --workspace=backend",
+    "migrate": "npm run migrate --workspace=backend",
+    "seed": "npm run seed --workspace=backend",
+    "backup": "npm run backup --workspace=backend",
+    "verificar:geo": "npm run verificar:geo --workspace=backend"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
