@@ -1,10 +1,10 @@
 # 01. Conceptos Básicos y Modelo de Datos 🧠
 
-Antes de empezar a escribir código, necesitamos hablar el mismo idioma. Cuando desarrollamos una aplicación completa (Full-Stack) como INMOVER, la dividimos en partes.
+Antes de empezar a escribir código, necesitamos hablar el mismo idioma. Cuando desarrollamos una aplicación completa (Full-Stack) como INNOVER, la dividimos en partes.
 
 ## 1. El Diccionario del Desarrollador Full-Stack
 
-Imagina INMOVER como un restaurante:
+Imagina INNOVER como un restaurante:
 
 *   **Frontend (La Sala y las Mesas):** Es todo lo que el usuario ve y con lo que interactúa. En nuestro caso: los mapas, los botones, los recorridos 3D, el panel del agente. Lo construiremos con **React.js**.
 *   **Backend (La Cocina):** Es la parte oculta que hace que todo funcione. Recibe las peticiones del Frontend, procesa la lógica del negocio (ej. "¿Este agente pagó su suscripción?", "Calcula las propiedades cercanas"), y guarda las cosas de forma segura. Lo haremos con **Node.js**.
@@ -17,7 +17,7 @@ Imagina INMOVER como un restaurante:
 
 Una Base de Datos Relacional (como PostgreSQL) usa **Tablas** (imagina hojas de cálculo de Excel) que se relacionan entre sí.
 
-Para INMOVER, inicialmente necesitaremos estas tablas principales:
+Para INNOVER, inicialmente necesitaremos estas tablas principales:
 
 ### Tabla: `Usuarios`
 Guarda a todas las personas que usan la app, ya sean clientes, dueños o agentes.
@@ -29,10 +29,10 @@ Guarda a todas las personas que usan la app, ya sean clientes, dueños o agentes
 *   `fecha_creacion` (Fecha)
 
 ### Tabla: `Propiedades`
-El corazón de INMOVER.
+El corazón de INNOVER.
 *   `id` (Identificador único)
 *   `usuario_id` (Relación: ¿Quién subió/es dueño de esta propiedad?)
-*   `titulo` (Texto, ej. "Depa de lujo en Miraflores")
+*   `titulo` (Texto, ej. "Depa de lujo en Amarilis")
 *   `descripcion` (Texto largo)
 *   `precio` (Número decimal)
 *   `tipo` (Opciones: 'VENTA', 'ALQUILER')
