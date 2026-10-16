@@ -42,8 +42,39 @@ function afirmar(condicion, nombre, detalle = '') {
   }
 }
 
+/** La sección en curso. Solo sirve para poder decir DÓNDE se cortó algo. */
+let seccionActual = 'inicio';
+
 function seccion(titulo) {
+  seccionActual = titulo;
   console.log(`\n${titulo}`);
+}
+
+/**
+ * Traduce el código del limitador a qué hacer al respecto.
+ *
+ * Existen TRES limitadores y se agotan por motivos distintos, así que un
+ * "reinicia el backend" a secas dejaría al usuario sin entender por qué.
+ */
+function explicarLimite(codigo) {
+  switch (codigo) {
+    case 'RATE_LIMIT_AUTH':
+      return [
+        'Es el límite de intentos de login: 10 FALLOS cada 15 minutos por IP.',
+        'La suite provoca 6 a propósito para probar la validación.',
+      ];
+    case 'RATE_LIMIT_ESCRITURA':
+      return [
+        'Es el límite de publicaciones: 20 CADA HORA, no cada 15 minutos.',
+        'Esta suite gasta 11 por corrida, así que DOS corridas seguidas',
+        'suman 22 y la segunda se corta a mitad. Es el límite que más',
+        'suele sorprender, porque su ventana dura una hora entera.',
+      ];
+    case 'RATE_LIMIT':
+      return ['Es el límite general: 300 peticiones cada 15 minutos.'];
+    default:
+      return ['El servidor respondió 429 (demasiadas peticiones).'];
+  }
 }
 
 /**
@@ -70,6 +101,45 @@ async function pedir(metodo, ruta, { cuerpo, token, cookie } = {}) {
     datos = null;
   }
 
+  // ========================================
+  // Un 429 corta la suite, no una prueba
+  // ========================================
+  //
+  // 📌 POR QUÉ SE ABORTA AQUÍ
+  //
+  // Cuando un limitador se agota, no falla una prueba: fallan TODAS las
+  // que vengan detrás que dependan de esa petición, y cada una reporta un
+  // fallo distinto y sin relación aparente con las demás. El resumen
+  // acaba diciendo "18 pruebas fallaron" y parece que el proyecto se ha
+  // roto entero, cuando lo único que pasa es que hay que reiniciar el
+  // servidor.
+  //
+  // Eso ya ocurrió: dos corridas seguidas agotan el límite de escritura
+  // (20 por hora, y la suite gasta 11 cada una) y la segunda pierde las
+  // pruebas de la mitad final. Se perdieron veinte minutos buscando un
+  // bug en el código de propiedades que no existía.
+  //
+  // Cortar en el PRIMER 429 convierte ese enredo en un mensaje que dice
+  // qué pasó, dónde, y qué hacer. Un fallo ruidoso es infinitamente más
+  // barato que dieciocho silenciosos.
+  if (res.status === 429) {
+    const codigo = datos?.codigo || '';
+    console.log(rojo(`\n⛔ Un limitador de peticiones cortó la suite.\n`));
+    console.log(`   Petición:  ${metodo} ${ruta}`);
+    console.log(`   Sección:   ${seccionActual}`);
+    console.log(`   Limitador: ${codigo || '(sin código)'}`);
+    console.log(`   Superadas hasta aquí: ${pruebasPasadas} pruebas\n`);
+    for (const linea of explicarLimite(codigo)) console.log(`   ${linea}`);
+    console.log('');
+    console.log('   NO es un bug del código: es la protección funcionando.');
+    console.log('   Los contadores viven en memoria, así que reiniciar el');
+    console.log('   backend los pone a cero:\n');
+    console.log('       npm run dev:backend\n');
+    console.log(gris('   (o sube el límite en backend/.env si vas a iterar mucho)'));
+    console.log('');
+    process.exit(2);
+  }
+
   return {
     estado: res.status,
     cuerpo: datos,
@@ -89,41 +159,72 @@ const contrasena = 'ClaveSegura2026';
 /**
  * ⚠️ POR QUÉ ESTAS PRUEBAS PUEDEN FALLAR AL REPETIRLAS
  *
- * El servidor tiene un rate limit de 10 intentos fallidos de login cada
- * 15 minutos (limitar a la fuerza bruta). Estas pruebas provocan
- * varios 401 a propósito, así que si las corres muchas veces seguidas
- * vas a obtener un 429 en toda la suite.
+ * El servidor tiene TRES limitadores, y la suite se topa con dos:
  *
- * ⛔ NO es un bug: es la protección funcionando. Para limpiarlo,
- * reinicia el servidor:
+ *   · Login:      10 FALLOS cada 15 min. La suite provoca 6 a propósito.
+ *   · Escritura:  20 CADA HORA. La suite gasta 11 por corrida, así que la
+ *                 SEGUNDA corrida seguida se queda sin presupuesto a mitad.
  *
- *     node server.js
+ * El de escritura es el que más engaña: su ventana dura una hora, no
+ * quince minutos, y no tiene nada que ver con el login que uno vigila.
  *
- * Si necesitas correrlas sin parar, sube el límite en backend/.env:
+ * ⛔ NO es un bug: es la protección funcionando. Los contadores viven en
+ * memoria, así que reiniciar el servidor los limpia:
+ *
+ *     npm run dev:backend
+ *
+ * Si necesitas correrlas sin parar, sube los límites en backend/.env:
  *
  *     RATE_LIMIT_AUTH=100
+ *     RATE_LIMIT_ESCRITURA=200
+ *
+ * Un 429 ya no se reporta como un fallo suelto: corta la suite con un
+ * mensaje que dice qué limitador fue (ver `pedir`).
  */
 console.log(gris(`\nProbando contra ${BASE}\n`));
 
 // ========================================
-// Comprobación previa: ¿queda presupuesto de intentos de login?
+// Presupuesto de intentos de login
 // ========================================
+
+/**
+ * Cuántos intentos fallidos de login/registro provoca la suite a propósito.
+ *
+ * ⚠️ ESTE NÚMERO ESTÁ CONTADO, NO ESTIMADO. Si añades una prueba que
+ * provoque otro 400/401 en `/login` o `/registro`, SÚBELO. Si se queda
+ * corto, el aviso de abajo dejará pasar una corrida que se va a quedar
+ * sin presupuesto a mitad — que es justo el problema que este aviso
+ * existe para evitar.
+ *
+ * Las que gastan son la validación de registro (email inválido,
+ * contraseña corta, email duplicado dos veces) y las dos de login con
+ * credenciales malas. Los demás logins de la suite usan credenciales
+ * correctas y NO gastan, porque el limitador tiene
+ * `skipSuccessfulRequests: true`.
+ */
+const INTENTOS_QUE_GASTA = 6;
+
+// 📌 POR QUÉ ESTE AVISO EXISTE
 //
-// 📌 POR QUÉ ESTO EXISTE
+// `limitadorAuth` permite 10 FALLOS en /registro y /login cada 15 minutos
+// por IP. Sin el aviso, dos ejecuciones seguidas agotan el contador y a
+// partir de ahí todo devuelve 429: la suite reportaba decenas de fallos
+// sin relación entre sí y parecía que el proyecto se había roto entero.
 //
-// `limitadorAuth` permite 10 FALLOS en /registro y /login cada 15 minutos por
-// IP, y esta suite provoca unos 5 a propósito (para probar la validación).
-// O sea: dos ejecuciones seguidas agotan el contador, y a partir de ahí TODO
-// devuelve 429. La suite reporta entonces decenas de fallos sin relación entre
-// sí y parece que el proyecto se ha roto entero — que es exactamente lo que
-// pasó al escribir este bloque, y por lo que se añadió esta comprobación.
+// Un login CORRECTO no consume presupuesto (`skipSuccessfulRequests`), así
+// que sirve para LEER cuánto queda en la cabecera `RateLimit-Remaining` y
+// avisar antes de empezar, en vez de dejar que cada cual adivine qué pasó.
 //
-// Un login CORRECTO no consume presupuesto (`skipSuccessfulRequests`), así que
-// sirve para LEER cuánto queda en la cabecera `RateLimit-Remaining` y avisar
-// antes de empezar, en vez de dejar que cada cual adivine qué ocurrió.
+// ⚠️ ESTE AVISO SOLO CUBRE EL LÍMITE DE LOGIN.
 //
-// Si la base no está sembrada, este login falla y gasta 1 intento. Es un coste
-// aceptable: sin base sembrada la suite no puede pasar de todas formas.
+// El de ESCRITURA (20 por hora) no se puede consultar gratis: su cabecera
+// solo llega en una respuesta de escritura, y sondearlo gastaría una de las
+// 20. Para ese está la red de seguridad de abajo: un 429 aborta la suite con
+// un mensaje que dice cuál fue (ver `pedir`), en vez de dejar un reguero de
+// fallos que parecen del código.
+//
+// Si la base no está sembrada, este login falla y gasta 1 intento. Es un
+// coste aceptable: sin base sembrada la suite no puede pasar de todas formas.
 {
   const r = await fetch(`${BASE}/api/auth/login`, {
     method: 'POST',
@@ -135,13 +236,14 @@ console.log(gris(`\nProbando contra ${BASE}\n`));
   const restantes = cabecera === null ? null : Number(cabecera);
 
   if (restantes !== null && !Number.isNaN(restantes)) {
-    if (restantes < 6) {
+    if (restantes < INTENTOS_QUE_GASTA) {
       console.log(rojo('\n⛔ Quedan muy pocos intentos de login antes del bloqueo automático.\n'));
-      console.log(`   Disponibles: ${restantes}. La suite necesita unos 5 para probar`);
-      console.log('   la validación de registro y de login.');
+      console.log(`   Disponibles: ${restantes}. La suite necesita ${INTENTOS_QUE_GASTA} para`);
+      console.log('   probar la validación de registro y de login.');
       console.log('');
       console.log('   NO es un bug del código: es el limitador de fuerza bruta haciendo');
-      console.log('   su trabajo. Reinicia el backend para limpiar el contador:');
+      console.log('   su trabajo. Los contadores viven en memoria, así que reiniciar el');
+      console.log('   backend los pone a cero:');
       console.log('');
       console.log('       npm run dev:backend');
       console.log('');
