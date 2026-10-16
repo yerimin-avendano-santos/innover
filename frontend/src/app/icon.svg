@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="85 36 230 260" width="100%" height="100%">
+  <!--
+    Favicon de INNOVER: el icono del logo, sin la palabra.
+
+    El viewBox "85 36 230 260" encuadra solo el icono. El SVG original
+    mide 400x420 y lleva la palabra "Innover" debajo; en una pestaña de
+    16 px esa palabra sería una mancha de dos píxeles de alto.
+
+    Aquí no hay filtro de sombra —el original lo trae— porque a este
+    tamaño no se ve y algunos renderizadores de favicons lo ignoran o lo
+    pintan mal. Las formas sí son las mismas que en
+    `src/components/Logo.tsx`: si cambia una, cambia la otra.
+  -->
+  <defs>
+    <linearGradient id="azul" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0052D4" />
+      <stop offset="100%" stop-color="#0082FF" />
+    </linearGradient>
+    <linearGradient id="turquesa" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00D2B8" />
+      <stop offset="100%" stop-color="#008B9B" />
+    </linearGradient>
+  </defs>
+
+  <!-- Base del mapa 3D -->
+  <path d="M 95 232 L 200 282 L 305 232 L 305 242 L 200 292 L 95 242 Z" fill="#10316B" />
+  <path d="M 90 218 L 200 270 L 310 218 L 310 230 L 200 282 L 90 230 Z" fill="#CBD5E1" />
+  <polygon points="200,168 310,218 200,270 90,218" fill="#F8FAFC" />
+  <polygon points="194,178 145,200 175,214 222,191" fill="#CBD5E1" />
+  <polygon points="135,205 105,218 138,234 168,219" fill="#3898FF" />
+  <polygon points="175,223 146,238 195,261 224,246" fill="#5CA8FF" />
+  <polygon points="230,195 183,218 215,233 262,210" fill="#86CFA3" />
+  <polygon points="270,214 223,237 245,247 292,224" fill="#74B896" />
+  <polygon points="215,241 198,249 218,258 235,250" fill="#5BB5A2" />
+
+  <!-- Pin hexagonal y casa -->
+  <polygon points="200,52 268,90 268,162 200,238 132,162 132,90" fill="#FFFFFF" />
+  <path d="M 200 42 L 136 78 A 16 16 0 0 0 128 92 L 128 156 A 22 22 0 0 0 135 172 L 200 245 L 200 216 L 150 160 L 150 96 L 200 68 Z" fill="url(#azul)" />
+  <path d="M 200 42 L 264 78 A 16 16 0 0 1 272 92 L 272 156 A 22 22 0 0 1 265 172 L 200 245 L 200 216 L 250 160 L 250 96 L 200 68 Z" fill="url(#turquesa)" />
+  <path d="M 200 96 L 162 118 L 162 174 L 178 192 L 178 130 L 200 117 Z" fill="url(#azul)" />
+  <path d="M 200 96 L 238 118 L 238 174 L 222 192 L 222 130 L 200 117 Z" fill="url(#turquesa)" />
+  <g fill="#0072E5">
+    <rect x="190" y="142" width="8" height="8" rx="1.5" />
+    <rect x="202" y="142" width="8" height="8" rx="1.5" />
+    <rect x="190" y="154" width="8" height="8" rx="1.5" />
+    <rect x="202" y="154" width="8" height="8" rx="1.5" />
+  </g>
+</svg>

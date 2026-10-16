@@ -22,6 +22,8 @@ Todo se ejecuta **desde la raíz** salvo el typecheck.
 | Datos de ejemplo | `npm run seed` |
 | Copia de seguridad | `npm run backup` |
 | Verificar geografía | `npm run verificar:geo` |
+| Verificar contraste | `npm run verificar:contraste --workspace=frontend` |
+| Verificar tokens | `npm run verificar:tokens --workspace=frontend` (tras `build`) |
 
 ### Typecheck — usa esta forma exacta
 
@@ -37,10 +39,16 @@ cd frontend && .\node_modules\.bin\tsc.cmd --noEmit
 npm run lint
 cd frontend && .\node_modules\.bin\tsc.cmd --noEmit
 npm run build
+npm run verificar:contraste --workspace=frontend   # paleta legible, lee globals.css
+npm run verificar:tokens  --workspace=frontend     # ningún token huérfano (necesita build)
 npm run prueba        # requiere el backend levantado
 ```
 
 `next build` ya incluye typecheck, así que `build` es la prueba definitiva.
+
+Los dos `verificar:*` son del frontend y cubren lo que ni el linter ni el
+compilador pueden ver: un color que no se lee y un token que se renombró y
+dejó de pintarse. Ninguna de las dos cosas da error — solo se ve mal.
 
 ---
 
@@ -62,7 +70,7 @@ Dos suites, ambas de integración contra el backend **real** (no hay mocks). Req
 
 ```bash
 npm run dev:backend                      # terminal 1
-npm run prueba                           # terminal 2 → 143 pruebas
+npm run prueba                           # terminal 2 → 149 pruebas
 
 npm run dev:frontend                     # terminal 1 (además del backend)
 node backend/scripts/pruebas-puente.mjs  # terminal 2 → 22 pruebas
@@ -70,11 +78,46 @@ node backend/scripts/pruebas-puente.mjs  # terminal 2 → 22 pruebas
 
 **`pruebas-puente.mjs` no tiene script en package.json** — hay que invocarlo con la ruta completa, y necesita frontend **y** backend.
 
-### ⛔ La suite se auto-bloquea
+### ⛔ La suite se auto-bloquea, y el que la bloquea no es el que vigilas
 
-`limitadorAuth` permite **10 intentos fallidos de login por IP cada 15 min** y `skipSuccessfulRequests: true`. Las pruebas provocan 401 a propósito, así que al repetirlas varias veces seguidas toda la suite recibe `429 RATE_LIMIT_AUTH` y parece que todo está roto.
+Hay **tres** limitadores, y una corrida de la suite toca dos:
 
-No es un bug. Reinicia el backend para limpiar el contador, o sube `RATE_LIMIT_AUTH` en `backend/.env`.
+| Limitador | Tope | Lo que gasta una corrida |
+|---|---|---|
+| `limitadorAuth` | 10 **fallos** de login / 15 min | 6 |
+| `limitadorEscritura` | 20 escrituras / **hora** | 11 |
+| `limitadorGeneral` | 300 peticiones / 15 min | sobra |
+
+El que engaña es **`limitadorEscritura`**: su ventana dura una hora, no quince
+minutos, y no tiene nada que ver con el login. Como la suite gasta 11 de 20,
+**dos corridas seguidas suman 22 y la segunda se corta a mitad**. Su síntoma
+es el peor posible: 18 pruebas fallan de golpe, sin relación entre sí, y
+parece que acabas de romper el código.
+
+No es un bug. Los contadores viven **en memoria**, así que reiniciar el
+backend los pone a cero:
+
+```bash
+npm run dev:backend
+```
+
+Si vas a iterar mucho, súbelos en `backend/.env` (y reinicia):
+
+```bash
+RATE_LIMIT_AUTH=100
+RATE_LIMIT_ESCRITURA=200
+```
+
+Dos protecciones para no volver a confundirlo con un bug:
+
+- La suite **avisa antes de empezar** si al limitador de login le quedan menos
+  de 6 intentos (lee `RateLimit-Remaining` de un login correcto, que no
+  gasta). Sale con código 2 y dice qué hacer.
+- La suite **aborta en el primer `429`** y dice qué limitador fue. Antes no lo
+  hacía, y por eso el fallo de escritura se manifestaba como 18 fallos sueltos
+  en lugar de un mensaje. El de escritura no se puede sondear antes —su
+  cabecera solo llega en una respuesta de escritura, y sondearlo gastaría una
+  de las 20—, así que se detecta al chocar.
 
 Ambas suites cubren la API a mano mejor que un archivo de peticiones: incluyen los casos que importan (escalada de privilegios, XSS, ownership) que sería fácil olvidar documentar.
 
@@ -120,6 +163,40 @@ Consecuencias al tocar datos o mapas:
 - **Las coordenadas se verifican, no se escriben de memoria.** Una latitud inventada no falla: el seed corre y el marcador cae en el río Huallaga. Se consultan a OpenStreetMap (Nominatim) pidiendo que el resultado sea `place` o `boundary` — la búsqueda por texto libre devuelve cualquier cosa (pidiendo "Distrito de Huánuco" llegó a devolver un restaurante en Tingo María).
 - **`npm run verificar:geo`** comprueba que cada propiedad esté a menos de 6–12 km del centro de su distrito y que los signos sean negativos. Córrelo después de tocar el seed.
 - En Mapbox el par es **[longitud, latitud]**; en PostGIS, el backend y el seed es **latitud primero**. Invertirlo no da error, solo centra el mapa en otro continente.
+
+---
+
+## El diseño vive en `globals.css`
+
+**Tailwind v4 es CSS-first.** No hay `tailwind.config.js` y no debes crear uno: un config de v3 se ignora en silencio, compila sin error y **sin estilos**. Los tokens van dentro de `@theme` en `frontend/src/app/globals.css`, y eso se convierte en utilidades (`--color-tinta` → `text-tinta`).
+
+### De dónde salen los colores
+
+De la identidad de Innover: el azul marino y el turquesa **del logo** (`design/logosvg.svg`), sobre las superficies frías de la guía visual (`design/desing.md`).
+
+⚠️ **Donde la guía y el logo no coinciden, manda el logo.** La guía propone un turquesa `#00CED1`/`#008B8B`; el logo trae `#00D2B8`/`#008B9B`. Se usan los del logo porque aparece en cada pantalla: una guía se corrige, una imagen de marca ya difundida no.
+
+⚠️ **La guía manda crear un `tailwind.config.js`. Está prohibido.** Se toma la intención visual (paleta, jerarquía, map-first) y se traduce a `@theme`. Shadcn y Material UI también se descartaron.
+
+### El color de acción NO es el turquesa del logo
+
+Parece una contradicción y no lo es. El turquesa claro del logo (`#00D2B8`) da **1,9:1** con texto blanco encima: ilegible. El turquesa hondo (`#008B9B`) tampoco llega — **4,1:1**, por debajo del 4,5:1 que exige WCAG AA para texto normal.
+
+Así que el turquesa de marca se reserva para lo que sí lo soporta —rellenos, franjas, el estado activo sobre azul marino— y `--color-senal` es ese mismo turquesa oscurecido hasta pasar el umbral (5,8:1). El botón de marca (`.btn-turquesa`) gira el par: fondo turquesa y texto en marino, 7,4:1.
+
+**Los dos `verificar:*` existen por esto y no son opcionales:**
+
+- `npm run verificar:contraste --workspace=frontend` — calcula el contraste de 30 combinaciones **leyendo `globals.css`**, no una copia de los valores. Si alguien cambia un color por uno que no se lee, falla.
+- `npm run verificar:tokens --workspace=frontend` — comprueba que **todo token declarado se usa** y, sobre todo, que ninguno usado con `var()` se queda sin emitir. Tailwind v4 elimina los tokens que ninguna utilidad usa: si uno se usa solo dentro de `var()`, desaparece y **el color no se pinta, sin ningún error**.
+
+### Reglas al tocar el sistema
+
+- **Un color suelto en un componente es un fallo.** Ni `#008B9B` en un `.tsx`, ni en JavaScript.
+- **Mapbox no es una excepción.** Sus marcadores y globos se construyen desde JavaScript, así que sus colores viven en `globals.css` como clases (`.marcador`, `.marcador-destacado`, `.marcador-seleccionado`, `.globo-*`) y el componente solo enciende y apaga clases. El `background-color` en línea que había antes parecía funcionar y no: **una imagen de fondo se pinta encima del color**, así que un marcador destacado se habría quedado verde al seleccionarlo, sin error.
+- **`destacado` y `aviso` son tokens distintos a propósito.** Uno es un anuncio pagado; el otro, una tarea pendiente. Antes compartían un único color ("latón"), y eso significaba que ajustar el color del destaque habría cambiado los avisos de todo el panel sin querer.
+- **El logo tiene dos copias y no se generan automáticamente:** `frontend/src/components/Logo.tsx` (el icono, para la interfaz) y `frontend/src/app/icon.svg` (el favicon). Si cambia el dibujo, se cambian las dos. La palabra "Innover" **no** está en el SVG: es texto HTML en Inter, para que se pueda seleccionar, buscar e indexar.
+- **El foco por teclado se hereda de `--foco`.** Un anillo de un solo color no vale para fondos claros y oscuros a la vez: el turquesa oscuro se pierde sobre el marino y el claro sobre el blanco. Cada superficie declara `--foco` (`.sobre-marino`, `.superficie-clara`) y los hijos lo recogen. Un selector de descendencia no sirve: el menú del usuario cuelga de la barra oscura pero tiene fondo blanco.
+- **La barra de navegación va en azul marino**, como pide la guía. El botón de la barra usa `.btn-turquesa`, no `.btn-principal`: el color de acción sobre marino se queda a 2,4:1 y no se lee como un botón.
 
 ---
 

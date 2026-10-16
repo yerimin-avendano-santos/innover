@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "verificar:contraste": "node scripts/verificar-contraste.mjs",
+    "verificar:tokens": "node scripts/verificar-tokens.mjs"
   },
   "dependencies": {
     "mapbox-gl": "^3.32.0",

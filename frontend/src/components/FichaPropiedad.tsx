@@ -55,11 +55,11 @@ export function FichaPropiedad({ propiedad, seleccionada, alSeleccionar }: Props
           </h3>
 
           {/* El distintivo de "destacado" es lo que el agente PAGÓ por
-              tener. Por eso tiene color propio (latón) y no el color
+              tener. Por eso tiene color propio (ámbar) y no el color
               de acción: el usuario no debe confundirlo con un
               elemento interactivo. */}
           {propiedad.destacado && (
-            <span className="distintivo distintivo-latón shrink-0">Destacado</span>
+            <span className="distintivo distintivo-destacado shrink-0">Destacado</span>
           )}
         </div>
 

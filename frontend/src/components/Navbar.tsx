@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contextos/Auth';
+import { Logo } from '@/components/Logo';
 
 const ENLACES = [
   { href: '/', etiqueta: 'Buscar' },
@@ -46,24 +47,36 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-linea bg-papel-alto">
+    /*
+     * La barra va en azul marino, no en blanco.
+     *
+     * Es lo que pide la guía visual, y tiene una consecuencia práctica
+     * más allá de la estética: la barra es lo único que se ve en TODAS
+     * las pantallas, así que es donde la marca se reconoce. En blanco se
+     * confundía con el fondo de la página y el logo flotaba sin
+     * pertenecer a nada.
+     *
+     * La clase `sobre-marino` no pinta nada: le dice al sistema de
+     * diseño que aquí el foco por teclado tiene que ser turquesa claro,
+     * porque el turquesa oscuro se pierde contra este fondo.
+     */
+    <header className="sobre-marino sticky top-0 z-40 bg-marino">
       {/* `min-w-0` en la marca + `gap-3` en el contenedor:
           sin el primero, el logotipo empuja el bloque de sesión fuera
           de la pantalla en móviles estrechos. */}
       <div className="mx-auto flex h-14 max-w-[1600px] items-center justify-between gap-3 px-4 sm:gap-6 sm:px-6">
         {/* --- Marca ---
-            El símbolo es una aguja de brújula: dos trazos que se cruzan,
-            uno relleno. Es la idea del proyecto (ubicar) en 20 px. */}
+            El icono es decorativo (no lleva `titulo`) porque la palabra
+            "Innover" está escrita a su lado: si ambos se anunciaran, un
+            lector de pantalla diría "Innover Innover". */}
         <Link
           href="/"
           className="flex min-w-0 shrink items-center gap-2.5"
-          aria-label="INNOVER, ir al inicio"
+          aria-label="Innover, ir al inicio"
         >
-          <svg viewBox="0 0 20 20" className="h-5 w-5 shrink-0" aria-hidden="true">
-            <path d="M10 1L12.8 8.5 20 10l-7.2 1.5L10 19l-2.8-7.5L0 10l7.2-1.5z" fill="#0f6b70" />
-          </svg>
-          <span className="truncate text-normal font-semibold tracking-tight text-tinta">
-            INNOVER
+          <Logo className="h-7 w-7 shrink-0" />
+          <span className="truncate text-normal font-bold tracking-tight text-sobre-marino">
+            Innover
           </span>
         </Link>
 
@@ -81,8 +94,8 @@ export function Navbar() {
                 aria-current={activo ? 'page' : undefined}
                 className={`rounded-medio px-3 py-1.5 text-cuerpo transition-colors ${
                   activo
-                    ? 'bg-papel-hundido font-medium text-tinta'
-                    : 'text-tinta-70 hover:text-tinta'
+                    ? 'bg-marino-alto font-medium text-turquesa'
+                    : 'text-sobre-marino-tenue hover:bg-marino-alto hover:text-sobre-marino'
                 }`}
               >
                 {enlace.etiqueta}
@@ -94,7 +107,7 @@ export function Navbar() {
         {/* --- Sesión --- */}
         <div className="relative" ref={menuRef}>
           {cargando ? (
-            <div className="h-8 w-24 animate-pulse rounded-medio bg-papel-hundido" />
+            <div className="h-8 w-24 animate-pulse rounded-medio bg-marino-alto" />
           ) : estaConectado ? (
             <>
               <button
@@ -102,28 +115,40 @@ export function Navbar() {
                 onClick={() => setMenuAbierto((abierto) => !abierto)}
                 aria-expanded={menuAbierto}
                 aria-haspopup="menu"
-                className="flex items-center gap-2 rounded-medio px-2 py-1.5 text-cuerpo transition-colors hover:bg-papel-hundido"
+                className="flex items-center gap-2 rounded-medio px-2 py-1.5 text-cuerpo transition-colors hover:bg-marino-alto"
               >
                 {/* Inicial en lugar de avatar: no todos suben foto, y
-                    un círculo vacío se ve como una imagen rota. */}
+                    un círculo vacío se ve como una imagen rota.
+                    Turquesa sobre marino, con el texto en marino: al
+                    revés —blanco sobre turquesa— daría 1,9:1. */}
                 <span
                   aria-hidden="true"
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-senal text-micro font-semibold text-white"
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-turquesa text-micro font-semibold text-marino"
                 >
                   {usuario!.nombre.charAt(0).toUpperCase()}
                 </span>
-                <span className="hidden max-w-[120px] truncate text-tinta-70 md:inline">
+                <span className="hidden max-w-[120px] truncate text-sobre-marino-tenue md:inline">
                   {usuario!.nombre.split(' ')[0]}
                 </span>
-                <svg viewBox="0 0 12 12" className="h-3 w-3 text-tinta-50" aria-hidden="true">
+                <svg
+                  viewBox="0 0 12 12"
+                  className="h-3 w-3 text-sobre-marino-tenue"
+                  aria-hidden="true"
+                >
                   <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
                 </svg>
               </button>
 
               {menuAbierto && (
+                /*
+                 * El menú cuelga de la barra oscura pero su fondo es
+                 * blanco, así que recupera el foco del sistema para
+                 * superficies claras. Sin esto heredaría el turquesa
+                 * claro de la barra, que sobre blanco no se ve.
+                 */
                 <div
                   role="menu"
-                  className="panel-aparece absolute right-0 top-full mt-1 w-56 rounded-medio border border-linea bg-papel-alto py-1 shadow-lg"
+                  className="superficie-clara panel-aparece absolute right-0 top-full mt-1 w-56 rounded-medio border border-linea bg-papel-alto py-1 shadow-lg"
                 >
                   <div className="border-b border-linea px-3 py-2.5">
                     <p className="truncate text-cuerpo font-medium text-tinta">
@@ -187,12 +212,17 @@ export function Navbar() {
              * y se desborda. Se acorta a "Crear" con `hidden sm:inline`
              * dentro del propio enlace, sin duplicar el botón ni usar
              * JavaScript para detectar el ancho.
+             *
+             * "Crear cuenta" usa `.btn-turquesa` y no `.btn-principal`
+             * porque está encima del azul marino: el color de acción se
+             * queda a 2,4:1 contra este fondo y el botón no se leería
+             * como un botón.
              */
             <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-              <Link href="/login" className="btn btn-fantasma text-cuerpo">
+              <Link href="/login" className="btn btn-fantasma-claro text-cuerpo">
                 Entrar
               </Link>
-              <Link href="/registro" className="btn btn-principal text-cuerpo">
+              <Link href="/registro" className="btn btn-turquesa text-cuerpo">
                 Crear<span className="hidden sm:inline">&nbsp;cuenta</span>
               </Link>
             </div>
@@ -202,7 +232,7 @@ export function Navbar() {
 
       {/* --- Navegación en móvil --- */}
       <nav
-        className="sin-barra flex gap-1 overflow-x-auto border-t border-linea px-4 py-1.5 sm:hidden"
+        className="sin-barra flex gap-1 overflow-x-auto px-4 py-1.5 sm:hidden"
         aria-label="Principal (móvil)"
       >
         {ENLACES.map((enlace) => {
@@ -213,8 +243,10 @@ export function Navbar() {
             <Link
               key={enlace.href}
               href={enlace.href}
-              className={`shrink-0 rounded-chico px-3 py-1 text-menor ${
-                activo ? 'bg-papel-hundido font-medium text-tinta' : 'text-tinta-70'
+              className={`shrink-0 rounded-chico px-3 py-1 text-menor transition-colors ${
+                activo
+                  ? 'bg-marino-alto font-medium text-turquesa'
+                  : 'text-sobre-marino-tenue hover:text-sobre-marino'
               }`}
             >
               {enlace.etiqueta}
@@ -222,6 +254,12 @@ export function Navbar() {
           );
         })}
       </nav>
+
+      {/* El degradado de marca cierra la barra. Va aquí y no como
+          `border-b` porque un borde solo admite un color por lado, y
+          esto son dos. Es decorativo: cero texto encima, que es la
+          única forma de usar el turquesa claro sin perder contraste. */}
+      <div className="franja-marca h-0.5" aria-hidden="true" />
     </header>
   );
 }

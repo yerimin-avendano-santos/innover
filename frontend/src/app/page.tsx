@@ -256,7 +256,7 @@ function EstadoVacio({
       <p className="mt-2 max-w-xs text-cuerpo text-tinta-50">
         {hayFiltros
           ? 'Prueba subiendo el tope de precio o quitando algún filtro.'
-          : 'Sé la primera persona en publicar una propiedad en INNOVER.'}
+          : 'Sé la primera persona en publicar una propiedad en Innover.'}
       </p>
 
       <div className="mt-5 flex gap-2">

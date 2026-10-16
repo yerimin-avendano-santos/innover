@@ -8,7 +8,7 @@
 // 📌 POR QUÉ EXISTE
 //
 // El sello "Propietario verificado" que aparece en las fichas es la
-// promesa que diferencia a INNOVER de un portal genérico. Pero para que
+// promesa que diferencia a Innover de un portal genérico. Pero para que
 // ese sello sea cierto, alguien tiene que verificar de verdad el
 // documento del propietario. Ese alguien es el admin, y hasta ahora no
 // tenía ninguna pantalla desde la que hacerlo.
@@ -211,8 +211,8 @@ export default function PaginaAdmin() {
           Va arriba porque es la tarea que el admin vino a hacer. Si hay
           alguien esperando, no debería estar escondido en una lista. */}
       {pendientes.length > 0 && (
-        <div className="mb-6 rounded-grande border border-latón bg-latón-suave px-4 py-3">
-          <p className="text-cuerpo text-latón">
+        <div className="mb-6 rounded-grande border border-destacado bg-destacado-suave px-4 py-3">
+          <p className="text-cuerpo text-destacado">
             <strong>
               {pendientes.length}{' '}
               {pendientes.length === 1 ? 'persona espera' : 'personas esperan'}
@@ -250,7 +250,7 @@ export default function PaginaAdmin() {
                       {etiquetaRol(u.rol)}
                     </span>
                     {!u.activo && (
-                      <span className="distintivo distintivo-latón">Desactivado</span>
+                      <span className="distintivo distintivo-aviso">Desactivado</span>
                     )}
                   </div>
 
@@ -281,7 +281,7 @@ export default function PaginaAdmin() {
                       Identidad verificada
                     </span>
                   ) : u.documento_identidad ? (
-                    <span className="distintivo distintivo-latón">
+                    <span className="distintivo distintivo-aviso">
                       Documento enviado
                     </span>
                   ) : (

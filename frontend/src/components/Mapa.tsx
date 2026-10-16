@@ -34,7 +34,7 @@ import { formatearPrecio, etiquetaTipo } from '@/lib/api';
 /**
  * Centro por defecto del mapa.
  *
- * Es la Plaza de Armas de Huánuco, donde INNOVER arranca. Está aquí y no
+ * Es la Plaza de Armas de Huánuco, donde Innover arranca. Está aquí y no
  * dentro del componente por el mismo motivo que los colores viven en
  * `globals.css`: el día que se abra una segunda región, se cambia en un sitio.
  *
@@ -189,7 +189,16 @@ export function Mapa({
       const elemento = marcador.getElement();
       const activo = id === seleccionada;
 
-      elemento.style.backgroundColor = activo ? '#14181a' : '#0f6b70';
+      // El color no se escribe aquí: se enciende y se apaga la clase.
+      //
+      // Antes esto era `style.backgroundColor = activo ? '#14181a' :
+      // '#0f6b70'`, y con el marcador destacado habría fallado en
+      // silencio: ese marcador se pinta con una imagen de fondo, y una
+      // imagen de fondo se dibuja ENCIMA del color. El marcador
+      // destacado se habría quedado verde al seleccionarlo, sin ningún
+      // error. Con clases, cuál gana lo decide el CSS.
+      elemento.classList.toggle('marcador-seleccionado', activo);
+
       // El seleccionado va un punto mayor: es el que se está leyendo.
       elemento.style.transform = activo ? 'scale(1.15)' : 'scale(1)';
       elemento.style.zIndex = activo ? '10' : '1';
@@ -268,14 +277,20 @@ function crearMarcador(propiedad: Propiedad, alHacerClic: (id: number) => void):
   const el = document.createElement('button');
 
   el.type = 'button';
-  el.className = 'marcador';
+  // El color no se pone aquí: sale de `globals.css`. Un marcador
+  // destacado lleva el degradado de marca, y esa diferencia es una
+  // clase más, no un hexadecimal repetido en JavaScript.
+  el.className = propiedad.destacado ? 'marcador marcador-destacado' : 'marcador';
   el.setAttribute('aria-label', `${propiedad.titulo}, ${formatearPrecio(propiedad.precio, propiedad.moneda)}`);
-
-  el.style.backgroundColor = '#0f6b70';
-  el.style.color = '#ffffff';
 
   // El ancho crece con el número de dígitos del precio, para que
   // "S/ 1,680" y "S/ 385,000" no se desborden.
+  //
+  // Esta medida SÍ se queda en JavaScript, y es la excepción que
+  // confirma la regla de "los colores viven en globals.css": no es una
+  // decisión de diseño, es un cálculo sobre el dato. Con un ancho fijo
+  // en CSS, un precio de seis cifras se saldría de la caja, y no hay
+  // forma de conocer los dígitos sin mirar el precio.
   const texto = formatearPrecio(propiedad.precio, propiedad.moneda);
   el.style.width = `${Math.max(48, texto.length * 7 + 16)}px`;
   el.style.height = '28px';
@@ -300,28 +315,18 @@ function crearMarcador(propiedad: Propiedad, alHacerClic: (id: number) => void):
  */
 function crearGlobo(propiedad: Propiedad): HTMLElement {
   const contenedor = document.createElement('div');
-  contenedor.style.width = '260px';
+  contenedor.className = 'globo';
 
   // --- Título ---
   const titulo = document.createElement('p');
   titulo.textContent = propiedad.titulo;
-  titulo.style.margin = '0';
-  titulo.style.padding = '12px 14px 8px';
-  titulo.style.fontSize = '14px';
-  titulo.style.fontWeight = '600';
-  titulo.style.color = '#14181a';
-  titulo.style.lineHeight = '1.35';
+  titulo.className = 'globo-titulo';
   contenedor.appendChild(titulo);
 
   // --- Precio ---
   const precio = document.createElement('p');
   precio.textContent = formatearPrecio(propiedad.precio, propiedad.moneda);
-  precio.style.margin = '0';
-  precio.style.padding = '0 14px';
-  precio.style.fontSize = '17px';
-  precio.style.fontWeight = '600';
-  precio.style.color = '#0f6b70';
-  precio.style.fontVariantNumeric = 'tabular-nums';
+  precio.className = 'globo-precio';
   contenedor.appendChild(precio);
 
   // --- Metadatos ---
@@ -333,10 +338,7 @@ function crearGlobo(propiedad: Propiedad): HTMLElement {
 
   const meta = document.createElement('p');
   meta.textContent = detalles.join(' · ');
-  meta.style.margin = '0';
-  meta.style.padding = '6px 14px 12px';
-  meta.style.fontSize = '12px';
-  meta.style.color = '#737c82';
+  meta.className = 'globo-meta';
   contenedor.appendChild(meta);
 
   return contenedor;

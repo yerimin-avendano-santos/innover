@@ -4,7 +4,7 @@
 
    Este archivo es la única fuente de verdad sobre color, tipografía y
    espacio. Un componente NUNCA debería escribir un color suelto como
-   `#008B8B`: si lo hace, ese color no se cambia desde aquí y el sistema
+   `#00707e`: si lo hace, ese color no se cambia desde aquí y el sistema
    se desincroniza en dos semanas.
 
    ── Tailwind v4: dónde van las cosas ──
@@ -12,15 +12,38 @@
    Lo que se declara dentro de `@theme` se convierte automáticamente en
    utilidades de Tailwind:
 
-       --color-papel: #f4f3ef;   →   bg-papel, text-papel, border-papel
+       --color-papel-alto: #ffffff;   →   bg-papel-alto, border-papel-alto
 
    Por eso el `tailwind.config.js` de formato v3 que había antes no
    servía para nada: v4 ya no lo lee.
 
-   ── Por qué estos colores ──
-   INNOVER muestra planos de propiedades: medidas, superficies y coordenadas.
-   Por eso la paleta viene de un plano catastral, no de un
-   dashboard genérico: papel técnico, grafito, y un único color de señal.
+   ── De dónde salen estos colores ──
+   De la identidad de INNOVER: el azul marino y el turquesa del logo,
+   sobre las superficies frías de la guía visual (`design/desing.md`).
+
+   ⚠️ Donde la guía y el logo no coinciden, MANDA EL LOGO. La guía
+   propone un turquesa `#00CED1`/`#008B8B` y el logo trae
+   `#00D2B8`/`#008B9B`. Se usan los del logo, porque es el que aparece en
+   cada pantalla: una guía se corrige, una imagen de marca ya difundida
+   no.
+
+   ── Y por qué el color de acción NO es el turquesa del logo ──
+   Esto parece una contradicción y no lo es. El turquesa claro del logo
+   (`#00D2B8`) no puede ser el fondo de un botón: con texto blanco encima
+   da 1,9:1 de contraste, que es ilegible. El turquesa hondo (`#008B9B`)
+   tampoco llega — 4,1:1, por debajo del 4,5:1 que exige WCAG AA para
+   texto normal.
+
+   Así que el turquesa de marca se reserva para lo que sí lo soporta
+   —rellenos, franjas, el estado activo sobre azul marino— y la acción
+   usa ese mismo turquesa oscurecido hasta pasar el umbral. El ojo lo lee
+   como el mismo color porque lo es, dos pasos más oscuro. No es una
+   concesión estética: es la diferencia entre un botón que se lee y uno
+   que no.
+
+   Los contrastes están comprobados por `scripts/verificar-contraste.mjs`,
+   no a ojo. Ese script lee este archivo, así que si alguien cambia un
+   color por uno que no se lee, la comprobación falla.
    ======================================== */
 
 @import 'tailwindcss';
@@ -30,45 +53,115 @@
    ======================================== */
 @theme {
   /* --- Superficies ---
-     Tres niveles, no cinco. Cada uno tiene un trabajo concreto. */
-  --color-tinta: #14181a;        /* Texto principal. Grafito, no negro puro. */
-  --color-papel: #f7f6f2;        /* Fondo de la página. Tinta de papel técnico. */
-  --color-papel-alto: #ffffff;   /* Tarjetas que deben levantarse del fondo. */
-  --color-papel-hundido: #eceae3; /* Zonas hundidas: campos, deshabilitados. */
+     Tres niveles, no cinco. Cada uno tiene un trabajo concreto.
+     Gris frío, no blanco: la guía pide reducir la fatiga visual, y
+     sobre blanco puro el mapa (que ya es claro) se come la página. */
+  --color-papel: #f0f2f5;         /* Fondo de la página. */
+  --color-papel-alto: #ffffff;    /* Tarjetas que deben levantarse del fondo. */
+  --color-papel-hundido: #e6e9ee; /* Zonas hundidas: campos, deshabilitados. */
 
-  /* --- Texto secundario ---
-     Derivan de la tinta aclarándose. Nunca un gris arbitrario. */
-  --color-tinta-70: #4a5257;
-  --color-tinta-50: #737c82;
-  --color-tinta-30: #a8afb3;
+  /* --- Texto sobre superficies claras ---
+     Derivan del azul marino aclarándose. Nunca un gris arbitrario: si
+     fueran grises puros, el texto se vería sucio al lado del marino. */
+  --color-tinta: #1a3e62;    /* Texto principal. El marino de la guía. */
+  --color-tinta-70: #4a5c70; /* Párrafos y descripciones. */
+  --color-tinta-50: #5b6b7d; /* Texto de apoyo. 4,9:1 — pasa AA. */
+  --color-tinta-30: #7d8b9c; /* Placeholders y pistas. 3,1:1: NO se usa
+                                para texto que haya que leer. */
+
+  /* --- Azul marino de marca ---
+     La superficie oscura: la barra de navegación y las cabeceras de
+     máximo peso. Es el color de la palabra "Innover" en el logo. */
+  --color-marino: #0f295a;
+  --color-marino-alto: #16406b; /* Superficie elevada sobre el marino:
+                                   hover de los enlaces de la barra. */
+
+  /* --- Texto sobre el marino ---
+     Sin estos dos, cada componente inventaría su propio blanco
+     translúcido y el menú tendría cuatro grises distintos. */
+  --color-sobre-marino: #ffffff;
+  --color-sobre-marino-tenue: #a9bcd4; /* 5,5:1 sobre marino. */
 
   /* --- Líneas ---
-     El plano catastral vive de líneas finas. Este es su color. */
-  --color-linea: #d9d6cd;
-  --color-linea-fuerte: #b9b5a9;
+     Finas y frías. El borde separa sin dibujar una caja. */
+  --color-linea: #e0e3e8;
+  --color-linea-fuerte: #c6cdd7;
 
-  /* --- Color de señal ---
+  /* --- Color de acción ---
      Un solo color para todo lo que significa "esto es una acción" o
-     "esto está seleccionado". Si hubiera dos, competirían entre sí. */
-  --color-senal: #0f6b70;        /* Petróleo. Botones, enlaces, selección. */
-  --color-senal-hondo: #0a4d51;
-  --color-senal-suave: #e3efef;
+     "esto está seleccionado". Si hubiera dos, competirían entre sí.
+     Es el turquesa del logo oscurecido hasta pasar AA: 5,8:1 con texto
+     blanco encima y 5,2:1 como texto sobre el fondo. */
+  --color-senal: #00707e;
+  --color-senal-hondo: #005a66;
+  --color-senal-suave: #e2f1f3;
+
+  /* --- Turquesa de marca ---
+     El color del logo, sin oscurecer, para donde no lleva texto blanco
+     encima: franjas, rellenos, el botón principal sobre azul marino (ahí
+     el texto va en marino, no en blanco, y el contraste es 7,4:1). */
+  --color-turquesa: #00d2b8;
+  --color-turquesa-claro: #00e5c9;
+  --color-turquesa-hondo: #008b9b;
+
+  /* --- Verde menta ---
+     El acento de confianza de la guía: "Verificado", "Dueño directo".
+     Es un fondo, no un color de texto: `menta-suave` para la etiqueta y
+     `menta-hondo` para su texto. No hay un `--color-menta` sólido
+     porque no lo usa nadie, y un relleno de menta con texto encima
+     tendría poco contraste sin necesidad. */
+  --color-menta-suave: #e9f6ee;
+  --color-menta-hondo: #1f5c3a;
 
   /* --- Destaque pagado ---
      El modelo de negocio cobra por resaltar publicaciones. Ese dinero
      necesita un color reconocible y separado del color de acción, para
-     que un usuario no confunda "destacado" con "seleccionado". */
-  --color-latón: #96702a;
-  --color-latón-suave: #f6efdd;
+     que un usuario no confunda "destacado" con "seleccionado".
 
-  /* --- Estados --- */
-  --color-alerta: #a8321f;
-  --color-alerta-suave: #fbeceb;
-  --color-exito: #2c6b4a;
+     Por eso es ámbar y no turquesa: dentro de una interfaz azul, un
+     matiz cálido es lo único que se distingue de un vistazo. */
+  --color-destacado: #9a5a00;
+  --color-destacado-suave: #fdf3e3;
+
+  /* --- Estado: pendiente ---
+     Va SEPARADO de `--color-destacado` aunque los dos sean cálidos, y
+     esa separación es la corrección de un defecto real: el color
+     anterior se llamaba "latón" y servía a la vez para marcar una
+     propiedad destacada (que es un anuncio pagado) y para señalar un
+     lead nuevo o un documento sin verificar (que es una tarea
+     pendiente).
+
+     Son dos cosas que no tienen nada que ver. Compartían color solo
+     porque el ámbar llama la atención en los dos casos, y eso deja una
+     trampa: el día que se ajuste el color del destaque para que
+     combine con la marca, cambiarían sin querer los avisos de todo el
+     panel. */
+  --color-aviso: #a84b00;
+  --color-aviso-suave: #fdf0e4;
+
+  --color-alerta: #c62828;
+  --color-alerta-suave: #fdecea;
+
+  /* ── Lo que falta aquí, y por qué ──
+     La guía visual define también un verde de éxito y un azul de
+     información. NO están declarados, y es deliberado: ningún elemento
+     del producto los usa todavía. Un token sin usuario es peso muerto
+     que hace el archivo más largo y esconde cuáles importan.
+
+     El invariante de este bloque es "cada token tiene un usuario", y
+     `npm run verificar:tokens` lo comprueba contra el CSS compilado.
+     Cuando haya una pantalla que confirme algo o informe de algo, se
+     añaden las dos líneas y la comprobación dirá que ya se usan. */
 
   /* --- Tipografía ---
-     Dos pesos de la misma familia. Una variable, dos ejes de uso. */
-  --font-sans: var(--font-archivo), 'Segoe UI', system-ui, sans-serif;
+     Inter y nada más. La guía la pide por una razón concreta: está
+     diseñada para interfaces y para leer cifras (precios, metros
+     cuadrados), y aquí la mitad de la pantalla son cifras.
+
+     Antes se usaba Archivo por su eje de ancho condensado. Se midió y no
+     se usaba en ninguna parte: era una capacidad declarada que no
+     llegaba a la pantalla, así que no se pierde nada al cambiarla. */
+  --font-sans: var(--font-inter), 'Segoe UI', system-ui, sans-serif;
 
   /* La escala sigue Elements of Typographic Style (ratio 1.25).
      Los nombres son semánticos, no numéricos:
@@ -116,24 +209,53 @@
     line-height: var(--leading-cuerpo);
     /* Ligera anticipación en los cuerpos de texto largos.
        Es un detalle de artesanía tipográfica que casi nadie nota
-       pero se nota cuando falta. */
-    font-feature-settings: 'kern' 1, 'liga' 1, 'cv05' 1;
+       pero se nota cuando falta.
+       Sin `cv05`: eso era una alternativa de la "l" de Archivo. En otra
+       familia ese identificador significa otra cosa, o nada. */
+    font-feature-settings: 'kern' 1, 'liga' 1;
     -webkit-font-smoothing: antialiased;
   }
 
   /* El foco por teclado tiene que ser visible y coherente.
      Quitarlo deja a los usuarios de teclado sin poder navegar,
-     y ese es un fallo de accesibilidad, no una preferencia. */
+     y ese es un fallo de accesibilidad, no una preferencia.
+
+     ── Por qué el color sale de una variable y no está fijo ──
+     Un anillo de un solo color no puede funcionar sobre fondos claros y
+     oscuros a la vez: el turquesa oscuro se pierde sobre el azul marino
+     (1,8:1) y el turquesa claro se pierde sobre blanco (1,9:1).
+
+     La solución no es un selector de descendencia (`.sobre-marino
+     :focus-visible`), porque entonces todo lo que cuelgue de la barra de
+     navegación hereda el foco de la barra — y el menú desplegable del
+     usuario cuelga de ahí, pero tiene fondo blanco. Acabaría con un
+     anillo casi invisible en el menú, que es donde más se usa el teclado.
+
+     Las propiedades personalizadas de CSS se heredan, así que cada
+     superficie declara `--foco` y lo recupera quien esté encima de ella.
+     Cuestan una línea por superficie y no hay forma de equivocarse con
+     la profundidad del árbol. */
   :focus-visible {
-    outline: 2px solid var(--color-senal);
+    outline: 2px solid var(--foco, var(--color-senal));
     outline-offset: 2px;
     border-radius: var(--radius-chico);
+  }
+
+  /* Superficie oscura: fondo azul marino. */
+  .sobre-marino {
+    --foco: var(--color-turquesa);
+  }
+
+  /* Vuelta a superficie clara dentro de una oscura. */
+  .superficie-clara {
+    --foco: var(--color-senal);
   }
 
   /* Los números de precio y superficie van SIEMPRE alineados.
      `tnum` = "tabular numerals": todos los dígitos miden lo mismo,
      así una columna de precios se lee como columna y no como un
-     temblor de dígitos desiguales. */
+     temblor de dígitos desiguales. En una página que compara precios
+     esto no es un adorno. */
   .cifra {
     font-variant-numeric: tabular-nums;
     font-feature-settings: 'tnum' 1;
@@ -188,6 +310,25 @@
     background-color: var(--color-senal-hondo);
   }
 
+  /* --- Botón de marca ---
+     El turquesa del logo con el texto en marino. Es la forma de que el
+     botón principal sea del color exacto de la marca sin volverse
+     ilegible: oscurecer el turquesa lo aleja del logo, y aclarar el
+     texto hasta el blanco es imposible porque el turquesa ya es claro.
+     Girar el par —fondo claro, texto oscuro— resuelve las dos cosas:
+     7,4:1 de contraste y el color sin tocar.
+
+     Se usa sobre el azul marino, donde el `.btn-principal` se quedaría
+     a 2,4:1 contra el fondo y no se vería como un botón. */
+  .btn-turquesa {
+    background-color: var(--color-turquesa);
+    color: var(--color-marino);
+  }
+
+  .btn-turquesa:hover:not(:disabled) {
+    background-color: var(--color-turquesa-claro);
+  }
+
   .btn-secundario {
     background-color: transparent;
     color: var(--color-tinta);
@@ -206,6 +347,19 @@
 
   .btn-fantasma:hover:not(:disabled) {
     background-color: var(--color-senal-suave);
+  }
+
+  /* Variante de `.btn-fantasma` para superficies oscuras.
+     El fantasma normal pinta el texto con el color de acción, que sobre
+     el azul marino queda invisible. */
+  .btn-fantasma-claro {
+    background-color: transparent;
+    color: var(--color-sobre-marino);
+    padding-inline: 0.5rem;
+  }
+
+  .btn-fantasma-claro:hover:not(:disabled) {
+    background-color: var(--color-marino-alto);
   }
 
   /* --- Campo de formulario ---
@@ -230,10 +384,17 @@
   .campo:focus {
     outline: none;
     border-color: var(--color-senal);
+    /* El anillo sustituye al contorno global: `outline: none` lo quitó,
+       y sin algo que lo reemplace el campo no indica que tiene el foco. */
+    box-shadow: 0 0 0 3px var(--color-senal-suave);
   }
 
   .campo[aria-invalid='true'] {
     border-color: var(--color-alerta);
+  }
+
+  .campo[aria-invalid='true']:focus {
+    box-shadow: 0 0 0 3px var(--color-alerta-suave);
   }
 
   /* --- Etiqueta ---
@@ -248,21 +409,29 @@
   }
 
   /* --- Tarjeta de propiedad ---
-     Sin sombra difusa. Una ficha técnica real no flota: descansa
-     sobre papel con un filete. */
+     El borde hace el trabajo de separar; la sombra solo aparece al
+     pasar por encima, para que la tarjeta responda al puntero sin que
+     la lista entera parezca un montón de cajas flotando. */
   .ficha {
     background-color: var(--color-papel-alto);
     border: 1px solid var(--color-linea);
     border-radius: var(--radius-medio);
-    transition: border-color 120ms ease;
+    transition:
+      border-color 120ms ease,
+      box-shadow 120ms ease;
   }
 
   .ficha:hover {
     border-color: var(--color-linea-fuerte);
+    box-shadow: 0 2px 8px rgb(15 41 90 / 0.07);
   }
 
   /* --- Distintivo ---
-     Ejemplo: "Verificado", "Destacado", "Nuevo". */
+     Ejemplo: "Verificado", "Destacado", "Tour 3D", "Nuevo".
+     Tres variantes con tres significados distintos, y esa distinción es
+     deliberada: si "Verificado" y "Destacado" se pintaran igual, el
+     usuario leería como un sello de calidad algo que en realidad es un
+     anuncio pagado. */
   .distintivo {
     display: inline-flex;
     align-items: center;
@@ -275,11 +444,29 @@
     white-space: nowrap;
   }
 
-  .distintivo-latón {
-    background-color: var(--color-latón-suave);
-    color: var(--color-latón);
+  /* Pagado. Ámbar. Una propiedad resaltada porque su dueño paga por
+     ello. */
+  .distintivo-destacado {
+    background-color: var(--color-destacado-suave);
+    color: var(--color-destacado);
   }
 
+  /* Pendiente. Anaranjado. Un lead sin atender, un documento sin
+     verificar. Parecido al anterior a propósito —los dos piden que el
+     usuario mire—, pero con su propio token, porque significan cosas
+     distintas y tienen que poder cambiar por separado. */
+  .distintivo-aviso {
+    background-color: var(--color-aviso-suave);
+    color: var(--color-aviso);
+  }
+
+  /* Confianza. Menta. Identidad verificada, dueño directo. */
+  .distintivo-menta {
+    background-color: var(--color-menta-suave);
+    color: var(--color-menta-hondo);
+  }
+
+  /* Función. Turquesa. "Tour 3D disponible" y cosas así. */
   .distintivo-senal {
     background-color: var(--color-senal-suave);
     color: var(--color-senal-hondo);
@@ -290,32 +477,106 @@
     color: var(--color-tinta-70);
   }
 
+  /* --- Franja de marca ---
+     El degradado del logo. Va en elementos que NO llevan texto encima
+     —una barra de progreso, un filete de acento, el borde superior de
+     una tarjeta destacada—, porque un degradado no tiene un contraste
+     único: el extremo claro se queda en 1,9:1 con texto blanco. Ese es
+     el motivo de que no haya un `.btn-degradado`. */
+  .franja-marca {
+    background-image: linear-gradient(90deg, var(--color-turquesa), var(--color-turquesa-hondo));
+  }
+
   /* --- Marcador del mapa ---
-     Lo dibuja Mapbox, así que vive aquí para poder cambiarlo sin
-     tocar el componente React. */
+     Lo dibuja Mapbox desde JavaScript, así que no puede llevar clases
+     de Tailwind en el marcado: se crea con `document.createElement`.
+     Sus colores viven aquí igual que los del resto del sistema, y el
+     componente solo pone o quita clases. */
   .marcador {
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: var(--radius-chico);
     border: 1.5px solid white;
+    background-color: var(--color-senal);
+    color: white;
     font-size: 11px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     cursor: pointer;
-    box-shadow: 0 1px 3px rgb(20 24 26 / 0.3);
+    box-shadow: 0 1px 3px rgb(15 41 90 / 0.35);
     transition: transform 120ms ease;
+  }
+
+  /* Propiedad destacada: el degradado de marca.
+     Sobre el mapa, que es claro y de bajo contraste, el turquesa
+     brillante es lo único que compite con el blanco de las calles. Es
+     también lo que la guía pide para las destacadas. */
+  .marcador-destacado {
+    background-image: linear-gradient(160deg, var(--color-turquesa), var(--color-turquesa-hondo));
+    color: var(--color-marino);
+  }
+
+  /* Seleccionado.
+
+     Va DESPUÉS de `.marcador-destacado` a propósito: las dos tienen la
+     misma especificidad, así que gana la que se declara más abajo, y el
+     seleccionado tiene que poder sobre el degradado del destacado.
+
+     Y hace falta `background-image: none` explícito. Cambiar solo el
+     color de fondo no bastaría: una imagen de fondo se pinta ENCIMA del
+     color, así que el marcador seguiría viéndose verde y el usuario no
+     tendría forma de saber cuál ha seleccionado. */
+  .marcador-seleccionado {
+    background-color: var(--color-marino);
+    background-image: none;
+    color: white;
   }
 
   .marc:hover .marcador {
     transform: scale(1.12);
   }
 
+  /* --- Globo del mapa ---
+     El contenido se construye con `document.createElement` y
+     `textContent`, porque insertar HTML a partir de datos de la base es
+     la vía del XSS. Eso es la estructura. El aspecto va aquí, para que
+     los colores sigan teniendo un solo dueño y el globo no se quede con
+     la paleta vieja el día que cambie el sistema. */
+  .globo {
+    width: 260px;
+  }
+
+  .globo-titulo {
+    margin: 0;
+    padding: 12px 14px 8px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--color-tinta);
+  }
+
+  .globo-precio {
+    margin: 0;
+    padding: 0 14px;
+    font-size: 17px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-senal);
+  }
+
+  .globo-meta {
+    margin: 0;
+    padding: 6px 14px 12px;
+    font-size: 12px;
+    color: var(--color-tinta-50);
+  }
+
   /* Globos de Mapbox */
   .mapboxgl-popup-content {
     padding: 0 !important;
     border-radius: var(--radius-medio) !important;
-    box-shadow: 0 8px 24px rgb(20 24 26 / 0.16) !important;
+    box-shadow: 0 8px 24px rgb(15 41 90 / 0.18) !important;
     overflow: hidden;
   }
 

@@ -201,7 +201,7 @@ function FormularioLogin() {
 
   return (
     <MarcoAuth
-      titulo="Entra a INNOVER"
+      titulo="Entra a Innover"
       subtitulo="Accede a tus publicaciones y contactos."
       pie={
         <>

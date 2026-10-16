@@ -284,7 +284,7 @@ function nombreEstado(estado: EstadoContacto): string {
 function tonoEstado(estado: EstadoContacto): string {
   switch (estado) {
     case 'NUEVO':
-      return 'distintivo-latón';
+      return 'distintivo-aviso';
     case 'CERRADO':
       return 'distintivo-senal';
     default:
