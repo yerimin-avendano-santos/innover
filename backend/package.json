@@ -5,7 +5,7 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "dev": "nodemon --watch server.js --watch src server.js",
+    "dev": "nodemon --watch server.js --watch src --watch .env server.js",
     "start": "node server.js",
     "prueba": "node scripts/pruebas.mjs",
     "backup": "node scripts/backup-datos.mjs",
