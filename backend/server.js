@@ -147,8 +147,9 @@ const servidor = app.listen(config.puerto, () => {
   console.log('📦 Rutas:');
   console.log('   POST /api/auth/registro | login | logout');
   console.log('   GET  /api/auth/perfil          (protegida)');
-  console.log('   GET  /api/propiedades          (buscador público)');
-  console.log('   GET  /api/propiedades/cercanas (PostGIS)');
+  console.log('   GET  /api/propiedades          (buscador, con sesión)');
+  console.log('   GET  /api/propiedades/cercanas (PostGIS, con sesión)');
+  console.log('   GET  /api/propiedades/:id      (ficha, PÚBLICA: es el enlace que se comparte)');
   console.log('   GET  /api/propiedades/mias     (protegida)');
   console.log('   POST /api/contactos             (leads del CRM)');
   console.log('   GET  /api/distritos');

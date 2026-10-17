@@ -594,8 +594,23 @@ seccion('7. Validación de entrada');
 }
 
 {
-  const r = await pedir('GET', '/api/propiedades?precioMin=500&precioMax=100');
+  const r = await pedir('GET', '/api/propiedades?precioMin=500&precioMax=100', {
+    token: tokenCliente,
+  });
   afirmar(r.estado === 400, 'precioMin > precioMax devuelve 400');
+
+  // 📌 El ORDEN de los middlewares también es contrato.
+  //
+  // `verificarToken` va ANTES de `validar`, así que una petición sin sesión
+  // se rechaza por sesión aunque además traiga los filtros mal: 401, no 400.
+  // Si algún día se invirtiera el orden, esta prueba lo diría. Sin ella,
+  // nadie se enteraría de que cambió.
+  const sinSesion = await pedir('GET', '/api/propiedades?precioMin=500&precioMax=100');
+  afirmar(
+    sinSesion.estado === 401,
+    'sin sesión manda el 401: se comprueba la sesión antes que los filtros',
+    `recibido ${sinSesion.estado}`
+  );
 }
 
 {
@@ -622,20 +637,57 @@ seccion('7. Validación de entrada');
 // ========================================
 seccion('8. Búsqueda y filtros');
 // ========================================
+//
+// 📌 EL BUSCADOR EXIGE SESIÓN, Y LA FICHA NO
+//
+// Son dos rutas distintas y la diferencia es deliberada: la ficha es el
+// enlace que se comparte por WhatsApp y lo que indexa Google, así que tiene
+// que abrirse sin cuenta (ver `propiedadRoutes.js`).
+//
+// El candado se comprueba PRIMERO. Si se cayera, el resto de esta sección
+// seguiría pasando tan contenta —los filtros funcionan igual con token que
+// sin él— y nadie se enteraría de que el mercado quedó abierto.
 {
-  const r = await pedir('GET', '/api/propiedades');
-  afirmar(r.estado === 200, 'el buscador público responde 200');
+  const sinToken = await pedir('GET', '/api/propiedades');
+  afirmar(
+    sinToken.estado === 401,
+    '⛔ el buscador NO se puede usar sin sesión',
+    `recibido ${sinToken.estado}: ${JSON.stringify(sinToken.cuerpo)}`
+  );
+
+  const cercanas = await pedir(
+    'GET',
+    '/api/propiedades/cercanas?latitud=-9.9299&longitud=-76.2401'
+  );
+  afirmar(
+    cercanas.estado === 401,
+    '⛔ /cercanas tampoco: devuelve lo mismo, así que dejar una abierta abriría la otra',
+    `recibido ${cercanas.estado}`
+  );
+
+  // Y la contraparte, que es lo que impide "arreglar" esto de más.
+  const ficha = await pedir('GET', `/api/propiedades/${idPropiedadPropia}`);
+  afirmar(
+    ficha.estado === 200,
+    '⛔ la FICHA sigue abierta sin sesión (es el enlace que se comparte)',
+    `recibido ${ficha.estado}`
+  );
+}
+
+{
+  const r = await pedir('GET', '/api/propiedades', { token: tokenCliente });
+  afirmar(r.estado === 200, 'con sesión, el buscador responde 200');
   afirmar(Array.isArray(r.cuerpo?.datos), 'devuelve el array en `datos`');
   afirmar(!!r.cuerpo?.paginacion, 'incluye metadatos de paginación');
   afirmar(!!r.cuerpo?.rangoPrecios, 'incluye el rango de precios para los filtros');
   afirmar(
     !r.cuerpo?.datos?.some((p) => p.estado === 'BORRADOR'),
-    '⛔ los BORRADOR no aparecen en el buscador público'
+    '⛔ los BORRADOR no aparecen en el buscador aunque tengas sesión'
   );
 }
 
 {
-  const r = await pedir('GET', '/api/propiedades?tipo=ALQUILER');
+  const r = await pedir('GET', '/api/propiedades?tipo=ALQUILER', { token: tokenCliente });
   afirmar(
     r.cuerpo?.datos?.every((p) => p.tipo === 'ALQUILER'),
     'el filtro por tipo funciona'
@@ -643,7 +695,9 @@ seccion('8. Búsqueda y filtros');
 }
 
 {
-  const r = await pedir('GET', '/api/propiedades?precioMin=100000&precioMax=200000');
+  const r = await pedir('GET', '/api/propiedades?precioMin=100000&precioMax=200000', {
+    token: tokenCliente,
+  });
   afirmar(
     r.cuerpo?.datos?.every((p) => p.precio >= 100000 && p.precio <= 200000),
     'el filtro por rango de precio funciona'
@@ -654,7 +708,11 @@ seccion('8. Búsqueda y filtros');
 seccion('9. Búsqueda geográfica con PostGIS');
 // ========================================
 {
-  const r = await pedir('GET', '/api/propiedades/cercanas?latitud=-9.9299&longitud=-76.2401&radioKm=5');
+  const r = await pedir(
+    'GET',
+    '/api/propiedades/cercanas?latitud=-9.9299&longitud=-76.2401&radioKm=5',
+    { token: tokenCliente }
+  );
   afirmar(r.estado === 200, 'la búsqueda por cercanía responde 200');
   afirmar(Array.isArray(r.cuerpo?.datos), 'devuelve el array en `datos`');
 
@@ -671,7 +729,9 @@ seccion('9. Búsqueda geográfica con PostGIS');
 }
 
 {
-  const r = await pedir('GET', '/api/propiedades?tipo=VENTA&latitud=-9.9299&longitud=-76.2401&radioKm=3');
+  const r = await pedir('GET', '/api/propiedades?tipo=VENTA&latitud=-9.9299&longitud=-76.2401&radioKm=3', {
+    token: tokenCliente,
+  });
   afirmar(r.estado === 200, 'el filtro por radio dentro del buscador principal funciona');
 }
 
