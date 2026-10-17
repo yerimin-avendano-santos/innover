@@ -199,6 +199,11 @@ model Usuario {
   /// Anuncios que este usuario guardó para volver a ellos.
   favoritos Favorito[]
 
+  /// Las sesiones abiertas de este usuario (una por navegador/dispositivo).
+  /// Es lo que permite renovar la sesión sin volver a pedir la contraseña, y
+  /// lo que se apaga entero cuando una contraseña cambia.
+  tokensRenovacion TokenRenovacion[]
+
   // El login busca por email, así que este índice acelera esa consulta.
   @@index([rol, activo])
   @@map("Usuario")
@@ -503,4 +508,72 @@ model Favorito {
   @@index([propiedad_id])
 
   @@map("Favorito")
+}
+
+// ==========================================
+// MODELO: TokenRenovacion
+// ==========================================
+// El token de sesión (el JWT de 2 horas) es AUTOCONTENIDO: el servidor lo
+// verifica con la firma y no consulta nada. Eso es lo que lo hace rápido, y
+// también lo que lo hace irremediable — no se puede revocar antes de que venza.
+// Mientras tanto, alguien con ese token entra, y no hay forma de pararlo.
+//
+// Por eso hay un SEGUNDO token, este, que sí se puede revocar: es opaco (una
+// cadena al azar, sin datos dentro) y existe en la base, así que se puede
+// apagar. Es el que mantiene la sesión viva — cuarenta veces más duradero que
+// el de la firma — y el frontend lo cambia por un token nuevo cuando el corto
+// vence, sin que la persona note nada.
+//
+// 📌 POR QUÉ SE GUARDA EL HASH Y NO EL TOKEN
+//
+// Quien lea esta tabla —un backup, un log, alguien mirando la base— no puede
+// entrar en la cuenta de nadie con lo que ve. El token de verdad solo lo tiene
+// el navegador de su dueño; aquí queda su huella, que basta para comparar.
+//
+// 📌 Y POR QUÉ NO SE BORRA LA FILA AL ROTAR
+//
+// Porque un token que ya se usó y VUELVE a aparecer es la señal de que alguien
+// lo copió: el dueño cambió el suyo y el otro se quedó con el viejo. Si la fila
+// se borrara al rotar, ese segundo uso sería indistinguible de un token
+// inventado y no habría nada que hacer; con la fecha de rotación guardada, se
+// puede distinguir y apagar todas las sesiones de esa persona.
+
+model TokenRenovacion {
+  id Int @id @default(autoincrement())
+
+  /// En cascada: si algún día se borra la cuenta, sus sesiones no significan
+  /// nada. (El borrado de usuarios es lógico, así que casi nunca se ejecuta.)
+  usuario_id Int
+  usuario    Usuario @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  /// SHA-256 del token, en hexadecimal. Es la columna por la que se busca en
+  /// cada renovación, así que es única e indexada.
+  token_hash String @unique
+
+  /// Hasta cuándo sirve. Es lo que convierte "sesión abierta para siempre" en
+  /// una sesión de 30 días que se renueva mientras se use.
+  expira DateTime
+
+  /// Cuándo se cambió por otro. `null` = es el vigente.
+  rotado_en DateTime?
+
+  /// Cuándo se apagó sin cambiar de sitio: cerrar sesión, cambiar la
+  /// contraseña, o la alarma de reutilización.
+  ///
+  /// ⚠️ A diferencia de `rotado_en`, esto NO admite ventana de gracia: un token
+  /// revocado no vuelve a valer nunca. Si la admitiera, cerrar sesión dejaría
+  /// el token del ladrón funcionando un minuto más justo cuando el dueño acaba
+  /// de decir que no.
+  revocado_en DateTime?
+
+  fecha_creacion DateTime @default(now())
+
+  /// "Todas las sesiones de este usuario": la pregunta que hace falta para
+  /// cerrar la sesión en todos los dispositivos y para la alarma.
+  @@index([usuario_id])
+
+  /// Para barrer las filas viejas (ver `limpiarTokensViejos`).
+  @@index([expira])
+
+  @@map("TokenRenovacion")
 }

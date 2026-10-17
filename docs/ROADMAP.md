@@ -36,7 +36,9 @@ Cada fase tiene dos listas: lo que **hay que aprender** y lo que **hay que const
 - [x] **Desarrollo:** el rol **nunca** se autoasigna en el registro
 - [x] **Desarrollo:** validación de entrada con Zod en todas las rutas
 - [x] **Desarrollo:** rate limiting, CORS con lista blanca y cabeceras de seguridad
-- [x] **Desarrollo:** 236 pruebas de integración y seguridad (192 API + 44 puente)
+- [x] **Desarrollo:** renovación de sesión: el pase corto (2 h, cookie `innover_token`) y el token que lo renueva (30 días, cookie `innover_renovacion`, acotada a `/api/auth`, guardada como hash y **revocable**). *El pase corto es autocontenido —se verifica con la firma, sin consultar nada— y por eso NO se puede revocar; el largo existe en la base y por eso sí. La asimetría es el diseño: uno que no se puede revocar tiene que durar poco, y uno que dura mucho tiene que poder revocarse. Antes había lo peor de los dos juntos: una cookie de 7 días con un JWT de 2 horas dentro, cuyo único desenlace posible era "tu sesión expiró" cada dos horas*
+- [x] **Aprender:** **rotación de tokens y detección de reutilización.** Cada renovación entrega un token nuevo y marca el usado, así que un token robado deja de servir en cuanto el dueño renueva. *Con una ventana de gracia de 60 s: dos pestañas que renuevan a la vez mandan el mismo token viejo, y sin ese margen el sistema tomaría al dueño por un ladrón y lo echaría de su propia cuenta*
+- [x] **Desarrollo:** 281 pruebas de integración y seguridad (226 API + 55 del puente)
 
 ## Fase 4: Frontend y mapas interactivos 🎨
 
@@ -99,8 +101,7 @@ Cada fase tiene dos listas: lo que **hay que aprender** y lo que **hay que const
 
 Lo que queda pendiente y conviene no olvidar:
 
-- [ ] **Tests de componentes** (hay 251 de integración —207 de API y 44 del puente— y una unitaria, `verificar:clustering`, que prueba la lógica de agrupar del mapa; lo que no hay es forma de probar un componente de React sin navegador, y los marcadores del mapa son justo eso)
-- [ ] **Refresh tokens** (la sesión caduca a las 2 h sin renovación)
+- [ ] **Tests de componentes** (hay 281 de integración —226 de API y 55 del puente— y una unitaria, `verificar:clustering`, que prueba la lógica de agrupar del mapa; lo que no hay es forma de probar un componente de React sin navegador, y los marcadores del mapa son justo eso)
 - [ ] **Subida de fotos** (hoy se pegan direcciones y la ficha las enseña; falta el botón de subir, que necesita almacenamiento y credenciales. El dato que se guarda es el mismo, así que no hay que rehacer nada)
 - [ ] **Verificación contra RENIEC** (hoy el admin valida a ojo el documento)
 - [ ] **Rate limiting distribuido** (el actual guarda contadores en memoria; con varias instancias hace falta Redis)

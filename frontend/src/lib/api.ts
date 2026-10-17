@@ -77,14 +77,95 @@ interface OpcionesPeticion {
 }
 
 /**
+ * 📌 LAS RUTAS DONDE UN 401 NO SE ARREGLA RENOVANDO
+ *
+ * Son las cuatro puertas de la propia autenticación:
+ *
+ *   /login     → un 401 significa "esa contraseña no es", no "renueva".
+ *   /registro  → igual: el problema son los datos, no la sesión.
+ *   /renovar   → es la que renueva; reintentarla sería un bucle.
+ *   /logout    → un 401 aquí es "ya no había sesión", que es lo que querías.
+ *
+ * En el resto (incluido `/perfil`, que es el que decide si hay sesión al
+ * arrancar) un 401 significa casi siempre "se te pasó el rato": el pase corto
+ * dura 2 horas y el de renovación 30 días.
+ */
+const RUTAS_SIN_RENOVACION = [
+  '/api/auth/login',
+  '/api/auth/registro',
+  '/api/auth/renovar',
+  '/api/auth/logout',
+];
+
+/**
+ * La renovación EN CURSO, si hay alguna.
+ *
+ * ⛔ POR QUÉ UNA SOLA, Y NO UNA POR PETICIÓN
+ *
+ * Porque el servidor ROTA el token: cada renovación entrega uno nuevo y marca
+ * el usado. Si dos peticiones que fallan a la vez pidieran renovar cada una por
+ * su cuenta, las dos mandarían el mismo token viejo, la primera lo gastaría y
+ * la segunda llegaría con un token ya usado. Guardar una única promesa hace que
+ * todas las peticiones que chocan esperen a LA MISMA renovación y compartan su
+ * resultado — que es exactamente lo que haría una persona: esperar a que
+ * termine en vez de pedirlo dos veces.
+ *
+ * (El buscador manda dos peticiones en paralelo, la lista y el mapa: es el caso
+ * que haría saltar esto a la primera de cambio.)
+ *
+ * Y el `finally` la limpia para que la siguiente vez se renueve de nuevo: no es
+ * una caché, es un cerrojo.
+ */
+let renovacionEnCurso: Promise<boolean> | null = null;
+
+function renovarSesion(): Promise<boolean> {
+  if (!renovacionEnCurso) {
+    renovacionEnCurso = fetch(`${BASE}/api/auth/renovar`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+      .then((res) => res.ok)
+      // Si no hay red, no se renueva: quien llama se queda con el 401 original,
+      // que describe mejor lo que pasa que un error inventado aquí.
+      .catch(() => false)
+      .finally(() => {
+        renovacionEnCurso = null;
+      });
+  }
+
+  return renovacionEnCurso;
+}
+
+/**
  * Hace una petición a la API.
  *
  * `credentials: 'include'` es lo que hace que la cookie de sesión viaje.
  * El backend la manda como `httpOnly`, así que el JavaScript no puede
  * leerla: la gestiona el navegador sola. Por eso este código nunca
  * menciona el token.
+ *
+ * 📌 Y RENUEVA LA SESIÓN SOLA
+ *
+ * Si una petición vuelve con 401, antes de darla por perdida se pide un pase
+ * nuevo (`/api/auth/renovar`) y se reintenta UNA vez. El usuario no ve nada: ni
+ * una pantalla intermedia, ni un "tu sesión expiró", ni tener que volver a
+ * escribir la contraseña. Que es justo lo que antes pasaba cada dos horas.
+ *
+ * ⛔ `puedeRenovar` existe para que el reintento sea UNO. Sin esa bandera, una
+ * sesión de verdad muerta (token revocado, cuenta desactivada) renovaría,
+ * fallaría, renovaría, fallaría... en un bucle hasta que se acabara el límite
+ * de peticiones del servidor — y el problema real quedaría escondido detrás de
+ * un 429.
  */
 export async function api<T>(ruta: string, opciones: OpcionesPeticion = {}): Promise<T> {
+  return pedir<T>(ruta, opciones, true);
+}
+
+async function pedir<T>(
+  ruta: string,
+  opciones: OpcionesPeticion,
+  puedeRenovar: boolean
+): Promise<T> {
   const { metodo = 'GET', cuerpo, signal } = opciones;
 
   // Se construye objeto por objeto en vez de `...(cuerpo && {...})`.
@@ -127,6 +208,30 @@ export async function api<T>(ruta: string, opciones: OpcionesPeticion = {}): Pro
   }
 
   if (!res.ok) {
+    /**
+     * 🔄 ¿SESIÓN VENCIDA? PUES SE RENUEVA Y SE REPITE.
+     *
+     * El 401 que llega aquí casi siempre es "el pase corto caducó", no "no hay
+     * sesión": el de la firma dura 2 horas, y la renovación 30 días. Se pide
+     * uno nuevo y se reintenta la petición original, que el usuario recibe como
+     * si nada hubiera pasado.
+     *
+     * Si la renovación tampoco puede (no hay token, se revocó, la cuenta se
+     * desactivó), el 401 sigue su camino y es entonces —y solo entonces—
+     * cuando la interfaz enseña "vuelve a iniciar sesión". El muro del
+     * buscador sigue significando lo que significa.
+     */
+    if (
+      res.status === 401 &&
+      puedeRenovar &&
+      !RUTAS_SIN_RENOVACION.some((rutaDeAuth) => ruta.startsWith(rutaDeAuth))
+    ) {
+      if (await renovarSesion()) {
+        // `false` en la tercera posición: un solo reintento, pase lo que pase.
+        return pedir<T>(ruta, opciones, false);
+      }
+    }
+
     const info = (datos ?? {}) as ErrorAPI;
     throw new ErrorPeticion(
       info.error || `Error ${res.status}`,

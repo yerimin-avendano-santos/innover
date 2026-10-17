@@ -52,9 +52,28 @@ const config = {
       'JWT_SECRET',
       esProduccion ? undefined : 'innover-secreto-de-desarrollo-no-usar-en-produccion'
     ),
-    // Vida corta para el access token. El frontend guarda el token en
-    // localStorage, así que hay que limitar el daño si se filtra.
+    // Vida corta para el token de sesión (el que viaja en cada petición).
+    // Es autocontenido —el servidor lo verifica con la firma— y por eso no se
+    // puede revocar antes de que venza: cuanto menos dure, menos daño hace un
+    // token robado. Lo corto que se puede ser sin castigar al usuario es este
+    // rato, porque al vencer se renueva solo (ver `jwt.renovacionDias`).
     expiraEn: opcional('JWT_EXPIRA_EN', '2h'),
+
+    /**
+     * Cuántos días dura una sesión sin volver a pedir la contraseña.
+     *
+     * Es la vida del token de renovación, el que sí se puede revocar porque
+     * vive en la base (`TokenRenovacion`). Se va renovando cada vez que se usa,
+     * así que en la práctica son "30 días sin aparecer por aquí".
+     *
+     * 📌 POR QUÉ 30 Y NO 365
+     *
+     * Porque el token está en una cookie httpOnly que no caduca con el
+     * navegador: si durara un año, un portátil perdido seguiría teniendo la
+     * sesión abierta mucho después de que a nadie le acuerde de él. Y este
+     * número sí se puede bajar sin tocar código.
+     */
+    renovacionDias: Number(opcional('JWT_RENOVACION_DIAS', 30)),
   },
 
   bcrypt: {

@@ -62,6 +62,15 @@ export function ProveedorAuth({ children }: { children: ReactNode }) {
    * No podemos leer la cookie desde JavaScript (es httpOnly, para eso es
    * httpOnly). La única forma de saberlo es preguntar. El navegador
    * manda la cookie solo en la petición.
+   *
+   * 📌 Y ESTA ES LA PETICIÓN QUE DESPIERTA LA RENOVACIÓN AUTOMÁTICA.
+   *
+   * En una visita fría —el navegador recién abierto, o más de dos horas
+   * después— el pase corto ya venció, así que esta llamada vuelve con 401. El
+   * cliente de la API (`lib/api.ts`) lo intercepta, pide un pase nuevo con el
+   * token de renovación y repite la petición: lo que llega aquí es un perfil,
+   * no un 401. La persona entra directamente con su sesión abierta, sin pasar
+   * por el login, que es exactamente lo que la renovación existe para lograr.
    */
   const refrescar = useCallback(async () => {
     try {

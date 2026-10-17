@@ -40,13 +40,12 @@ const BACKEND = process.env.BACKEND_URL || 'http://localhost:5000';
 const CABECERAS_PERMITIDOS = ['content-type'];
 
 /**
- * Encabezados de la respuesta del backend que interesan al navegador.
+ * Encabezados de la respuesta del backend que se copian tal cual.
  *
- * ⚠️ `set-cookie` es el importante: es el que trae la cookie httpOnly
- * con la sesión. Si no lo reenviamos, el usuario inicia sesión pero
- * sigue "deslogueado".
+ * ⚠️ `set-cookie` NO está en esta lista a propósito: no se puede copiar con
+ * `get()`. Ver el bloque de las cookies más abajo.
  */
-const CABECERAS_RESPUESTA = ['content-type', 'set-cookie'];
+const CABECERAS_RESPUESTA = ['content-type'];
 
 async function reenviar(
   peticion: Request,
@@ -83,10 +82,32 @@ async function reenviar(
 
     const cuerpo = await respuesta.text();
 
-    const cabecerasRespuesta: Record<string, string> = {};
+    const cabecerasRespuesta = new Headers();
     for (const nombre of CABECERAS_RESPUESTA) {
       const valor = respuesta.headers.get(nombre);
-      if (valor) cabecerasRespuesta[nombre] = valor;
+      if (valor) cabecerasRespuesta.set(nombre, valor);
+    }
+
+    /**
+     * 🔑 LAS COOKIES, Y POR QUÉ NO SE COPIAN CON `get('set-cookie')`
+     *
+     * Son lo más importante que reenvía este archivo: si no llegan al
+     * navegador, el usuario inicia sesión y sigue "deslogueado".
+     *
+     * Y ahora son DOS (el pase corto y el token que lo renueva), lo que
+     * convierte el atajo anterior en un fallo silencioso. `headers.get()`
+     * devuelve las cabeceras repetidas pegadas con una coma — y una coma
+     * también separa atributos DENTRO de una cookie (`Expires=Wed, 21 Oct
+     * 2026 07:28:00 GMT`), así que el navegador recibe un texto ambiguo que
+     * puede leer a medias: media sesión que funciona y media que no, sin un
+     * solo error por ninguna parte.
+     *
+     * `getSetCookie()` da la lista entera, y `append` pone cada una como
+     * cabecera independiente — que es como las manda el backend y como el
+     * navegador las espera.
+     */
+    for (const galleta of respuesta.headers.getSetCookie?.() ?? []) {
+      cabecerasRespuesta.append('set-cookie', galleta);
     }
 
     return new NextResponse(cuerpo, {

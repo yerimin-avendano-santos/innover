@@ -17,6 +17,7 @@
 import jwt from 'jsonwebtoken';
 import config from '../config/env.js';
 import prisma from '../config/db.js';
+import { COOKIE_SESION } from '../utils/cookies.js';
 import { ErrorNoAutorizado, ErrorProhibido } from '../utils/errores.js';
 
 /** Los campos del usuario que se cargan en cada petición. */
@@ -67,8 +68,8 @@ async function identificar(req) {
     }
 
     // 2. Cookie httpOnly (prioridad, porque el navegador la manda sola)
-    if (!token && req.cookies?.innover_token) {
-      token = req.cookies.innover_token;
+    if (!token && req.cookies?.[COOKIE_SESION]) {
+      token = req.cookies[COOKIE_SESION];
     }
 
   if (!token) return { motivo: 'sin-token' };

@@ -21,6 +21,7 @@ import {
 import {
   registrarUsuario,
   loginUsuario,
+  renovarSesion,
   cerrarSesion,
   obtenerMiPerfil,
   actualizarMiPerfil,
@@ -35,6 +36,14 @@ const router = express.Router();
 // entra bien no queda bloqueado.
 router.post('/registro', limitadorAuth, validar(registroSchema), registrarUsuario);
 router.post('/login', limitadorAuth, validar(loginSchema), loginUsuario);
+
+/**
+ * Renovar la sesión. NO lleva `verificarToken` —si el pase corto fuera válido
+ * no habría nada que renovar— ni `limitadorAuth`, porque aquí no hay ninguna
+ * contraseña que adivinar: lo que viaja es un secreto de 256 bits. El porqué
+ * largo está en el controlador.
+ */
+router.post('/renovar', renovarSesion);
 
 router.post('/logout', cerrarSesion);
 

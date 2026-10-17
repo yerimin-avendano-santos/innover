@@ -17,6 +17,12 @@
 //    - El rol ya NO se toma del cuerpo de la petición.
 //    - El token se manda en cookie httpOnly, no en localStorage.
 //    - Hay límite de intentos para frenar ataques de fuerza bruta.
+//
+// 📌 Y una pieza más, que se añadió después: la sesión se apoya en DOS cookies.
+// La corta (`innover_token`, 2 h) es el pase que abre cada puerta; la larga
+// (`innover_renovacion`, 30 días) solo sirve para pedir otro pase cuando el
+// primero vence, y es la única de las dos que se puede revocar. El porqué
+// completo está en `utils/renovacion.js`, que es donde vive esa lógica.
 
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
@@ -30,9 +36,16 @@ import {
 } from '../utils/errores.js';
 import { normalizarEmail } from '../utils/utilidades.js';
 import { tienePlanPro } from '../utils/plan.js';
+import { COOKIE_SESION, COOKIE_RENOVACION } from '../utils/cookies.js';
+import {
+  abrirTokenRenovacion,
+  revocarTokenRenovacion,
+  revocarTodosLosTokens,
+  rotarTokenRenovacion,
+} from '../utils/renovacion.js';
 
 /**
- * Configura la cookie donde viaja el token.
+ * Lo que comparten las dos cookies.
  *
  * ⛔ POR QUÉ COOKIE httpOnly Y NO localStorage
  *
@@ -49,13 +62,66 @@ import { tienePlanPro } from '../utils/plan.js';
  * La cookie sí viaja sola en cada petición, así que el frontend no
  * tiene que hacer nada especial.
  */
-const opcionesCookie = {
+const baseCookie = {
   httpOnly: true,                      // JavaScript no puede leerla
   secure: config.esProduccion,         // solo HTTPS en producción
   sameSite: 'lax',                     // no se envía en peticiones de otros sitios
-  maxAge: 7 * 24 * 60 * 60 * 1000,     // 7 días
+};
+
+/**
+ * La cookie del pase corto.
+ *
+ * ⚠️ SIN `maxAge`, y es deliberado: es una cookie DE SESIÓN, muere al cerrar el
+ * navegador. Antes duraba 7 días y era una promesa que el servidor no podía
+ * cumplir — el JWT de dentro vence a las 2 horas, así que durante los seis días
+ * y medio siguientes el navegador guardaba un pase que ya no abría nada, y el
+ * usuario solo veía "tu sesión expiró". Una credencial no debería sobrevivir al
+ * dato que lleva dentro. Quien mantiene la sesión es la cookie de renovación.
+ */
+const opcionesCookieSesion = {
+  ...baseCookie,
   path: '/',
 };
+
+/**
+ * La cookie del token que se puede revocar.
+ *
+ * 📌 POR QUÉ SE ACOTA EL `path` SI `httpOnly` YA PROTEGE
+ *
+ * Son dos defensas contra dos amenazas distintas. `httpOnly` protege de un
+ * script que lea `document.cookie`; el `path` decide a QUÉ peticiones se envía
+ * la cookie, y eso protege del servidor que la recibe. Este token no hace falta
+ * para buscar una casa, ni para ver una ficha, ni para subir una foto: solo
+ * para renovar la sesión y para cerrarla. Cuantas menos peticiones lo lleven,
+ * menos sitios donde pueda quedar registrado sin necesidad.
+ */
+const opcionesCookieRenovacion = {
+  ...baseCookie,
+  path: '/api/auth',
+  maxAge: config.jwt.renovacionDias * 24 * 60 * 60 * 1000,
+};
+
+/**
+ * Abre una sesión: firma el pase corto, guarda el largo y manda los dos.
+ *
+ * Está en una función porque se llama desde tres sitios (registro, login y
+ * renovación) y tiene que hacer exactamente lo mismo en los tres. Cuando estos
+ * tres caminos se escriben por separado, el día que uno cambia —y cambiará el
+ * día que haya que endurecer las cookies— los otros dos se quedan como estaban
+ * y nadie se entera, porque todo sigue funcionando.
+ */
+async function abrirSesion(res, usuario) {
+  const token = jwt.sign({ sub: usuario.id }, config.jwt.secreto, {
+    expiresIn: config.jwt.expiraEn,
+  });
+
+  const renovacion = await abrirTokenRenovacion(usuario.id);
+
+  res.cookie(COOKIE_SESION, token, opcionesCookieSesion);
+  res.cookie(COOKIE_RENOVACION, renovacion, opcionesCookieRenovacion);
+
+  return token;
+}
 
 /**
  * Arma el objeto de usuario que se devuelve al frontend.
@@ -145,14 +211,11 @@ export const registrarUsuario = async (req, res) => {
     },
   });
 
-  // 4. Generar el JWT para que quede con la sesión abierta.
-  const token = jwt.sign(
-    { sub: usuario.id },
-    config.jwt.secreto,
-    { expiresIn: config.jwt.expiraEn }
-  );
-
-  res.cookie('innover_token', token, opcionesCookie);
+  // 4. Abrir sesión (pase corto + token de renovación).
+  //    Al registrarse, la sesión queda abierta: obligar a entrar otra vez
+  //    justo después de rellenar el formulario sería pedir los mismos datos
+  //    dos veces.
+  const token = await abrirSesion(res, usuario);
 
   res.status(201).json({
     mensaje: 'Cuenta creada. Ya puedes buscar propiedades.',
@@ -213,12 +276,9 @@ export const loginUsuario = async (req, res) => {
     data: { ultimo_acceso: new Date() },
   });
 
-  // 5. Firmar el token y mandarlo en cookie httpOnly.
-  const token = jwt.sign({ sub: usuario.id }, config.jwt.secreto, {
-    expiresIn: config.jwt.expiraEn,
-  });
-
-  res.cookie('innover_token', token, opcionesCookie);
+  // 5. Abrir sesión: el pase corto en una cookie, y el token que la renueva
+  //    —el que sí se puede revocar— en la otra.
+  const token = await abrirSesion(res, usuario);
 
   res.json({
     mensaje: `Hola de nuevo, ${usuario.nombre.split(' ')[0]}.`,
@@ -228,16 +288,104 @@ export const loginUsuario = async (req, res) => {
 };
 
 // ========================================
+// RENOVAR LA SESIÓN
+// ========================================
+/**
+ * Cambia el token de renovación por un pase nuevo.
+ *
+ * 📌 ESTA ES LA RUTA QUE HACE QUE LA SESIÓN NO SE CAIGA
+ *
+ * El pase corto vence a las 2 horas. Antes eso era un cierre de sesión: el
+ * usuario volvía al login aunque estuviera navegando, y en una web que se abre
+ * una vez al día eso pasa SIEMPRE. Ahora, cuando una petición vuelve con 401,
+ * el cliente llama aquí y reintenta: el usuario no ve nada.
+ *
+ * ⛔ NO lleva `verificarToken`, y es justo su razón de existir: si el pase
+ * corto fuera válido, no habría nada que renovar. Lo que protege esta ruta es
+ * el token de la cookie de renovación, que es un secreto de 256 bits que solo
+ * tiene el navegador de su dueño. Tampoco lleva `limitadorAuth`: ese mide
+ * intentos de ADIVINAR una contraseña, y aquí no hay contraseña que adivinar
+ * —probar tokens al azar es como buscar una aguja en un pajar del tamaño del
+ * universo—. El límite general de peticiones se aplica igual.
+ */
+export const renovarSesion = async (req, res) => {
+  const tokenCrudo = req.cookies?.[COOKIE_RENOVACION];
+
+  if (!tokenCrudo) {
+    throw new ErrorNoAutorizado('No hay ninguna sesión que renovar. Inicia sesión.');
+  }
+
+  const resultado = await rotarTokenRenovacion(tokenCrudo);
+
+  if (resultado.motivo) {
+    /**
+     * ⛔ TODOS LOS MOTIVOS RESPONDEN LO MISMO (menos uno), y es a propósito.
+     *
+     * "No existe", "venció" y "lo apagaste tú" son información que a quien
+     * pregunta con un token robado no se le da: le sirve para saber si el token
+     * es de verdad y qué le falta. El que tiene el token bueno no necesita la
+     * distinción: en los tres casos el arreglo es el mismo, volver a entrar.
+     *
+     * La excepción es `reutilizado`, y es para el DUEÑO, no para el otro: si de
+     * verdad se copió el token, a esta persona le acabamos de cerrar todas sus
+     * sesiones y merece saber por qué y qué hacer. Al que copió el token no le
+     * cuenta nada que no sepa ya — su petición acaba de ser rechazada.
+     */
+    if (resultado.motivo === 'inactivo') {
+      throw new ErrorProhibido('Tu cuenta está desactivada. Contacta al soporte.');
+    }
+
+    if (resultado.motivo === 'reutilizado') {
+      throw new ErrorNoAutorizado(
+        'Por seguridad cerramos todas tus sesiones. Vuelve a iniciar sesión.'
+      );
+    }
+
+    throw new ErrorNoAutorizado('Tu sesión ya no es válida. Vuelve a iniciar sesión.');
+  }
+
+  // Rotación correcta: el token usado queda marcado y el navegador se lleva uno
+  // nuevo, además de un pase fresco. Se devuelve el usuario porque sus datos
+  // pueden haber cambiado desde la última vez (rol, plan) y este es justo el
+  // momento en que el cliente los va a mirar.
+  const token = await abrirSesion(res, resultado.usuario);
+
+  res.json({
+    mensaje: 'Sesión renovada.',
+    usuario: usuarioPublico(resultado.usuario),
+    token,
+  });
+};
+
+// ========================================
 // LOGOUT
 // ========================================
 export const cerrarSesion = async (req, res) => {
-  // Borrar la cookie. clearCookie necesita las MISMAS opciones con las que
-  // se creó, si no el navegador no la encuentra.
-  res.clearCookie('innover_token', {
-    httpOnly: opcionesCookie.httpOnly,
-    secure: opcionesCookie.secure,
-    sameSite: opcionesCookie.sameSite,
-    path: opcionesCookie.path,
+  /**
+   * ⛔ APAGAR EL TOKEN EN LA BASE, NO SOLO BORRAR LA COOKIE.
+   *
+   * Borrar la cookie solo le dice al navegador "deja de mandarla". El token
+   * sigue siendo válido para cualquiera que lo tenga: el ordenador compartido
+   * donde alguien no borró bien su sesión, el portátil que se prestó, la copia
+   * que hizo una extensión. Cerrar sesión tiene que significar que ese token no
+   * vale más, y eso se decide en el servidor.
+   */
+  await revocarTokenRenovacion(req.cookies?.[COOKIE_RENOVACION]);
+
+  // `clearCookie` necesita las MISMAS opciones con las que se creó la cookie
+  // —camino incluido—, si no el navegador busca en otro sitio y no la encuentra.
+  res.clearCookie(COOKIE_SESION, {
+    httpOnly: opcionesCookieSesion.httpOnly,
+    secure: opcionesCookieSesion.secure,
+    sameSite: opcionesCookieSesion.sameSite,
+    path: opcionesCookieSesion.path,
+  });
+
+  res.clearCookie(COOKIE_RENOVACION, {
+    httpOnly: opcionesCookieRenovacion.httpOnly,
+    secure: opcionesCookieRenovacion.secure,
+    sameSite: opcionesCookieRenovacion.sameSite,
+    path: opcionesCookieRenovacion.path,
   });
 
   res.json({ mensaje: 'Sesión cerrada.' });
@@ -335,6 +483,25 @@ export const actualizarMiPerfil = async (req, res) => {
     where: { id: req.usuario.id },
     data: datos,
   });
+
+  /**
+   * 📌 CAMBIAR LA CONTRASEÑA CIERRA LAS DEMÁS SESIONES.
+   *
+   * Es la razón por la que mucha gente cambia la contraseña: "creo que alguien
+   * entró en mi cuenta". Cambiarla y dejar las otras sesiones abiertas sería
+   * cerrar la puerta con el ladrón dentro, y no daría ningún error: el dueño
+   * cambiaría su clave, vería "listo", y la otra sesión seguiría navegando con
+   * su token de renovación durante un mes.
+   *
+   * Y se le abre una sesión nueva AQUÍ MISMO, en la misma respuesta. Se cierran
+   * todas —esta incluida— y se le da otra: así sigue donde estaba (acaba de
+   * demostrar que sabe la contraseña vieja, no hay nada que dudar) y todos los
+   * demás dispositivos se quedan fuera.
+   */
+  if (datos.contrasena_hash) {
+    await revocarTodosLosTokens(req.usuario.id);
+    await abrirSesion(res, actualizado);
+  }
 
   res.json({
     mensaje: 'Perfil actualizado.',

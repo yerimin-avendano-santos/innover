@@ -1,9 +1,10 @@
 // ========================================
 // ❤️ RUTAS DE FAVORITOS
 // ========================================
-// Las tres piden token, y no hay ninguna pública:
+// Todas piden token, y no hay ninguna pública:
 //
 //   GET    /     → TOKEN   (mi lista)
+//   GET    /:id  → TOKEN   (¿está guardado este?)
 //   POST   /     → TOKEN   (guardar)
 //   DELETE /:id  → TOKEN   (quitar)
 //
@@ -33,6 +34,7 @@ import { verificarToken } from '../middleware/auth.js';
 import { crearFavoritoSchema, paginacionSchema, idParamSchema } from '../schemas/index.js';
 import {
   obtenerFavoritos,
+  obtenerFavorito,
   crearFavorito,
   eliminarFavorito,
 } from '../controllers/favoritoController.js';
@@ -42,6 +44,12 @@ const router = express.Router();
 router.get('/', verificarToken, validar(paginacionSchema, 'query'), obtenerFavoritos);
 
 router.post('/', verificarToken, validar(crearFavoritoSchema), crearFavorito);
+
+// ¿Está guardado este anuncio concreto? Lo pregunta la isla de la ficha cuando
+// el servidor no pudo ver la sesión. Va después de `/` porque no hay colisión
+// —una es la lista y otra un id—, pero se deja escrito para que no se añada
+// otra ruta con parámetro sin mirar el orden.
+router.get('/:id', verificarToken, validar(idParamSchema, 'params'), obtenerFavorito);
 
 router.delete(
   '/:id',

@@ -92,6 +92,40 @@ export const obtenerFavoritos = async (req, res) => {
 };
 
 // ========================================
+// [READ] ¿Está guardado ESTE anuncio?
+// ========================================
+/**
+ * 📌 POR QUÉ EXISTE ESTA RUTA TENIENDO LA FICHA Y TENIENDO LA LISTA
+ *
+ * La ficha ya trae `es_favorito`, y la lista trae los guardados. Pero la ficha
+ * la sirve el SERVIDOR, y el servidor solo sabe si hay sesión si le llega el
+ * pase corto. Cuando ese pase ya venció, la ficha sale como anónima: el corazón
+ * no aparece y en su lugar hay un "inicia sesión" — aunque la persona tenga su
+ * sesión perfectamente viva, porque el token que la mantiene dura 30 días y el
+ * que viaja en cada petición solo 2 horas.
+ *
+ * Esa isla de la ficha es la que llama aquí al montarse: si resulta que sí hay
+ * sesión (el cliente la renueva sola antes de esta llamada), el corazón cambia
+ * al estado de verdad. Sin traer la lista entera, que sería paginar 50 anuncios
+ * para averiguar un booleano.
+ *
+ * Devuelve 401 sin sesión, y eso también es información: la isla deja el enlace
+ * a "inicia sesión" donde estaba.
+ */
+export const obtenerFavorito = async (req, res) => {
+  const { id: propiedad_id } = req.params;
+
+  const favorito = await prisma.favorito.findUnique({
+    where: {
+      usuario_id_propiedad_id: { usuario_id: req.usuario.id, propiedad_id },
+    },
+    select: { id: true },
+  });
+
+  res.json({ es_favorito: favorito !== null });
+};
+
+// ========================================
 // [CREATE] Guardar un anuncio
 // ========================================
 export const crearFavorito = async (req, res) => {

@@ -17,7 +17,7 @@ Navegador (localhost:3000)
    ▼
 Route Handler de Next  (src/app/api/[...ruta]/route.ts)
    │  reenvía a http://localhost:5000
-   │  copia cabeceras y set-cookie
+   │  copia cabeceras y TODAS las set-cookie
    │
    ▼
 Express  (server.js)
@@ -75,6 +75,35 @@ document.cookie;   // → no devuelve nada
 El navegador la protege y la manda sola en cada petición. El frontend ni la ve ni la toca: solo llama a `/api/auth/perfil` y pregunta "¿sigo conectado?".
 
 **Consecuencia en el código:** `src/contextos/Auth.tsx` no guarda ningún token. Solo guarda los *datos* del usuario (nombre, rol), que no son secretos.
+
+### Y una cookie no basta: el pase corto y el que lo renueva
+
+La sesión se apoya en **dos** cookies, y cada una hace lo que la otra no puede:
+
+| Cookie | Qué es | Dura | ¿Se puede revocar? |
+|---|---|---|---|
+| `innover_token` | JWT firmado. Viaja en **cada** petición | 2 horas | **No** |
+| `innover_renovacion` | Cadena al azar, guardada como hash en `TokenRenovacion` | 30 días | **Sí** |
+
+El pase corto es autocontenido: el servidor comprueba la firma y no consulta
+nada, y eso es lo que lo hace rápido. El precio es que **no se puede apagar**
+antes de que venza, así que tiene que durar poco. El token largo no sirve para
+pedir nada —solo para pedir otro pase cuando el corto vence— y por eso sí puede
+durar mucho: vive en la base, así que se puede revocar (cerrar sesión, cambiar
+la contraseña, o la alarma que se dispara si un token ya usado reaparece).
+
+Lo que había antes era **lo peor de los dos**: una cookie de 7 días con un JWT de
+2 horas dentro. El navegador guardaba seis días y medio un pase que el servidor
+rechazaba desde las dos horas, y el único desenlace posible era "tu sesión
+expiró". La gente no cierra sesión: se va. Y volver a entrar por obligación, cada
+dos horas, es la clase de detalle que hace que un producto parezca de juguete.
+
+📌 **Y el usuario no se entera de nada.** `lib/api.ts` intercepta el 401, pide un
+pase nuevo y repite la petición **una sola vez**, con una única renovación en
+vuelo: el servidor ROTA el token (cada renovación entrega uno nuevo y marca el
+usado), así que dos peticiones que fallan a la vez —el buscador manda la lista y
+el mapa en paralelo— no pueden pedir cada una por su cuenta. Toda la lógica,
+con sus porqués, vive en `src/utils/renovacion.js`.
 
 ---
 
@@ -308,8 +337,7 @@ La regla de oro: **los 4xx son culpa del usuario y no se registran; los 5xx son 
 
 Cosas que todavía **no** están resueltas y conviene tener en la lista:
 
-- **Tests unitarios.** Hay 105 pruebas de integración, pero ninguna aislada de un componente.
-- **Refresh tokens.** La sesión dura 2 horas; no hay renovación automática.
+- **Tests unitarios y de componentes.** Hay 281 pruebas de integración (226 de API y 55 del puente) y una unitaria —`verificar:clustering`, la lógica de agrupar chinchetas del mapa—. Lo que no hay es forma de probar un componente de React sin navegador, y los marcadores del mapa son justo eso.
 - **Subida de imágenes.** El campo `imagenes` existe, falta el almacenamiento (S3/Cloudinary).
 - **Verificación RENIEC.** Los campos `documento_identidad` e `identidad_verificada` están listos; falta integrar el servicio externo.
 - **Suscripciones.** El `destacado` existe y se controla por rol; falta la lógica de cobro y los créditos de contacto.

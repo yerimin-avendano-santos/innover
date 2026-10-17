@@ -41,7 +41,6 @@
 
 import { cache } from 'react';
 import { cookies } from 'next/headers';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { AccionesDuenio, PanelContacto } from '@/components/AccionesPropiedad';
@@ -253,17 +252,18 @@ export default async function PaginaPropiedad({
               cookie que no puede leer. El enlace lleva de vuelta aquí después
               de entrar, porque el interés ya está demostrado y perderlo sería
               tirar el único dato bueno que ha dado este visitante.
+
+              ⚠️ PERO "EL SERVIDOR NO VI RECONOCIÓ" NO SIEMPRE ES "NO HAY
+              SESIÓN": puede ser que el pase corto (2 horas) esté vencido y el
+              token que lo renueva (30 días) esté perfectamente vivo. Ese caso
+              lo arregla la isla: se pasa el dato tal cual y ella se corrige
+              preguntando, que es a lo que se dedica `BotonFavorito`.
             */}
-            {propiedad.es_favorito === undefined ? (
-              <Link
-                href={`/login?redirect=/propiedad/${propiedad.slug}`}
-                className="btn btn-secundario text-menor"
-              >
-                <span aria-hidden="true">♡</span> Guardar
-              </Link>
-            ) : (
-              <BotonFavorito propiedadId={propiedad.id} inicial={propiedad.es_favorito} />
-            )}
+            <BotonFavorito
+              propiedadId={propiedad.id}
+              inicial={propiedad.es_favorito}
+              slug={propiedad.slug}
+            />
 
             <AccionesDuenio
               propiedadId={propiedad.id}

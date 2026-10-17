@@ -88,6 +88,8 @@ try {
   // `/sitemap.xml` de anuncios falsos.
   //
   //   - leads y solicitudes de agente → en cascada (ON DELETE CASCADE)
+  //   - sesiones abiertas (TokenRenovacion) → en cascada también: una sesión de
+  //     una cuenta que ya no existe no significa nada
   //   - propiedades → se borran aquí abajo, antes que los usuarios
   const conDatos = aBorrar.filter(
     (u) => u._count.propiedades > 0 || u._count.contactosComoCliente > 0

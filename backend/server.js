@@ -147,7 +147,7 @@ const servidor = app.listen(config.puerto, () => {
   console.log(`🌐 http://localhost:${config.puerto}`);
   console.log(`🔒 Entorno: ${config.esProduccion ? 'PRODUCCIÓN' : 'desarrollo'}`);
   console.log('📦 Rutas:');
-  console.log('   POST /api/auth/registro | login | logout');
+  console.log('   POST /api/auth/registro | login | renovar | logout');
   console.log('   GET  /api/auth/perfil          (protegida)');
   console.log('   GET  /api/propiedades          (buscador, con sesión)');
   console.log('   GET  /api/propiedades/cercanas (PostGIS, con sesión)');

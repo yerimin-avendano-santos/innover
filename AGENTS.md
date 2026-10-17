@@ -83,10 +83,10 @@ Dos suites, ambas de integración contra el backend **real** (no hay mocks). Req
 
 ```bash
 npm run dev:backend                      # terminal 1
-npm run prueba                           # terminal 2 → 207 pruebas
+npm run prueba                           # terminal 2 → 226 pruebas
 
 npm run dev:frontend                     # terminal 1 (además del backend)
-node backend/scripts/pruebas-puente.mjs  # terminal 2 → 44 pruebas
+node backend/scripts/pruebas-puente.mjs  # terminal 2 → 55 pruebas
 ```
 
 **`pruebas-puente.mjs` no tiene script en package.json** — hay que invocarlo con la ruta completa, y necesita frontend **y** backend.
@@ -165,7 +165,7 @@ Todo va por rutas relativas `/api/...` → `src/app/api/[...ruta]/route.ts` (cat
 
 - no hay `NEXT_PUBLIC_BASE_URL` en el código (verifícalo antes de añadirlo)
 - `BACKEND_URL` **no** lleva prefijo `NEXT_PUBLIC_` a propósito: solo la ve el servidor
-- el puente reenvía `cookie` y copia `set-cookie`. Si tocas eso, rompes la sesión
+- el puente reenvía `cookie` y copia `set-cookie` — **todas**, con `getSetCookie()` y `append`. Con una sola cookie, `get('set-cookie')` parecía funcionar; con dos (la sesión tiene pase y renovación) las pega con una coma, y una coma también separa atributos dentro de una cookie. Si tocas eso, rompes la sesión a medias y sin un solo error
 
 **Con una excepción, y es a propósito:** `app/propiedad/[slug]/page.tsx` es un Server Component y llama a `BACKEND_URL` directamente, reenviando la cookie a mano. No es un atajo: es la única forma de que el contenido venga **escrito en el HTML**, que es para lo que esa página existe (es el enlace que se comparte y lo que indexa Google). Pasando por el puente saldría vacía y el contenido lo pintaría JavaScript. Si añades otra llamada directa en un Server Component, mira esa primero: reenvía la cookie —sin ella el dueño no ve su propio `BORRADOR`— y distingue "no existe" de "no me contestó", porque lo primero es un 404 y lo segundo no.
 
@@ -174,6 +174,21 @@ Todo va por rutas relativas `/api/...` → `src/app/api/[...ruta]/route.ts` (cat
 ### Sesión por cookie httpOnly
 
 El token **no** está en `localStorage`. `contextos/Auth.tsx` guarda solo los datos del usuario; nunca el token. No "simplifiques" a `localStorage`.
+
+Y son **dos cookies**, porque un token solo no puede hacer las dos cosas:
+
+| Cookie | Qué es | Dura | ¿Revocable? |
+|---|---|---|---|
+| `innover_token` | JWT firmado. Viaja en **cada** petición | 2 h | **No** |
+| `innover_renovacion` | Cadena al azar, hash en `TokenRenovacion` | 30 días | **Sí** |
+
+El pase corto es autocontenido (se verifica con la firma, sin tocar la base) y por eso **no se puede apagar** antes de que venza: tiene que durar poco. El largo vive en la base, solo sirve para pedir otro pase, y por eso sí se revoca. Lo que había antes era lo peor de los dos: una cookie de 7 días con un JWT de 2 h dentro, que solo podía terminar en "tu sesión expiró".
+
+- **La rotación vive en `backend/src/utils/renovacion.js`** y no se toca a la ligera: cada renovación entrega un token nuevo, marca el usado con `rotado_en` (**no lo borra**: un token ya usado que reaparece es la señal de que alguien lo copió) y, si reaparece pasado un minuto, **revoca todas las sesiones de esa persona**. Ese minuto es la **ventana de gracia** para que dos pestañas que renuevan a la vez no se tomen por ladrones. La fecha de rotación **no se reescribe** en cada reintento: si se reescribiera, la gracia se podría mantener viva en bucle.
+- **`POST /api/auth/renovar` no lleva `verificarToken`** (si el pase valiera, no habría nada que renovar) **ni `limitadorAuth`** (no hay contraseña que adivinar: lo que viaja es un secreto de 256 bits).
+- **En el cliente, una sola renovación en vuelo.** `lib/api.ts` reintenta **una vez** tras un 401 y comparte la misma promesa entre todas las peticiones que fallan a la vez: el buscador manda lista y mapa en paralelo, y sin eso la segunda mandaría un token ya rotado. Y no reintenta en `/login`, `/registro`, `/renovar` ni `/logout`: ahí un 401 significa otra cosa.
+- **Cambiar la contraseña cierra TODAS las sesiones** (incluida la actual) y abre una nueva en la misma respuesta. Dejarlas abiertas sería cerrar la puerta con el ladrón dentro.
+- **`GET /api/favoritos/:id`** existe para que la ficha se corrija sola: el servidor solo ve el pase corto, así que una visita fría (navegador recién abierto, o más de 2 h después) sale como anónima aunque la sesión esté viva. Esa isla pregunta, y ese 401 también es información.
 
 ### El plan es un eje aparte del rol
 
@@ -359,5 +374,5 @@ Son errores ya corregidos. Reabrirlos reintroduce agujeros explotables:
 - `destacado` y `tour_3d_url` son campos de pago: los escribe un `ADMIN` o alguien con **plan PRO vigente**, nunca un usuario cualquiera. *(`destacado` era `ADMIN`-only; se abrió al plan PRO porque el destaque va incluido en él. La comprobación está en `resolverDestacado()`, en el servidor. Al bajar de plan se retiran los destaques con `sincronizarDestacados()`: si no, un plan vencido conservaría las ventajas.)*
 - Los borrados de usuario son **baja lógica** (`activo = false`), nunca `DELETE`
 - **Los favoritos son privados: cada quien ve la suya y solo la suya.** No hay endpoint para preguntar "quién guardó esto" — saber que alguien guardó una casa es saber que está buscando, y eso es información suya. El `usuario_id` sale **siempre del token**, nunca del cuerpo; la lista se filtra por la misma regla de visibilidad que la ficha (lo publicado, más lo mío), de modo que un anuncio retirado desaparece de la lista en vez de quedarse como un enlace que devuelve 403. Guardar algo que no se puede abrir también da 403: guardar es la antesala de volver a mirarlo.
-- **`es_favorito` solo viaja en la ficha, y solo si hay sesión.** Es el estado de *quien mira*, no un dato del anuncio (el mismo anuncio es favorito para uno y no para otro), así que no vive en `propiedadPublica`. Y es **tri-estado a propósito**: su ausencia significa "no hay sesión", que no es lo mismo que "no lo tienes guardado". Con `false` para los anónimos, la ficha ofrecería un corazón que devuelve 401 al primer clic; con la ausencia, ofrece un enlace a `login` y guarda el interés. Devuelve `undefined` = no hay quien lo tenga guardado, y la interfaz no adivina mirando una cookie que no puede leer (es httpOnly).
+- **`es_favorito` solo viaja en la ficha, y solo si hay sesión.** Es el estado de *quien mira*, no un dato del anuncio (el mismo anuncio es favorito para uno y no para otro), así que no vive en `propiedadPublica`. Y es **tri-estado a propósito**: su ausencia significa "el servidor no me reconoció", que no es lo mismo que "no lo tienes guardado". Con `false` para los anónimos, la ficha ofrecería un corazón que devuelve 401 al primer clic; con la ausencia, ofrece un enlace a `login` y guarda el interés. Devuelve `undefined` = no hay quien lo tenga guardado, y la interfaz no adivina mirando una cookie que no puede leer (es httpOnly). ⚠️ Y "no me reconoció" tampoco es exactamente "no hay sesión": el servidor solo ve el pase corto (2 h), así que una visita fría con la sesión viva sale anónima. Por eso la isla del corazón se corrige sola preguntando `GET /api/favoritos/:id`, que devuelve el estado o un 401.
 - **Las fotos se pintan con `<img>`, nunca con `next/image`.** Las direcciones las escribe quien publica, y el optimizador de Next **descarga la imagen en el servidor** para redimensionarla: con `next/image`, pegar `http://169.254.169.254/latest/meta-data/` convierte la ficha en una puerta hacia la red interna — un SSRF de manual, y basta con tener cuenta para publicar. Con `<img>` la descarga la hace el navegador de quien mira, que no alcanza nada que no alcanzara ya. Un `next/image` "para optimizar" reabre esto sin que ningún test se ponga en rojo. El otro candado es el esquema: `imagenes` valida cada dirección con el esquema `url` de Zod (`http://` o `https://`), y `javascript:alert(1)` tiene prueba propia.

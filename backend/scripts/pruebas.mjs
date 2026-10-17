@@ -19,6 +19,7 @@
 
 import 'dotenv/config';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { PrismaClient } from '@prisma/client';
 
@@ -80,9 +81,54 @@ function explicarLimite(codigo) {
 }
 
 /**
- * Hace una petición y devuelve { estado, cuerpo, cookies }.
+ * 🔑 COOKIES: la suite se comporta como un navegador.
+ *
+ * ⛔ ANTES ESTO ERA `getSetCookie()[0]`, Y FUNCIONABA DE CASUALIDAD.
+ *
+ * Había una sola cookie, así que quedarse con la primera bastaba — aunque el
+ * valor que se reenviaba salía de la cabecera `Set-Cookie` ENTERA
+ * (`innover_token=…; Path=/; HttpOnly; Max-Age=…`), que no es una cabecera
+ * `Cookie` válida: el backend la entendía porque `cookie-parser` ignora lo que
+ * no reconoce, no porque estuviera bien escrita.
+ *
+ * Desde que la sesión usa DOS cookies (el pase corto y el token que lo renueva,
+ * ver `src/utils/renovacion.js`), quedarse con la primera dejaría fuera justo la
+ * que mantiene la sesión viva, y las pruebas de renovación no probarían nada.
+ *
+ * Esto hace lo que hace un navegador: acumula, reemplaza por nombre y trata
+ * `Max-Age=0` como un borrado.
+ */
+function cookiesDe(galletas, cookieActual = '') {
+  const mapa = new Map();
+
+  for (const par of cookieActual.split('; ')) {
+    const corte = par.indexOf('=');
+    if (corte > 0) mapa.set(par.slice(0, corte), par.slice(corte + 1));
+  }
+
+  for (const linea of galletas ?? []) {
+    const [par, ...atributos] = linea.split('; ');
+    const corte = par.indexOf('=');
+    if (corte <= 0) continue;
+
+    const nombre = par.slice(0, corte);
+    const borrada = atributos.some((a) => /^max-age=0$/i.test(a.trim()));
+
+    if (borrada) mapa.delete(nombre);
+    else mapa.set(nombre, par.slice(corte + 1));
+  }
+
+  return [...mapa].map(([n, v]) => `${n}=${v}`).join('; ');
+}
+
+/**
+ * Hace una petición y devuelve { estado, cuerpo, cookie, galletas }.
  * No usa fetch nativo porque queremos manejar las cookies a mano
  * para simular un navegador.
+ *
+ * `cookie` es la PRIMERA cabecera `Set-Cookie` tal cual (sirve para mirar
+ * atributos como `Max-Age`), y `galletas` son todas, para poder juntarlas con
+ * `cookiesDe` como haría el navegador.
  */
 async function pedir(metodo, ruta, { cuerpo, token, cookie } = {}) {
   const cabeceras = {};
@@ -145,8 +191,10 @@ async function pedir(metodo, ruta, { cuerpo, token, cookie } = {}) {
   return {
     estado: res.status,
     cuerpo: datos,
-    // Extraemos la cookie de sesión si el servidor la envió.
+    // La primera cabecera `Set-Cookie` (para mirar atributos) y TODAS (para
+    // reconstruir lo que guardaría un navegador).
     cookie: res.headers.getSetCookie?.()?.[0] || null,
+    galletas: res.headers.getSetCookie?.() ?? [],
   };
 }
 
@@ -355,12 +403,42 @@ let cookieSesion = null;
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: emailCliente, contrasena }),
   });
-  const setCookie = cabeceras.headers.getSetCookie();
-  cookieSesion = setCookie?.[0] || '';
+  const setCookie = cabeceras.headers.getSetCookie() ?? [];
+  cookieSesion = cookiesDe(setCookie);
+
   afirmar(
-    cookieSesion.includes('HttpOnly'),
-    '⛔ la cookie de sesión es HttpOnly (JS no puede leerla)',
-    `cookie: ${cookieSesion.slice(0, 80)}`
+    setCookie.every((c) => c.includes('HttpOnly')),
+    '⛔ las DOS cookies de la sesión son HttpOnly (JS no puede leer ninguna)',
+    `cookies recibidas: ${setCookie.map((c) => c.split('=')[0]).join(', ')}`
+  );
+
+  /**
+   * 📌 DOS COOKIES, Y CADA UNA CON SU TRABAJO
+   *
+   * `innover_token` es el pase: viaja en cada petición y dura 2 horas.
+   * `innover_renovacion` es el que mantiene la sesión viva: dura 30 días, solo
+   * sirve para pedir otro pase, y por eso está acotado a `/api/auth`.
+   *
+   * Si faltara la segunda, la sesión volvería a caerse cada 2 horas (el fallo
+   * original, el que motivó todo esto). Si faltara la primera, no habría nada
+   * que autenticara y el usuario vería el muro con la sesión abierta.
+   */
+  afirmar(
+    cookieSesion.includes('innover_token=') && cookieSesion.includes('innover_renovacion='),
+    '⛔ el login deja las DOS cookies (pase corto + token de renovación)',
+    cookieSesion.slice(0, 140)
+  );
+
+  afirmar(
+    setCookie.some((c) => c.includes('innover_renovacion') && c.includes('Path=/api/auth')),
+    '⛔ el token de renovación se acota a /api/auth (no viaja en cada petición)',
+    setCookie.find((c) => c.includes('renovacion'))?.slice(0, 90) ?? '(no llegó)'
+  );
+
+  afirmar(
+    setCookie.some((c) => c.includes('innover_token') && c.includes('Path=/')),
+    '⛔ el pase sí viaja a todo el sitio (si no, no autentica ninguna ruta)',
+    setCookie.find((c) => c.includes('innover_token'))?.slice(0, 90) ?? '(no llegó)'
   );
 }
 
@@ -1894,15 +1972,226 @@ seccion('17. El mapa: los puntos de la búsqueda');
 }
 
 // ========================================
-seccion('18. Logout');
+seccion('18. La sesión se renueva antes de caerse');
+// ========================================
+//
+// 📌 QUÉ SE ESTÁ PROBANDO AQUÍ, Y POR QUÉ IMPORTA TANTO
+//
+// Antes, la sesión duraba 2 horas y luego se caía: el usuario volvía al login
+// aunque estuviera navegando, y en una web de casas —que se mira un rato y se
+// deja— eso pasaba SIEMPRE. Ahora el pase corto se cambia por uno nuevo cuando
+// vence, usando el token de 30 días, y la persona no se entera de nada.
+//
+// Y debajo de eso hay una trampa que no se ve: ROTAR. Cada renovación entrega
+// un token nuevo y marca el usado, para que un token robado deje de servir en
+// cuanto el dueño renueve. Pero entonces dos pestañas que renuevan a la vez se
+// pisan (la segunda llega con un token que la primera acaba de gastar) y un
+// sistema riguroso echaría al dueño por un ladrón. De ahí la ventana de gracia,
+// y de ahí que se prueben las dos mitades: la gracia y la alarma.
+let cookieRenovada = null;
+{
+  // Se entra de nuevo, para que esta sección no dependa de lo que hayan dejado
+  // las anteriores. Un login correcto no gasta intentos del limitador (ese
+  // cuenta solo los fallidos).
+  const entrar = await pedir('POST', '/api/auth/login', {
+    cuerpo: { email: emailCliente, contrasena },
+  });
+  const cookieInicial = cookiesDe(entrar.galletas);
+
+  afirmar(
+    entrar.estado === 200 && cookieInicial.includes('innover_renovacion='),
+    'hay con qué probar: el login deja el token de renovación',
+    `estado ${entrar.estado}`
+  );
+
+  // --- 1. La renovación normal ---
+  const primera = await pedir('POST', '/api/auth/renovar', { cookie: cookieInicial });
+  cookieRenovada = cookiesDe(primera.galletas, cookieInicial);
+
+  afirmar(
+    primera.estado === 200,
+    'renovar con un token válido devuelve 200',
+    `recibido ${primera.estado}`
+  );
+  afirmar(
+    primera.galletas.length === 2,
+    '⛔ la renovación devuelve las DOS cookies (pase nuevo + token nuevo)',
+    `llegaron ${primera.galletas.length}`
+  );
+
+  const paseViejo = /(?:^|; )innover_token=([^;]+)/.exec(cookieInicial)?.[1];
+  const paseNuevo = /(?:^|; )innover_token=([^;]+)/.exec(cookieRenovada)?.[1];
+  afirmar(
+    !!paseNuevo && paseNuevo !== paseViejo,
+    '⛔ el pase es NUEVO (no se reenvía el mismo)',
+    paseViejo ? `viejo: ${paseViejo.slice(0, 12)}…` : '(no se encontró el pase viejo)'
+  );
+
+  const perfil = await pedir('GET', '/api/auth/perfil', { cookie: cookieRenovada });
+  afirmar(
+    perfil.estado === 200 && perfil.cuerpo?.email === emailCliente,
+    '⛔ con el pase nuevo se sigue dentro, sin volver a escribir la contraseña',
+    `estado ${perfil.estado}`
+  );
+
+  // --- 2. Tokens basura: no renuevan, y no pueden apagar nada ---
+  const sinCookie = await pedir('POST', '/api/auth/renovar');
+  afirmar(
+    sinCookie.estado === 401,
+    'sin cookie de renovación devuelve 401 (no 500)',
+    `recibido ${sinCookie.estado}`
+  );
+
+  const inventado = await pedir('POST', '/api/auth/renovar', {
+    cookie: 'innover_renovacion=esto-no-lo-ha-emitido-nadie',
+  });
+  afirmar(
+    inventado.estado === 401,
+    'un token de renovación inventado devuelve 401',
+    `recibido ${inventado.estado}`
+  );
+
+  const sigueViva = await pedir('GET', '/api/auth/perfil', { cookie: cookieRenovada });
+  afirmar(
+    sigueViva.estado === 200,
+    '⛔ los intentos con basura NO tumban la sesión de verdad (solo fallan)',
+    `recibido ${sigueViva.estado}`
+  );
+
+  // --- 3. La ventana de gracia: dos pestañas a la vez ---
+  //
+  // Se reutiliza el token del login, que ya se gastó en la renovación anterior.
+  // Eso es exactamente lo que pasa cuando dos pestañas renuevan a la vez: la
+  // segunda manda el token que ya no era el vigente.
+  const enGracia = await pedir('POST', '/api/auth/renovar', { cookie: cookieInicial });
+  const cookieEnGracia = cookiesDe(enGracia.galletas, cookieInicial);
+
+  afirmar(
+    enGracia.estado === 200,
+    '⛔ dos pestañas renovando a la vez NO se echan la una a la otra (ventana de gracia)',
+    `recibido ${enGracia.estado}`
+  );
+
+  // --- 4. La alarma: el mismo token, pero tarde ---
+  //
+  // Un token rotado hace un minuto puede ser una pestaña despistada. Uno rotado
+  // hace cinco ya no: es una copia. Se comprueba contra la base de verdad, que
+  // es la única forma de simular el paso del tiempo sin esperar un minuto real.
+  const prisma = new PrismaClient();
+  try {
+    const tokenViejo = /(?:^|; )innover_renovacion=([^;]+)/.exec(cookieInicial)?.[1];
+    const huella = createHash('sha256').update(tokenViejo).digest('hex');
+
+    const fila = await prisma.tokenRenovacion.findUnique({ where: { token_hash: huella } });
+    afirmar(
+      !!fila && fila.rotado_en !== null,
+      '⛔ el token usado se MARCA como rotado; no se borra (borrarlo perdería la señal)',
+      fila ? `rotado_en: ${fila.rotado_en}` : 'no se encontró la fila'
+    );
+
+    await prisma.tokenRenovacion.update({
+      where: { token_hash: huella },
+      data: { rotado_en: new Date(Date.now() - 5 * 60 * 1000) },
+    });
+
+    const tardia = await pedir('POST', '/api/auth/renovar', { cookie: cookieInicial });
+    afirmar(
+      tardia.estado === 401,
+      '⛔ un token de renovación que reaparece tarde se rechaza (alarma de reutilización)',
+      `recibido ${tardia.estado}`
+    );
+
+    // Y la alarma apaga TODO, incluida la sesión legítima: el dueño tendrá que
+    // volver a entrar, y el que copió el token no podrá hacer nada. Ante la
+    // duda, se cierra.
+    const trasLaAlarma = await pedir('POST', '/api/auth/renovar', { cookie: cookieEnGracia });
+    afirmar(
+      trasLaAlarma.estado === 401,
+      '⛔ la alarma apaga TODAS las sesiones de esa persona, no solo la del token repetido',
+      `recibido ${trasLaAlarma.estado}`
+    );
+
+    const filasVivas = await prisma.tokenRenovacion.count({
+      where: { usuario_id: entrar.cuerpo?.usuario?.id, revocado_en: null },
+    });
+    afirmar(
+      filasVivas === 0,
+      '⛔ en la base no queda ninguna sesión viva después de la alarma',
+      `quedan ${filasVivas}`
+    );
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+// ========================================
+seccion('19. Logout');
 // ========================================
 {
-  const r = await pedir('POST', '/api/auth/logout');
+  // Sesión nueva: la sección anterior cerró todas a propósito (esa es la
+  // alarma). Sin esto, la prueba de abajo pasaría por el motivo equivocado.
+  const entrar = await pedir('POST', '/api/auth/login', {
+    cuerpo: { email: emailCliente, contrasena },
+  });
+  const cookieDelLogout = cookiesDe(entrar.galletas);
+
+  const r = await pedir('POST', '/api/auth/logout', { cookie: cookieDelLogout });
   afirmar(r.estado === 200, 'logout responde 200');
   afirmar(
-    r.cookie?.includes('Max-Age=0') || r.cookie?.includes('Expires=Thu, 01 Jan 1970'),
-    '⛔ el logout borra la cookie del navegador',
-    `cookie: ${r.cookie}`
+    r.galletas.length === 2 &&
+      r.galletas.every((c) => c.includes('Max-Age=0') || c.includes('1970')),
+    '⛔ el logout borra LAS DOS cookies del navegador',
+    r.galletas.map((c) => c.split(';')[0]).join(' | ')
+  );
+
+  /**
+   * ⛔ Y ADEMÁS EL TOKEN QUEDA MUERTO EN LA BASE.
+   *
+   * Borrar la cookie solo le dice al navegador "deja de mandarla". El token
+   * seguiría sirviendo para cualquiera que lo tuviera guardado: el ordenador
+   * compartido, el portátil que se prestó, la copia que hizo una extensión.
+   * Que la renovación falle después del logout es lo que hace que cerrar
+   * sesión signifique algo de verdad.
+   */
+  const revive = await pedir('POST', '/api/auth/renovar', { cookie: cookieDelLogout });
+  afirmar(
+    revive.estado === 401,
+    '⛔ después del logout, el token de renovación ya no revive la sesión',
+    `recibido ${revive.estado}`
+  );
+
+  /**
+   * 📌 Y UNA VERDAD INCÓMODA QUE CONVIENE DEJAR ESCRITA:
+   * EL PASE CORTO SIGUE VALIENDO HASTA QUE VENZA.
+   *
+   * El token de 2 horas es autocontenido: el servidor comprueba la firma y no
+   * consulta nada, y eso es lo que lo hace rápido. El precio es que no se puede
+   * revocar antes de tiempo, ni con un logout: durante lo que le quede de vida,
+   * quien tenga ese token entra.
+   *
+   * Por eso dura 2 horas y no un mes, y por eso la cookie que de verdad
+   * mantiene la sesión (la de 30 días) SÍ se revoca. El navegador, además,
+   * acaba de borrar la cookie, así que el usuario no puede usar ese pase ni
+   * queriendo: solo lo tendría quien lo hubiera copiado antes.
+   *
+   * Se afirma tal cual —200— porque describir lo que pasa es más útil que
+   * fingir que no pasa. El día que se añada revocación real de pases cortos,
+   * esta prueba fallará, y será la señal de que hay que actualizarla.
+   */
+  const paseTodavia = await pedir('GET', '/api/auth/perfil', { cookie: cookieDelLogout });
+  afirmar(
+    paseTodavia.estado === 200,
+    '📌 el pase corto sigue valiendo hasta que venza (el precio del JWT; por eso dura 2 h)',
+    `recibido ${paseTodavia.estado}`
+  );
+
+  // Y sin la cookie (que es como queda el navegador después del logout), el
+  // buscador vuelve a estar cerrado.
+  const muro = await pedir('GET', '/api/propiedades');
+  afirmar(
+    muro.estado === 401,
+    '⛔ tras cerrar sesión el buscador vuelve a estar cerrado',
+    `recibido ${muro.estado}`
   );
 }
 

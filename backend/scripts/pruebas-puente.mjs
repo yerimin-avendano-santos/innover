@@ -32,6 +32,46 @@ function afirmar(cond, nombre, detalle = '') {
 const sufijo = Date.now();
 const email = `puente-${sufijo}@innover.dev`;
 
+/**
+ * 🔑 COOKIES: la suite se comporta como un navegador.
+ *
+ * ⛔ ANTES ESTO ERA `cookie.split(';')[0]`, Y FUNCIONABA DE CASUALIDAD.
+ *
+ * Había una sola cookie, así que quedarse con el primer trozo bastaba — aunque
+ * ese trozo salía de la cabecera `Set-Cookie` ENTERA (`innover_token=…;
+ * Path=/; HttpOnly; Max-Age=…`), que no es una cabecera `Cookie` válida: el
+ * backend la entendía porque `cookie-parser` ignora lo que no reconoce, no
+ * porque estuviera bien escrito.
+ *
+ * Desde que la sesión usa DOS cookies (el pase corto y el token que lo
+ * renueva), quedarse con la primera dejaría fuera justo la que mantiene la
+ * sesión viva, y las pruebas de renovación no probarían nada. Esto imita a un
+ * navegador de verdad: las cookies se acumulan, se reemplazan por nombre, y
+ * `Max-Age=0` significa borrar.
+ */
+function cookiesDe(respuesta, cookieActual = '') {
+  const galletas = new Map();
+
+  for (const par of cookieActual.split('; ')) {
+    const corte = par.indexOf('=');
+    if (corte > 0) galletas.set(par.slice(0, corte), par.slice(corte + 1));
+  }
+
+  for (const linea of respuesta.headers.getSetCookie?.() ?? []) {
+    const [par, ...atributos] = linea.split('; ');
+    const corte = par.indexOf('=');
+    if (corte <= 0) continue;
+
+    const nombre = par.slice(0, corte);
+    const borrada = atributos.some((a) => /^max-age=0$/i.test(a.trim()));
+
+    if (borrada) galletas.delete(nombre);
+    else galletas.set(nombre, par.slice(corte + 1));
+  }
+
+  return [...galletas].map(([n, v]) => `${n}=${v}`).join('; ');
+}
+
 console.log(`\nProbando el puente ${FRONTEND} → ${BACKEND}\n`);
 
 // --- 1. El muro, a través del puente ---
@@ -68,21 +108,49 @@ let cookie = '';
       contrasena: 'ClaveSegura2026',
     }),
   });
-  const setCookie = r.headers.getSetCookie();
-  cookie = setCookie?.[0] || '';
+  const setCookie = r.headers.getSetCookie() ?? [];
+  cookie = cookiesDe(r);
 
   afirmar(r.status === 201, 'registro por el puente', `status ${r.status}`);
   afirmar(
-    cookie.includes('innover_token') && cookie.includes('HttpOnly'),
-    '⛔ la cookie httpOnly llega al navegador a través del puente',
-    cookie.slice(0, 100)
+    cookie.includes('innover_token=') && cookie.includes('innover_renovacion='),
+    '⛔ las DOS cookies de la sesión llegan al navegador a través del puente',
+    cookie.slice(0, 140)
+  );
+  afirmar(
+    setCookie.every((c) => c.includes('HttpOnly')),
+    '⛔ y las dos son HttpOnly (ningún script puede leerlas)',
+    setCookie.map((c) => c.slice(0, 40)).join(' | ')
+  );
+
+  /**
+   * ⛔ ESTA ES LA PRUEBA DEL ARREGLO DEL PUENTE.
+   *
+   * El puente copiaba las cabeceras de respuesta con `get('set-cookie')`, que
+   * con DOS cookies devuelve una sola cabecera con las dos pegadas por una
+   * coma — y una coma también separa atributos dentro de una cookie
+   * (`Expires=Wed, 21 Oct 2026 …`), así que el navegador recibe un texto
+   * ambiguo. Que lleguen DOS cabeceras separadas es lo que se comprueba aquí,
+   * y es imposible de ver en el uso normal: la sesión funcionaría a medias y
+   * sin un solo error.
+   */
+  afirmar(
+    setCookie.length === 2,
+    '⛔ el puente reenvía las dos Set-Cookie SEPARADAS (no pegadas con una coma)',
+    `llegaron ${setCookie.length}: ${setCookie.map((c) => c.split('=')[0]).join(', ')}`
+  );
+
+  afirmar(
+    setCookie.some((c) => c.includes('Path=/api/auth')),
+    '⛔ el token de renovación solo viaja a /api/auth (no en cada petición)',
+    setCookie.find((c) => c.includes('renovacion'))?.slice(0, 80) ?? '(no llegó)'
   );
 }
 
 // --- 4. La cookie autentica las peticiones siguientes ---
 {
   const r = await fetch(`${FRONTEND}/api/auth/perfil`, {
-    headers: { Cookie: cookie.split(';')[0] },
+    headers: { Cookie: cookie },
   });
   const d = await r.json();
   afirmar(r.status === 200, 'la cookie del puente autentica el perfil', `status ${r.status}: ${JSON.stringify(d).slice(0, 120)}`);
@@ -92,7 +160,7 @@ let cookie = '';
 // --- 5. Autorización propagada ---
 {
   const r = await fetch(`${FRONTEND}/api/usuarios`, {
-    headers: { Cookie: cookie.split(';')[0] },
+    headers: { Cookie: cookie },
   });
   afirmar(r.status === 403, '⛔ las rutas protegidas del backend también lo están en el puente', `status ${r.status}`);
 }
@@ -104,7 +172,7 @@ let cookie = '';
 let slugCompartible = null;
 {
   const r = await fetch(`${FRONTEND}/api/propiedades?tipo=VENTA`, {
-    headers: { Cookie: cookie.split(';')[0] },
+    headers: { Cookie: cookie },
   });
   const d = await r.json();
   afirmar(r.status === 200, 'con sesión, el buscador responde por el puente', `status ${r.status}`);
@@ -238,7 +306,7 @@ let slugCompartible = null;
 // --- 8. Filtrado por el puente ---
 {
   const r = await fetch(`${FRONTEND}/api/propiedades?tipo=ALQUILER`, {
-    headers: { Cookie: cookie.split(';')[0] },
+    headers: { Cookie: cookie },
   });
   const d = await r.json();
   afirmar(
@@ -254,7 +322,7 @@ let slugCompartible = null;
   // `distancia_km` no llegaba a ejercitarse.
   const r = await fetch(
     `${FRONTEND}/api/propiedades/cercanas?latitud=-9.9299&longitud=-76.2401&radioKm=5`,
-    { headers: { Cookie: cookie.split(';')[0] } }
+    { headers: { Cookie: cookie } }
   );
   const d = await r.json();
   afirmar(r.status === 200, 'la búsqueda por cercanía funciona por el puente');
@@ -273,24 +341,121 @@ let slugCompartible = null;
 // --- 10. Errores del backend se propagan con su código ---
 {
   const r = await fetch(`${FRONTEND}/api/propiedades?precioMin=abc`, {
-    headers: { Cookie: cookie.split(';')[0] },
+    headers: { Cookie: cookie },
   });
   afirmar(r.status === 400, 'los errores de validación conservan su código HTTP', `status ${r.status}`);
 }
 
-// --- 11. Logout limpia la cookie ---
+// --- 11. La sesión se renueva por el puente ---
+//
+// 📌 POR QUÉ ESTO SE PRUEBA AQUÍ Y NO SOLO EN LA SUITE DE LA API
+//
+// Porque el camino real pasa por el puente, y el puente era justo donde estaba
+// el fallo silencioso: copiaba UNA cabecera `set-cookie`, y con dos cookies el
+// navegador recibe media sesión. Aquí se recorre el ciclo entero como lo vive
+// el navegador: se manda el token de renovación, llegan cookies nuevas, y el
+// pase nuevo sirve para seguir pidiendo.
+let cookieRenovada = '';
+{
+  const r = await fetch(`${FRONTEND}/api/auth/renovar`, {
+    method: 'POST',
+    headers: { Cookie: cookie },
+  });
+  const setCookie = r.headers.getSetCookie() ?? [];
+  cookieRenovada = cookiesDe(r, cookie);
+
+  afirmar(r.status === 200, 'la renovación responde por el puente', `status ${r.status}`);
+  afirmar(
+    setCookie.length === 2,
+    '⛔ la respuesta de renovación trae las dos cookies nuevas',
+    `llegaron ${setCookie.length}`
+  );
+
+  const paseViejo = /(?:^|; )innover_token=([^;]+)/.exec(cookie)?.[1];
+  const paseNuevo = /(?:^|; )innover_token=([^;]+)/.exec(cookieRenovada)?.[1];
+  afirmar(
+    !!paseNuevo && paseNuevo !== paseViejo,
+    '⛔ el pase corto es OTRO (se renovó, no se reenvió el mismo)',
+    paseViejo ? `viejo: ${paseViejo.slice(0, 12)}…` : '(no se encontró el viejo)'
+  );
+
+  const perfil = await fetch(`${FRONTEND}/api/auth/perfil`, {
+    headers: { Cookie: cookieRenovada },
+  });
+  afirmar(
+    perfil.status === 200,
+    '⛔ el pase nuevo autentica: la sesión sigue viva sin volver a entrar',
+    `status ${perfil.status}`
+  );
+
+  // Un token inventado no renueva nada, y un fallo aquí no puede ser un 500:
+  // es el caso más probable de todos (navegador con una cookie basura).
+  const inventado = await fetch(`${FRONTEND}/api/auth/renovar`, {
+    method: 'POST',
+    headers: { Cookie: 'innover_renovacion=esto-no-lo-ha-emitido-nadie' },
+  });
+  afirmar(
+    inventado.status === 401,
+    '⛔ un token de renovación inventado devuelve 401 (no 500)',
+    `status ${inventado.status}`
+  );
+
+  // Y sin cookie ninguna, tampoco. Esta es la petición que hace el navegador de
+  // un visitante cualquiera si algún día se llama a renovar sin sesión.
+  const sinNada = await fetch(`${FRONTEND}/api/auth/renovar`, { method: 'POST' });
+  afirmar(
+    sinNada.status === 401,
+    '⛔ sin cookie de renovación, 401',
+    `status ${sinNada.status}`
+  );
+
+  // El token bueno sigue funcionando después de los dos intentos fallidos: un
+  // token basura no puede apagar la sesión de nadie.
+  const sigueViva = await fetch(`${FRONTEND}/api/auth/perfil`, {
+    headers: { Cookie: cookieRenovada },
+  });
+  afirmar(
+    sigueViva.status === 200,
+    '⛔ los intentos fallidos NO tumban la sesión que sí vale',
+    `status ${sigueViva.status}`
+  );
+}
+
+// --- 12. Logout limpia las cookies y apaga el token ---
 //
 // Va al final: después de esto ya no hay sesión, y cualquier prueba de
 // búsqueda que viniera detrás fallaría por 401 sin que el motivo tenga
 // relación con lo que comprueba.
 {
-  const r = await fetch(`${FRONTEND}/api/auth/logout`, { method: 'POST' });
-  const setCookie = r.headers.getSetCookie()?.[0] || '';
+  const r = await fetch(`${FRONTEND}/api/auth/logout`, {
+    method: 'POST',
+    headers: { Cookie: cookieRenovada },
+  });
+  const setCookie = r.headers.getSetCookie() ?? [];
   afirmar(r.status === 200, 'logout por el puente');
   afirmar(
-    setCookie.includes('Max-Age=0') || setCookie.includes('1970'),
-    '⛔ el logout reenvía la cookie de expiración',
-    setCookie.slice(0, 100)
+    setCookie.length === 2 &&
+      setCookie.every((c) => c.includes('Max-Age=0') || c.includes('1970')),
+    '⛔ el logout borra LAS DOS cookies del navegador',
+    setCookie.map((c) => c.split(';')[0]).join(' | ')
+  );
+
+  /**
+   * ⛔ Y ADEMÁS EL TOKEN QUEDA MUERTO EN EL SERVIDOR.
+   *
+   * Borrar la cookie solo le dice al navegador "deja de mandarla"; el token
+   * seguiría sirviendo para cualquiera que lo tuviera guardado — el ordenador
+   * compartido, el portátil que se prestó, la copia que hizo una extensión.
+   * Esto comprueba que cerrar sesión significa algo de verdad.
+   */
+  const revive = await fetch(`${FRONTEND}/api/auth/renovar`, {
+    method: 'POST',
+    headers: { Cookie: cookieRenovada },
+  });
+  afirmar(
+    revive.status === 401,
+    '⛔ tras cerrar sesión, el token de renovación no revive la sesión',
+    `status ${revive.status}`
   );
 
   // Y ahora sí: sin sesión, el buscador vuelve a cerrarse. Cierra el círculo
@@ -303,19 +468,19 @@ let slugCompartible = null;
   );
 }
 
-// --- 12. Páginas del frontend responden ---
+// --- 13. Páginas del frontend responden ---
 for (const ruta of ['/', '/login', '/registro', '/publicar']) {
   const r = await fetch(`${FRONTEND}${ruta}`);
   afirmar(r.status === 200, `la página ${ruta} responde 200`, `status ${r.status}`);
 }
 
-// --- 13. Cabeceras de seguridad en el frontend ---
+// --- 14. Cabeceras de seguridad en el frontend ---
 {
   const r = await fetch(`${FRONTEND}/`);
   afirmar(r.headers.get('x-content-type-options') === 'nosniff', 'cabeceras de seguridad activas');
 }
 
-// --- 14. Descubrimiento para buscadores: sitemap y robots ---
+// --- 15. Descubrimiento para buscadores: sitemap y robots ---
 //
 // 📌 POR QUÉ ESTA PRUEBA MIRA EL TEXTO Y NO SOLO EL CÓDIGO
 //
