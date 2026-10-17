@@ -18,6 +18,8 @@
 // distinguirlos. Esas dos van contra el catálogo de Postgres.
 
 import 'dotenv/config';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { PrismaClient } from '@prisma/client';
 
 const BASE = process.env.BASE_URL || 'http://localhost:5000';
@@ -754,6 +756,33 @@ seccion('8. Búsqueda y filtros');
     `esperado ${vistasIniciales}, recibido ${dueno.cuerpo?.propiedad?.vistas}`
   );
 
+  // --- El sitemap: la otra lectura pública, y la más delicada ---
+  //
+  // Es la lista que se le entrega a Google, así que un borrador filtrándose
+  // aquí no sería "un enlace de más": sería publicar lo que su dueño todavía
+  // no ha decidido enseñar, y además dejarlo apuntado.
+  {
+    const sitemap = await pedir('GET', '/api/propiedades/sitemap');
+    afirmar(
+      sitemap.estado === 200,
+      'el sitemap se puede pedir sin sesión (un rastreador no tiene cuenta)',
+      `recibido ${sitemap.estado}`
+    );
+
+    const campos = Object.keys(sitemap.cuerpo?.datos?.[0] ?? {});
+    afirmar(
+      campos.length === 2 && campos.includes('slug') && campos.includes('fecha_actualizacion'),
+      '⛔ el sitemap devuelve SOLO slug y fecha',
+      `campos: [${campos.join(', ')}] — detrás de una puerta abierta, cuanto menos haya, mejor`
+    );
+
+    afirmar(
+      !sitemap.cuerpo?.datos?.some((p) => p.slug === creada.cuerpo?.propiedad?.slug),
+      '⛔ un BORRADOR NO aparece en el sitemap',
+      `buscaba ${creada.cuerpo?.propiedad?.slug}`
+    );
+  }
+
   // Se borra porque la suite no limpia lo que crea, y esta prueba la correrá
   // gente muchas veces.
   const borrada = await pedir('DELETE', `/api/propiedades/${idBorrador}`, {
@@ -1466,5 +1495,54 @@ if (fallos.length) {
   fallos.forEach((f) => console.log(`    · ${f}`));
 }
 console.log(`${'='.repeat(50)}\n`);
+
+// ========================================
+// Limpieza — solo si todo pasó
+// ========================================
+//
+// 📌 POR QUÉ LA SUITE SE LIMPIA A SÍ MISMA, Y SOLO CUANDO SALE BIEN
+//
+// La base es REMOTA y COMPARTIDA, y esta suite crea usuarios y propiedades en
+// cada corrida. Sin limpieza cada corrida deja ~8 propiedades publicadas
+// colgando de usuarios que ya no existen. Eso siempre fue basura, pero desde
+// que existe `/sitemap.xml` es algo peor: esas propiedades entran en el
+// sitemap, o sea que la base de desarrollo le estaría enseñando a Google
+// decenas de anuncios de prueba. Se contaron 76.
+//
+// ⚠️ El criterio de qué es basura NO se reescribe aquí: se llama al limpiador
+// que ya existe. Es importante que sea uno solo — si mañana las pruebas crean
+// usuarios con otro prefijo, hay un único sitio donde añadirlo, y esta llamada
+// lo hereda sola.
+//
+// ⚠️ Y solo se limpia si NO hubo fallos, a propósito. Cuando algo falla, los
+// datos son la evidencia: un usuario con el rol mal puesto, una propiedad con
+// el estado raro. Borrar la escena para dejar la base bonita cambiaría un
+// problema de espacio por uno de depuración, que es bastante peor.
+if (pruebasFallidas === 0) {
+  try {
+    const salida = execFileSync(
+      process.execPath, // el mismo Node que está corriendo esto
+      ['scripts/limpiar-usuarios-prueba.mjs', '--ejecutar'],
+      { cwd: fileURLToPath(new URL('..', import.meta.url)), encoding: 'utf8' }
+    );
+
+    // El limpiador escribe un resumen largo; interesa la última línea, que es
+    // la que dice cuántos borró (o que no había nada).
+    const resumen = salida
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.startsWith('✓'))
+      .pop();
+
+    console.log(`  ${gris('Limpieza automática (base compartida):')}`);
+    console.log(`  ${gris(resumen ?? 'sin cambios')}\n`);
+  } catch (error) {
+    // Que la limpieza falle no puede cambiar el resultado de las pruebas: si
+    // pasaron, pasaron. Se avisa y se sigue.
+    console.log(`  ${rojo('La limpieza automática falló:')} ${error.message}\n`);
+  }
+} else {
+  console.log(`  ${gris('Con fallos, no se limpia nada: los datos son la evidencia.')}\n`);
+}
 
 process.exit(pruebasFallidas > 0 ? 1 : 0);

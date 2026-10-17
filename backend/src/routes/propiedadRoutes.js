@@ -56,6 +56,7 @@ import {
   actualizarPropiedad,
   eliminarPropiedad,
   obtenerPropiedadesCercanas,
+  obtenerListaParaSitemap,
 } from '../controllers/propiedadController.js';
 
 const router = express.Router();
@@ -97,6 +98,18 @@ router.get('/', verificarToken, validar(filtrosPropiedadSchema, 'query'), obtene
 // "Mis propiedades": el usuario_id sale del token, así que es imposible
 // pedir las propiedades de otra persona por esta ruta.
 router.get('/mias', verificarToken, obtenerMisPropiedades);
+
+// --- PÚBLICA, pero solo con lo que necesita un rastreador ---
+//
+// 📌 VA AQUÍ ARRIBA POR UN MOTIVO MECÁNICO, no por gusto: en Express el orden
+// manda, así que si estuviera debajo de `/:id` la petición entraría por la
+// ficha con "sitemap" como slug y devolvería un 400 de validación. Es la misma
+// trampa que ya obligó a subir `/mias` y `/cercanas`.
+//
+// Sin `verificarToken` a propósito: un rastreador no tiene cuenta, y esta es
+// la única forma de que llegue a las fichas. Devuelve dos campos y nada más
+// (ver `obtenerListaParaSitemap`).
+router.get('/sitemap', obtenerListaParaSitemap);
 
 router.post(
   '/',

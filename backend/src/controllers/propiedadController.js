@@ -415,6 +415,51 @@ function esVisiblePara(usuario, propiedad) {
   return usuario.rol === 'ADMIN' || usuario.id === propiedad.usuario_id;
 }
 
+/**
+ * Cuántas URLs se aceptan en el sitemap.
+ *
+ * El formato permite 50 000 por archivo. Se corta antes por dos motivos: un
+ * archivo de ese tamaño tarda en generarse y en leerse, y quedarse corto deja
+ * un aviso (el `total` no cuadra con las URLs) antes de llegar al límite real.
+ * Si algún día se alcanza, toca partir el sitemap en varios archivos y
+ * anunciarlos con un índice — trabajo que solo tiene sentido cuando estorbe.
+ */
+const MAX_URLS_SITEMAP = 10000;
+
+// ========================================
+// [READ] La lista para el sitemap.xml
+// ========================================
+// 📌 POR QUÉ EXISTE ESTE ENDPOINT, SI LA FICHA YA ES PÚBLICA
+//
+// Porque "pública" no es lo mismo que "encontrable". El buscador exige sesión
+// y un rastreador no tiene cuenta, así que no hay un solo enlace interno que
+// lleve a una ficha: Google solo las descubriría por enlaces externos. Esta
+// lista es la que se convierte en `/sitemap.xml`, que es el mecanismo estándar
+// para decirle a un buscador qué páginas hay.
+//
+// ⛔ DEVUELVE DOS CAMPOS, Y NADA MÁS.
+//
+// Un endpoint público es una puerta abierta: cuanto menos haya detrás, menos
+// importa que esté abierta. Aquí hay exactamente lo que necesita un sitemap —
+// la URL y cuándo cambió (la fecha es lo que le dice a Google si vale la pena
+// volver)—. Ni precios, ni direcciones, ni dueño, ni contadores. Todo eso vive
+// en la ficha, que también es pública pero se pide de una en una y con el
+// resto del contexto alrededor.
+//
+// Solo PUBLICADAS, y esto sí es un candado y no una comodidad: un BORRADOR
+// aquí sería filtrar al buscador justo lo que su dueño no ha decidido
+// enseñar, y además dejarlo apuntado para siempre.
+export const obtenerListaParaSitemap = async (req, res) => {
+  const propiedades = await prisma.propiedad.findMany({
+    where: { estado: 'PUBLICADA' },
+    select: { slug: true, fecha_actualizacion: true },
+    orderBy: { fecha_actualizacion: 'desc' },
+    take: MAX_URLS_SITEMAP,
+  });
+
+  res.json({ datos: propiedades, total: propiedades.length });
+};
+
 // ========================================
 // [READ] Propiedades de un usuario
 // ========================================

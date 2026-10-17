@@ -9,6 +9,9 @@
 // las pruebas de búsqueda sin sesión, y con el buscador cerrado fallarían
 // todas por un motivo que no tiene nada que ver con lo que prueban.
 
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
 const FRONTEND = 'http://localhost:3000';
 const BACKEND = 'http://localhost:5000';
 
@@ -270,8 +273,76 @@ for (const ruta of ['/', '/login', '/registro', '/publicar']) {
   afirmar(r.headers.get('x-content-type-options') === 'nosniff', 'cabeceras de seguridad activas');
 }
 
+// --- 14. Descubrimiento para buscadores: sitemap y robots ---
+//
+// 📌 POR QUÉ ESTA PRUEBA MIRA EL TEXTO Y NO SOLO EL CÓDIGO
+//
+// Un sitemap puede responder 200 y estar vacío, o peor: apuntar a otro
+// dominio. No hay ningún error que lo delate — solo un buscador que no indexa
+// nada y un dueño que no entiende por qué—. Lo que importa es que haya FICHAS
+// dentro y que las URLs sean ABSOLUTAS: el formato de sitemap no admite rutas
+// relativas, porque quien lo lee no está navegando el sitio, está leyendo una
+// lista.
+//
+// Y esto es la mitad que faltaba del SEO: la ficha lleva meses siendo pública
+// e indexable, pero el buscador está detrás del muro, así que un rastreador no
+// tenía por dónde llegar a ninguna.
+{
+  const r = await fetch(`${FRONTEND}/sitemap.xml`);
+  const xml = await r.text();
+  afirmar(r.status === 200, '/sitemap.xml responde 200', `status ${r.status}`);
+  afirmar(xml.includes('<urlset'), 'el sitemap es XML de verdad', xml.slice(0, 100));
+
+  const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  afirmar(
+    locs.length > 1,
+    '⛔ el sitemap trae más de una URL (portada + fichas)',
+    `urls: ${locs.length}`
+  );
+  afirmar(
+    locs.every((u) => u.startsWith('http')),
+    '⛔ todas las URLs del sitemap son absolutas',
+    locs.find((u) => !u.startsWith('http')) ?? ''
+  );
+  afirmar(
+    locs.some((u) => u.includes('/propiedad/')),
+    '⛔ hay fichas en el sitemap (es para lo que existe)',
+    `urls: ${locs.length}`
+  );
+
+  const r2 = await fetch(`${FRONTEND}/robots.txt`);
+  const txt = await r2.text();
+  afirmar(r2.status === 200, '/robots.txt responde 200', `status ${r2.status}`);
+  afirmar(txt.includes('Sitemap:'), 'robots.txt anuncia el sitemap', txt.slice(0, 160));
+  afirmar(
+    txt.includes('Disallow: /api/'),
+    'robots.txt deja fuera el puente (/api duplica el contenido de las fichas)'
+  );
+}
+
 console.log(`\n${'='.repeat(50)}`);
 console.log(`  ${ok} pruebas pasaron, ${fallos} fallaron`);
 console.log(`${'='.repeat(50)}\n`);
+
+// La misma limpieza que la suite de API, y por el mismo motivo: la base es
+// compartida y esta suite crea un usuario `puente-*` en cada corrida. El
+// criterio de qué es basura vive en un solo script, que es el que se llama.
+if (fallos === 0) {
+  try {
+    const salida = execFileSync(
+      process.execPath,
+      ['scripts/limpiar-usuarios-prueba.mjs', '--ejecutar'],
+      { cwd: fileURLToPath(new URL('..', import.meta.url)), encoding: 'utf8' }
+    );
+    const resumen = salida
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.startsWith('✓'))
+      .pop();
+    console.log(`  Limpieza automática: ${resumen ?? 'sin cambios'}\n`);
+  } catch (error) {
+    console.log(`  La limpieza automática falló: ${error.message}\n`);
+  }
+}
 
 process.exit(fallos > 0 ? 1 : 0);

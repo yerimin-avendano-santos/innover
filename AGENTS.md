@@ -73,10 +73,10 @@ Dos suites, ambas de integración contra el backend **real** (no hay mocks). Req
 
 ```bash
 npm run dev:backend                      # terminal 1
-npm run prueba                           # terminal 2 → 159 pruebas
+npm run prueba                           # terminal 2 → 162 pruebas
 
 npm run dev:frontend                     # terminal 1 (además del backend)
-node backend/scripts/pruebas-puente.mjs  # terminal 2 → 32 pruebas
+node backend/scripts/pruebas-puente.mjs  # terminal 2 → 40 pruebas
 ```
 
 **`pruebas-puente.mjs` no tiene script en package.json** — hay que invocarlo con la ruta completa, y necesita frontend **y** backend.
@@ -88,12 +88,12 @@ Hay **tres** limitadores, y una corrida de la suite toca dos:
 | Limitador | Tope | Lo que gasta una corrida |
 |---|---|---|
 | `limitadorAuth` | 10 **fallos** de login / 15 min | 6 |
-| `limitadorEscritura` | 20 escrituras / **hora** | 11 |
+| `limitadorEscritura` | 20 escrituras / **hora** | 13 |
 | `limitadorGeneral` | 300 peticiones / 15 min | sobra |
 
 El que engaña es **`limitadorEscritura`**: su ventana dura una hora, no quince
-minutos, y no tiene nada que ver con el login. Como la suite gasta 11 de 20,
-**dos corridas seguidas suman 22 y la segunda se corta a mitad**. Su síntoma
+minutos, y no tiene nada que ver con el login. Como la suite gasta 13 de 20,
+**dos corridas seguidas suman 26 y la segunda se corta a mitad**. Su síntoma
 es el peor posible: 18 pruebas fallan de golpe, sin relación entre sí, y
 parece que acabas de romper el código.
 
@@ -124,6 +124,16 @@ Dos protecciones para no volver a confundirlo con un bug:
 
 Ambas suites cubren la API a mano mejor que un archivo de peticiones: incluyen los casos que importan (escalada de privilegios, XSS, ownership) que sería fácil olvidar documentar.
 
+### Las suites se borran a sí mismas (solo si salen verdes)
+
+La base es **compartida**, así que dejar basura no es una molestia local: cada corrida creaba usuarios `test-cliente-*` / `puente-*` y sus propiedades, y esas propiedades **entran en `/sitemap.xml`**. Se llegaron a contar 76 — o sea que la base de desarrollo le estaba enseñando a Google decenas de anuncios de prueba.
+
+Las dos suites llaman al final a `limpiar-usuarios-prueba.mjs --ejecutar`, que es **el único sitio** que decide qué es basura (prefijos `test-cliente-`, `test-intruso-`, `puente-`, `corto-`). Si un día las pruebas crean usuarios con otro prefijo, se añade ahí y las dos suites lo heredan.
+
+- **Con fallos, no se limpia nada.** Los datos son la evidencia (un usuario con el rol mal puesto, una propiedad con el estado raro); borrarlos cambiaría un problema de espacio por uno de depuración, que es peor.
+- La limpieza va **directa a la base**, no por la API, así que **no gasta escrituras** del limitador.
+- Si a mano quieres limpiar: `node backend/scripts/limpiar-usuarios-prueba.mjs` (simula) y `--ejecutar` (borra).
+
 ---
 
 ## Arquitectura: lo que no se deduce de los nombres
@@ -137,6 +147,8 @@ Todo va por rutas relativas `/api/...` → `src/app/api/[...ruta]/route.ts` (cat
 - el puente reenvía `cookie` y copia `set-cookie`. Si tocas eso, rompes la sesión
 
 **Con una excepción, y es a propósito:** `app/propiedad/[slug]/page.tsx` es un Server Component y llama a `BACKEND_URL` directamente, reenviando la cookie a mano. No es un atajo: es la única forma de que el contenido venga **escrito en el HTML**, que es para lo que esa página existe (es el enlace que se comparte y lo que indexa Google). Pasando por el puente saldría vacía y el contenido lo pintaría JavaScript. Si añades otra llamada directa en un Server Component, mira esa primero: reenvía la cookie —sin ella el dueño no ve su propio `BORRADOR`— y distingue "no existe" de "no me contestó", porque lo primero es un 404 y lo segundo no.
+
+**La otra llamada directa es la del sitemap:** `app/sitemap.ts` pide `GET /api/propiedades/sitemap` y no manda cookie, porque no hay ninguna que mandar — un rastreador no tiene cuenta, y esa es justo la razón de que ese endpoint sea el otro público (devuelve dos campos: ver "Reglas de seguridad"). Ni el puente ni el navegador pintan nada aquí: el resultado es un archivo XML que se genera en el servidor.
 
 ### Sesión por cookie httpOnly
 
@@ -300,7 +312,8 @@ Son errores ya corregidos. Reabrirlos reintroduce agujeros explotables:
 - El **plan nunca** se acepta del propio usuario: lo escribe un `ADMIN` vía `PATCH /api/usuarios/:id/plan`
 - `/api/usuarios` exige `ADMIN`; los usuarios editan su perfil vía `/api/auth`
 - `verificarDuenio` va siempre **después** de `verificarToken`
-- **La búsqueda exige sesión; la ficha no.** `GET /api/propiedades` y `GET /api/propiedades/cercanas` llevan `verificarToken`; `GET /api/propiedades/:id` (que acepta id o slug) es la **única** lectura pública de propiedades. Es el enlace que se comparte por WhatsApp y lo que indexa Google: si cerrara, cada enlace compartido daría contra un muro y el producto se quedaría sin puerta de entrada orgánica. Las dos mitades son igual de importantes y las dos están probadas —cerrar la búsqueda "del todo" parece más seguro y rompe el producto. En el frontend, `components/Buscador.tsx` no se monta sin sesión por un motivo aparte: **Mapbox se cobra por carga de mapa**.
+- **La búsqueda exige sesión; la ficha no.** `GET /api/propiedades` y `GET /api/propiedades/cercanas` llevan `verificarToken`; `GET /api/propiedades/:id` (que acepta id o slug) es la lectura pública de propiedades. Es el enlace que se comparte por WhatsApp y lo que indexa Google: si cerrara, cada enlace compartido daría contra un muro y el producto se quedaría sin puerta de entrada orgánica. Las dos mitades son igual de importantes y las dos están probadas —cerrar la búsqueda "del todo" parece más seguro y rompe el producto. En el frontend, `components/Buscador.tsx` no se monta sin sesión por un motivo aparte: **Mapbox se cobra por carga de mapa**.
+- **Hay una segunda lectura pública y devuelve DOS campos:** `GET /api/propiedades/sitemap` → `{ slug, fecha_actualizacion }` de las `PUBLICADA`, que es lo que se convierte en `/sitemap.xml`. Existe porque *pública* no es *encontrable*: con el buscador detrás del muro, un rastreador no tenía un solo enlace interno hacia una ficha, así que el SEO de la ficha no se cobraba. ⛔ Si alguien le añade campos "por comodidad", eso deja de ser una lista de URLs y pasa a ser el catálogo abierto —con precios y todo— que es justo lo que el muro evita. Tiene prueba: un `BORRADOR` no aparece.
 - **`usuarioOpcional` NO protege: identifica.** Solo puede ir en rutas que ya son públicas — hoy, solo la ficha. Es un recepcionista, no un guardia: si no reconoce el token, deja pasar **sin usuario** en lugar de cortar. Ponerlo donde iba `verificarToken` no da ningún error: deja la ruta abierta y en silencio. Al revés, poner `verificarToken` en la ficha tampoco da error y rompe el enlace compartido para quien tenga la sesión caducada — hay una prueba para cada dirección.
 - Los popups del mapa se construyen con `textContent`, **nunca** `setHTML`
 - El `usuario_id` de una propiedad sale del **token**, nunca del body

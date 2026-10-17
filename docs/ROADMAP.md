@@ -49,6 +49,7 @@ Cada fase tiene dos listas: lo que **hay que aprender** y lo que **hay que const
 - [x] **Desarrollo:** marcadores con precio y popup seguro (sin XSS)
 - [x] **Desarrollo:** ficha de detalle con URL por slug
 - [x] **Desarrollo:** ficha como **Server Component**: el contenido y los metadatos (`title`, `description`, `og:`) viajan escritos en el HTML. Antes llegaba vacía y la pintaba JavaScript — servía para una persona y no para lo que la página existe (el enlace que se comparte y lo que indexa Google). *Sin `loading.tsx` a propósito: con streaming, `notFound()` contestaría 200 en vez de 404*
+- [x] **Desarrollo:** descubrimiento para buscadores: `/robots.txt` y `/sitemap.xml` generados desde la API. Sin esto, la ficha más indexable del mundo no se encuentra — el buscador está detrás del muro, así que un rastreador no tiene un solo enlace interno hacia una propiedad
 - [x] **Desarrollo:** formulario de publicación con vista previa en el mapa
 - [x] **Desarrollo:** perfil del usuario y gestión de publicaciones
 
