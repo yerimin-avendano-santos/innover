@@ -36,7 +36,7 @@ Cada fase tiene dos listas: lo que **hay que aprender** y lo que **hay que const
 - [x] **Desarrollo:** el rol **nunca** se autoasigna en el registro
 - [x] **Desarrollo:** validación de entrada con Zod en todas las rutas
 - [x] **Desarrollo:** rate limiting, CORS con lista blanca y cabeceras de seguridad
-- [x] **Desarrollo:** 166 pruebas de integración y seguridad (144 API + 22 puente)
+- [x] **Desarrollo:** 208 pruebas de integración y seguridad (168 API + 40 puente)
 
 ## Fase 4: Frontend y mapas interactivos 🎨
 
@@ -61,9 +61,9 @@ Cada fase tiene dos listas: lo que **hay que aprender** y lo que **hay que const
 - [x] **Desarrollo:** métricas de conversión (total, cerrados, tasa de cierre)
 - [x] **Desarrollo:** panel de administración (verificar identidades, gestionar roles y accesos)
 - [x] **Desarrollo:** flujo de solicitud de agente con estado (aprobada / rechazada) — *backend: cola, historial, motivo de rechazo y auditoría de quién resolvió*
-- [ ] **Desarrollo:** pantalla de solicitud de agente (el formulario en `/perfil` y la cola en `/admin`)
+- [x] **Desarrollo:** pantalla de solicitud de agente: el formulario en `/perfil` y la cola en `/admin`. La API llevaba tiempo hecha y **no había forma de usarla** — se podía pedir ser agente con `curl`, que es como decir que no se podía. La mitad que importa es la de vuelta: el solicitante ve en su perfil si está en revisión, si lo aprobaron y, si lo rechazaron, **por qué** y quién lo revisó
 - [x] **Desarrollo:** modelo del plan comercial (`GRATIS` / `PRO`) con vencimiento — *independiente del rol*
-- [x] **Desarrollo:** candado del recorrido 3D y del destaque por plan, verificado **en el servidor**
+- [x] **Desarrollo:** candado del recorrido 3D y del destaque por plan, verificado **en el servidor** — *y preguntado en la interfaz por `plan_pro_activo`, nunca por `plan === 'PRO'`: el plan vence, y compararlo a mano en el formulario ofrece un campo que el servidor va a rechazar al guardar. Cuando el plan vence y ya había un recorrido publicado, el campo se sigue mostrando: el servidor deja conservarlo o quitarlo, y esconderlo dejaría al dueño sin poder limpiarlo*
 - [ ] **Desarrollo:** cobro de la suscripción (el plan se asigna a mano desde el panel; falta la pasarela de pago)
 - [ ] **Desarrollo:** créditos de contacto por plan
 
@@ -96,10 +96,9 @@ Cada fase tiene dos listas: lo que **hay que aprender** y lo que **hay que const
 
 Lo que queda pendiente y conviene no olvidar:
 
-- [ ] **Tests unitarios** (hay 166 de integración, ninguno aislado de un componente)
+- [ ] **Tests unitarios** (hay 208 de integración, ninguno aislado de un componente)
 - [ ] **Refresh tokens** (la sesión caduca a las 2 h sin renovación)
 - [ ] **Fotos de propiedades** (el campo `imagenes` existe y se guarda, pero no hay subida ni galería)
-- [ ] **Pantalla de solicitud de agente** (el backend ya resuelve y audita; falta el formulario y la cola)
 - [ ] **Verificación contra RENIEC** (hoy el admin valida a ojo el documento)
 - [ ] **Rate limiting distribuido** (el actual guarda contadores en memoria; con varias instancias hace falta Redis)
 - [ ] **Búsqueda de texto completo** (PostgreSQL `tsvector` o Meilisearch)

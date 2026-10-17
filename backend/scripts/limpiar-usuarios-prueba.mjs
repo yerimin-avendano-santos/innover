@@ -82,16 +82,21 @@ try {
     console.log(`  #${u.id} ${u.email}  (props=${u._count.propiedades}, leads=${u._count.contactosComoCliente})`);
   }
 
-  // Aviso: si alguno tiene propiedades, borrarlo arrastra los contactos
-  // asociados (ON DELETE CASCADE) pero deja las propiedades huérfanas.
+  // Aviso de lo que se lleva por delante. Conviene decirlo bien, porque el
+  // texto anterior decía que las propiedades quedaban huérfanas y es justo lo
+  // que el script evita: una cuenta de prueba con propiedades es la que llenó
+  // `/sitemap.xml` de anuncios falsos.
+  //
+  //   - leads y solicitudes de agente → en cascada (ON DELETE CASCADE)
+  //   - propiedades → se borran aquí abajo, antes que los usuarios
   const conDatos = aBorrar.filter(
     (u) => u._count.propiedades > 0 || u._count.contactosComoCliente > 0
   );
 
   if (conDatos.length > 0) {
     console.log(`\n⚠️  ${conDatos.length} tienen propiedades o leads asociados.`);
-    console.log('   Al borrarlos, sus contactos se borran en cascada y sus');
-    console.log('   propiedades quedan sin dueño válido.');
+    console.log('   Se van con ellos: sus leads y solicitudes de agente caen en');
+    console.log('   cascada y sus propiedades se borran justo a continuación.');
   }
 
   if (!ejecutar) {

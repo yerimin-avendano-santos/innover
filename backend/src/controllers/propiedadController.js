@@ -68,6 +68,12 @@ function resolverTour3D(valorNuevo, valorActual, usuario) {
   // Reenviar el mismo valor que ya estaba guardado no es un acto de uso.
   if (limpio === valorActual) return undefined;
 
+  // Un ADMIN no paga por moderar, y es el MISMO trato que en `resolverDestacado`
+  // y en AGENTS.md. Sin esta línea el código y su documentación decían cosas
+  // distintas, y la diferencia se notaba al intentar arreglar el enlace roto del
+  // recorrido de otra persona: un 403 por no pagar un plan que no cobra.
+  if (usuario.rol === 'ADMIN') return limpio;
+
   // A partir de aquí es un valor NUEVO y no vacío: eso sí es usar el plan.
   if (!tienePlanPro(usuario)) {
     throw new ErrorProhibido(

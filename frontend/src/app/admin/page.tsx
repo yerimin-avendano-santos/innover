@@ -27,6 +27,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contextos/Auth';
 import { api, conQuery, ErrorPeticion } from '@/lib/api';
+import ColaSolicitudes from '@/components/ColaSolicitudes';
 import type { UsuarioAdmin, RolUsuario } from '@/lib/tipos';
 
 export default function PaginaAdmin() {
@@ -163,6 +164,18 @@ export default function PaginaAdmin() {
           {error}
         </div>
       )}
+
+      {/* --- Cola de solicitudes de agente ---
+          Va arriba del todo porque es una persona esperando, no un catálogo.
+          Aprobar cambia el rol de una cuenta, así que al resolver se recarga
+          la lista de usuarios: el mismo que estaba abajo como Comprador ahora
+          es Agente, y seguir pintándolo como antes sería mentir. */}
+      <ColaSolicitudes
+        onResuelta={() => {
+          setAviso('Solicitud resuelta. Si la aprobaste, el rol ya cambió en la lista.');
+          void cargar();
+        }}
+      />
 
       {/* --- Filtros --- */}
       <div className="mb-4 flex flex-wrap gap-2">

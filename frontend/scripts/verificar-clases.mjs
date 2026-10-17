@@ -139,7 +139,28 @@ function extraerTextos(codigo, desde, hasta) {
       const cierre = codigo.indexOf(c, i + 1);
       const fin = cierre === -1 ? hasta : cierre;
       const texto = codigo.slice(i + 1, fin);
-      if (texto.trim()) textos.push(texto);
+
+      /**
+       * ⛔ Una cadena COMPARADA no es una clase.
+       *
+       * En una plantilla con ternario es normal comparar el estado:
+       *
+       *     className={`caja ${s.estado === 'PENDIENTE' ? 'borde-aviso' : ''}`}
+       *
+       * `'PENDIENTE'` no es una clase y no tiene por qué existir en el CSS,
+       * pero el recorrido la recogía como si lo fuera y el informe acusaba a
+       * un valor de enum de estar mal escrito. Un comprobador que señala lo
+       * que está bien deja de leerse, y entonces da igual lo que sea capaz de
+       * encontrar.
+       *
+       * Solo se descarta si delante hay un operador de comparación COMPLETO
+       * (`===`, `!==`, `==`, `!=`). Un `=` suelto no cuenta: ahí está la
+       * asignación de un `className` que sí es clase.
+       */
+      const antes = codigo.slice(Math.max(0, i - 12), i);
+      const esComparacion = /(?:===|!==|==|!=)\s*$/.test(antes);
+
+      if (!esComparacion && texto.trim()) textos.push(texto);
       i = fin + 1;
       continue;
     }

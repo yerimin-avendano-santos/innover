@@ -437,8 +437,13 @@ export const solicitarAgente = async (req, res) => {
   ]);
 
   res.status(201).json({
+    // ⛔ Aquí decía "te avisaremos por correo", y era falso: el proyecto no
+    // manda correos (no hay nodemailer ni SMTP, comprobado). Prometer un aviso
+    // que no llega es peor que no prometerlo —quien solicita se queda
+    // esperando un correo que nunca va a ver—. El estado se consulta en el
+    // perfil, que es donde está `mi-solicitud`.
     mensaje:
-      'Solicitud registrada. Un administrador la revisará y te avisaremos por correo.',
+      'Solicitud registrada. Un administrador la revisará; puedes seguir el estado en tu perfil.',
     solicitud,
   });
 };

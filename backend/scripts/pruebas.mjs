@@ -1101,6 +1101,57 @@ let idUsuarioPrueba = null;
 }
 
 {
+  // Y ahora el rechazo de verdad, con motivo: es la mitad del trámite que la
+  // interfaz enseña en el perfil. Si `mi-solicitud` no devolviera el motivo, la
+  // pantalla diría "rechazada" y nada más — el caso exacto que deja a alguien
+  // sin saber qué corregir, así que vuelve a mandar lo mismo.
+  const r = await pedir('PATCH', `/api/solicitudes/${idSolicitud}`, {
+    token: tokenAdmin,
+    cuerpo: {
+      estado: 'RECHAZADA',
+      motivo_rechazo: 'El documento no se lee. Vuelve a subirlo.',
+    },
+  });
+  afirmar(r.estado === 200, 'el ADMIN rechaza con motivo', `recibido ${r.estado}`);
+}
+
+{
+  const r = await pedir('GET', '/api/auth/mi-solicitud', { token: tokenCliente });
+  afirmar(
+    r.cuerpo?.solicitud?.estado === 'RECHAZADA',
+    'el solicitante ve que lo rechazaron'
+  );
+  afirmar(
+    r.cuerpo?.solicitud?.motivo_rechazo === 'El documento no se lee. Vuelve a subirlo.',
+    '⛔ y ve POR QUÉ: sin el motivo, reintentar es adivinar',
+    `motivo: ${r.cuerpo?.solicitud?.motivo_rechazo}`
+  );
+  afirmar(
+    typeof r.cuerpo?.solicitud?.revisor?.id === 'number',
+    '⛔ y ve quién lo revisó: una decisión sobre una persona no es anónima'
+  );
+}
+
+{
+  // Y puede volver a intentarlo —es lo que ofrece el botón del perfil—, con una
+  // fila NUEVA: la rechazada se queda como historial y no se reescribe.
+  const r = await pedir('POST', '/api/auth/solicitar-agente', {
+    token: tokenCliente,
+    cuerpo: { documento: '12345678', mensaje: 'El documento nuevo ya se lee bien.' },
+  });
+  afirmar(
+    r.estado === 201,
+    '⛔ un rechazado puede volver a intentarlo',
+    `recibido ${r.estado}: ${JSON.stringify(r.cuerpo)}`
+  );
+  afirmar(
+    typeof r.cuerpo?.solicitud?.id === 'number' && r.cuerpo.solicitud.id !== idSolicitud,
+    '⛔ el reintento es una solicitud nueva, no la vieja resucitada'
+  );
+  idSolicitud = r.cuerpo?.solicitud?.id;
+}
+
+{
   const r = await pedir('PATCH', `/api/solicitudes/${idSolicitud}`, {
     token: tokenCliente,
     cuerpo: { estado: 'APROBADA' },

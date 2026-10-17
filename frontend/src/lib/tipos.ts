@@ -164,8 +164,18 @@ export interface SolicitudAgente {
   revisor_id: number | null;
   fecha_creacion: string;
   fecha_resolucion: string | null;
-  /** Solo viene en los listados de admin. */
-  usuario?: Pick<Usuario, 'id' | 'nombre' | 'email' | 'rol' | 'identidad_verificada'>;
+  /**
+   * Solo viene en los listados de admin (en `mi-solicitud` no: quien pregunta
+   * es el propio interesado y ya sabe quién es).
+   *
+   * El teléfono SÍ se incluye, y no es un descuido de privacidad: el admin
+   * tiene que poder llamar a quien solicita si el documento no se lee, y esa
+   * llamada es justamente el trabajo. Lo que no viaja nunca es la contraseña.
+   */
+  usuario?: Pick<
+    Usuario,
+    'id' | 'nombre' | 'email' | 'telefono' | 'rol' | 'identidad_verificada'
+  >;
   revisor?: { id: number; nombre: string } | null;
 }
 

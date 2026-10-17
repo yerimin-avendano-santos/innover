@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contextos/Auth';
 import { api, formatearPrecio, tiempoRelativo } from '@/lib/api';
+import PanelSolicitudAgente from '@/components/PanelSolicitudAgente';
 import type { MiPerfil, Propiedad } from '@/lib/tipos';
 import type { EstadoPropiedad } from '@/lib/tipos';
 
@@ -90,6 +91,11 @@ export default function PaginaPerfil() {
         />
         <Metrica etiqueta="Rol" valor={etiquetaRol(perfil?.rol)} />
       </dl>
+
+      {/* --- Pedir ser agente ---
+          Es la única vía para llegar a AGENTE: el registro nunca da ese rol.
+          El componente se esconde solo para quien ya lo es. */}
+      <PanelSolicitudAgente rol={perfil?.rol} />
 
       {/* --- Publicaciones --- */}
       <section>

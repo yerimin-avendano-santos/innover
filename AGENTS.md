@@ -73,7 +73,7 @@ Dos suites, ambas de integración contra el backend **real** (no hay mocks). Req
 
 ```bash
 npm run dev:backend                      # terminal 1
-npm run prueba                           # terminal 2 → 162 pruebas
+npm run prueba                           # terminal 2 → 168 pruebas
 
 npm run dev:frontend                     # terminal 1 (además del backend)
 node backend/scripts/pruebas-puente.mjs  # terminal 2 → 40 pruebas
@@ -88,12 +88,12 @@ Hay **tres** limitadores, y una corrida de la suite toca dos:
 | Limitador | Tope | Lo que gasta una corrida |
 |---|---|---|
 | `limitadorAuth` | 10 **fallos** de login / 15 min | 6 |
-| `limitadorEscritura` | 20 escrituras / **hora** | 13 |
+| `limitadorEscritura` | 20 escrituras / **hora** | 15 |
 | `limitadorGeneral` | 300 peticiones / 15 min | sobra |
 
 El que engaña es **`limitadorEscritura`**: su ventana dura una hora, no quince
-minutos, y no tiene nada que ver con el login. Como la suite gasta 13 de 20,
-**dos corridas seguidas suman 26 y la segunda se corta a mitad**. Su síntoma
+minutos, y no tiene nada que ver con el login. Como la suite gasta 15 de 20,
+**dos corridas seguidas suman 30 y la segunda se corta a mitad**. Su síntoma
 es el peor posible: 18 pruebas fallan de golpe, sin relación entre sí, y
 parece que acabas de romper el código.
 

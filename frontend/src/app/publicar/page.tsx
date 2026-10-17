@@ -39,6 +39,8 @@ interface Formulario {
   latitud: string;
   longitud: string;
   tour_3d_url: string;
+  /** Solo se manda si el usuario puede usarlo. Ver `puedePlanPro`. */
+  destacado: boolean;
 }
 
 const FORMULARIO_VACIO: Formulario = {
@@ -57,10 +59,11 @@ const FORMULARIO_VACIO: Formulario = {
   latitud: '',
   longitud: '',
   tour_3d_url: '',
+  destacado: false,
 };
 
 export default function PaginaPublicar() {
-  const { estaConectado, cargando: cargandoAuth } = useAuth();
+  const { estaConectado, cargando: cargandoAuth, usuario } = useAuth();
   const router = useRouter();
   const params = useParams<{ id?: string }>();
   const editando = Boolean(params.id);
@@ -70,6 +73,36 @@ export default function PaginaPublicar() {
   const [errorCampo, setErrorCampo] = useState<Record<string, string>>({});
   const [enviando, setEnviando] = useState(false);
   const [cargando, setCargando] = useState(editando);
+
+  /**
+   * El recorrido 3D que la propiedad YA tenía al abrir el formulario.
+   *
+   * Se guarda aparte del formulario porque sirve para decidir si el campo se
+   * muestra cuando el plan venció, y esa decisión no puede depender de lo que
+   * el usuario esté escribiendo: si dependiera, el campo aparecería al teclear
+   * y desaparecería al borrar.
+   */
+  const [tourOriginal, setTourOriginal] = useState<string | null>(null);
+
+  /**
+   * Qué puede usar esta cuenta, según el plan.
+   *
+   * ⛔ SE PREGUNTA POR `plan_pro_activo`, NUNCA POR `plan === 'PRO'`.
+   *
+   * El plan VENCE, y el servidor ya calculó el veredicto mirando la fecha.
+   * Repetir la comparación aquí diría que un PRO vencido sigue vigente: la
+   * interfaz mostraría el formulario del recorrido 3D, el usuario lo
+   * rellenaría, y al guardar recibiría un 403 que no encaja con lo que acaba de
+   * ver en pantalla. Es un fallo que solo aparece al guardar, que es la peor
+   * clase de fallo.
+   *
+   * 📌 El ADMIN entra en la misma condición porque así está en el servidor:
+   * `resolverDestacado` y `resolverTour3D` dejan pasar a un admin sin cobrarle
+   * un plan que administra. Esta condición y aquellas dos tienen que decir lo
+   * mismo: si se separan, la interfaz ofrecerá algo que el servidor rechaza, y
+   * el 403 llegará al guardar, sin relación aparente con lo que se ve.
+   */
+  const puedePlanPro = usuario?.rol === 'ADMIN' || usuario?.plan_pro_activo === true;
 
   // Sin sesión no se publica nada.
   useEffect(() => {
@@ -100,7 +133,9 @@ export default function PaginaPublicar() {
           latitud: propiedad.latitud !== null ? String(propiedad.latitud) : '',
           longitud: propiedad.longitud !== null ? String(propiedad.longitud) : '',
           tour_3d_url: propiedad.tour_3d_url ?? '',
+          destacado: propiedad.destacado,
         });
+        setTourOriginal(propiedad.tour_3d_url ?? null);
       })
       .catch((e) => {
         setError(e instanceof ErrorPeticion ? e.message : 'No pudimos cargar la publicación.');
@@ -156,6 +191,16 @@ export default function PaginaPublicar() {
      * `trim()` para que un campo con solo espacios cuente como vacío.
      */
     tour_3d_url: formulario.tour_3d_url.trim(),
+
+    /*
+     * ⛔ `destacado` SOLO viaja si la cuenta puede usarlo, y no es una
+     * optimización: el servidor rechaza el campo ENTERO —también un `false`—
+     * cuando quien lo manda no tiene plan. Un usuario GRATIS editando el precio
+     * de su casa recibiría un 403 por "el destaque va incluido en PRO" sin
+     * haber tocado el destaque en su vida. Si la clave no aparece en el cuerpo,
+     * el servidor entiende "no toques este campo", que es justo lo que quiere.
+     */
+    ...(puedePlanPro ? { destacado: formulario.destacado } : {}),
   });
 
   /**
@@ -388,17 +433,60 @@ export default function PaginaPublicar() {
           )}
         </Seccion>
 
-        {/* ---------- Tour 3D ---------- */}
-        <Seccion titulo="Tour 3D (opcional)">
-          <CampoTexto
-            etiqueta="Enlace al recorrido virtual"
-            value={formulario.tour_3d_url}
-            onChange={(v) => cambiar('tour_3d_url', v)}
-            placeholder="https://my.matterport.com/show/?m=…"
-            type="url"
-            hint="Matterport, Sketchfab o similar."
-            error={errorCampo.tour_3d_url}
-          />
+        {/* ---------- Lo que va incluido en el plan PRO ---------- */}
+        <Seccion titulo="Plan PRO: recorrido 3D y destaque">
+          {/* El campo del 3D se le muestra también a quien YA tiene un recorrido
+              guardado aunque su plan haya vencido. El servidor le deja
+              conservarlo o quitarlo (reenviar lo que ya estaba no es usar el
+              plan, y borrar lo propio siempre se puede); esconderle el campo lo
+              dejaría sin forma de limpiarlo. */}
+          {puedePlanPro || tourOriginal ? (
+            <CampoTexto
+              etiqueta="Enlace al recorrido virtual"
+              value={formulario.tour_3d_url}
+              onChange={(v) => cambiar('tour_3d_url', v)}
+              placeholder="https://my.matterport.com/show/?m=…"
+              type="url"
+              hint={
+                puedePlanPro
+                  ? 'Matterport, Sketchfab o similar.'
+                  : 'Tu plan PRO venció: puedes conservar este recorrido o quitarlo, pero no cambiarlo por otro.'
+              }
+              error={errorCampo.tour_3d_url}
+            />
+          ) : null}
+
+          {puedePlanPro ? (
+            <label className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                checked={formulario.destacado}
+                onChange={(e) => cambiar('destacado', e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-senal"
+              />
+              <span className="text-menor text-tinta-70">
+                Destacar esta publicación
+                <span className="block text-micro text-tinta-50">
+                  Se muestra con el sello «Destacado» y por delante de las demás.
+                  El cupo de tu plan se comprueba al guardar.
+                </span>
+              </span>
+            </label>
+          ) : null}
+
+          {/* La invitación, solo para quien no tiene plan ni nada que conservar.
+              Es la alternativa al 403: aquí se explica ANTES de guardar, que es
+              cuando el usuario todavía puede decidir. */}
+          {!puedePlanPro && !tourOriginal && (
+            <div className="rounded-medio border border-linea bg-papel-hundido px-4 py-3">
+              <p className="text-menor text-tinta-70">
+                El recorrido 3D y el destaque van incluidos en el plan{' '}
+                <strong className="font-semibold text-tinta">PRO</strong>. Sin él
+                puedes publicar, editar y recibir contactos con normalidad; esto
+                es lo único que queda fuera.
+              </p>
+            </div>
+          )}
         </Seccion>
 
         {/* ---------- Publicar ---------- */}
