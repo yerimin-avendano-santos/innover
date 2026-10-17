@@ -38,7 +38,31 @@ interface Props {
 export function Logo({ className = 'h-8 w-8', titulo }: Props) {
   return (
     <svg
-      viewBox="85 36 230 260"
+      /*
+       * El recorte del logo original: se queda solo con el icono y tira la
+       * palabra, que va aparte en HTML.
+       *
+       * ⚠️ EL `viewBox` NO ES UN NÚMERO AL AZAR, Y QUEDARSE CORTO CORTA EL DIBUJO.
+       *
+       * Todo lo que caiga fuera del `viewBox` se RECORTA en silencio: no da
+       * error, solo desaparece. Los cuatro números salen de medir la
+       * geometría del SVG original:
+       *
+       *   dibujo (con su trazo):  x [88,5 .. 311,5]   y [42 .. 292]
+       *   sombra:                 `dy="8"`, desenfoque 6, y la región del
+       *                           filtro (-10 % / +120 %) deja el grupo del
+       *                           mapa llegando hasta y ≈ 304
+       *
+       * Con eso, `78 32 244 274` deja 10 px de margen a los lados y arriba,
+       * y 14 abajo —los últimos no son aire, son la sombra—. El centro del
+       * recorte cae en x = 200, exactamente el centro del dibujo, así que el
+       * icono queda centrado.
+       *
+       * Si algún día se cambia el dibujo en `design/logosvg.svg`, hay que
+       * volver a medir. Y si se recorta de más, la única señal es que el
+       * logo se ve mal: el compilador no dice nada.
+       */
+      viewBox="78 32 244 274"
       className={className}
       // Con `titulo` el SVG se anuncia con ese nombre; sin él es decorativo.
       role={titulo ? 'img' : undefined}
