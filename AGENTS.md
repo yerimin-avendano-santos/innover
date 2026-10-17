@@ -25,6 +25,7 @@ Todo se ejecuta **desde la raíz** salvo el typecheck.
 | Verificar contraste | `npm run verificar:contraste --workspace=frontend` |
 | Verificar tokens | `npm run verificar:tokens --workspace=frontend` (tras `build`) |
 | Verificar clases | `npm run verificar:clases --workspace=frontend` (tras `build`) |
+| Verificar agrupador del mapa | `npm run verificar:clustering --workspace=frontend` |
 
 ### Typecheck — usa esta forma exacta
 
@@ -39,6 +40,7 @@ cd frontend && .\node_modules\.bin\tsc.cmd --noEmit
 ```bash
 npm run lint
 cd frontend && .\node_modules\.bin\tsc.cmd --noEmit
+npm run verificar:clustering --workspace=frontend  # lógica pura, sin navegador ni build
 npm run build
 npm run verificar:contraste --workspace=frontend   # paleta legible, lee globals.css
 npm run verificar:tokens  --workspace=frontend     # ningún token huérfano (necesita build)
@@ -48,10 +50,18 @@ npm run prueba        # requiere el backend levantado
 
 `next build` ya incluye typecheck, así que `build` es la prueba definitiva.
 
-Los tres `verificar:*` son del frontend y cubren lo que ni el linter ni el
-compilador pueden ver: un color que no se lee, un token que se renombró y
+Los tres `verificar:*` de diseño son del frontend y cubren lo que ni el linter
+ni el compilador pueden ver: un color que no se lee, un token que se renombró y
 dejó de pintarse, y una clase escrita mal. Ninguna de las tres cosas da
 error — solo se ven mal, y suele ser en una pantalla que casi nadie abre.
+
+`verificar:clustering` es otra cosa: la **primera prueba unitaria** del proyecto.
+Prueba `frontend/src/lib/clustering.ts`, que es lógica pura (no toca Mapbox ni
+el DOM) y decide qué chinchetas del mapa se agrupan en un número y cuándo ese
+número se rompe. Los marcadores son de cliente y no hay forma de automatizarlos
+sin un navegador, así que lo que se puede probar sin él se prueba aquí; el
+resto se mira a ojo con datos de verdad. Corre con Node a secas (v22.18+ ejecuta
+TypeScript borrable), sin compilar nada.
 
 ---
 
@@ -73,7 +83,7 @@ Dos suites, ambas de integración contra el backend **real** (no hay mocks). Req
 
 ```bash
 npm run dev:backend                      # terminal 1
-npm run prueba                           # terminal 2 → 192 pruebas
+npm run prueba                           # terminal 2 → 207 pruebas
 
 npm run dev:frontend                     # terminal 1 (además del backend)
 node backend/scripts/pruebas-puente.mjs  # terminal 2 → 44 pruebas
@@ -88,12 +98,12 @@ Hay **tres** limitadores, y una corrida de la suite toca dos:
 | Limitador | Tope | Lo que gasta una corrida |
 |---|---|---|
 | `limitadorAuth` | 10 **fallos** de login / 15 min | 6 |
-| `limitadorEscritura` | `RATE_LIMIT_ESCRITURA`, 20 por defecto | 19 |
+| `limitadorEscritura` | `RATE_LIMIT_ESCRITURA`, 20 por defecto | 21 |
 | `limitadorGeneral` | 300 peticiones / 15 min | sobra |
 
 El que engaña es **`limitadorEscritura`**: su ventana dura una hora, no quince
-minutos, y no tiene nada que ver con el login. Como la suite gasta 19, dos
-corridas seguidas suman 38: con el tope de producción (20) la segunda se corta
+minutos, y no tiene nada que ver con el login. Como la suite gasta 21, dos
+corridas seguidas suman 42: con el tope de producción (20) la segunda se corta
 a mitad. Su síntoma es el peor posible: decenas de pruebas fallan de golpe, sin
 relación entre sí, y parece que acabas de romper el código.
 
@@ -112,9 +122,15 @@ privados y la clave única impide repetirlos: no hay nada que limitar.
 📌 **Y `RATE_LIMIT_ESCRITURA` NO EXISTÍA.** El tope estaba escrito a mano en el
 limitador (`max: 20`) mientras esta guía recomendaba subirlo en `.env`: ponerlo
 no hacía absolutamente nada, y seguir cortándose a mitad de suite sin una pista
-de por qué. Ahora la variable existe de verdad y `.env.example` trae **40**, que
-es lo que cuestan dos corridas. El valor por defecto del código sigue siendo 20
-(es el tope de producción).
+de por qué. Ahora la variable existe de verdad y `.env.example` trae **60**, que
+son dos corridas holgadas (la suite gasta 21; el puente, 1). El valor por
+defecto del código sigue siendo 20 (es el tope de producción).
+
+⚠️ **El 40 anterior ya no llegaba.** Al añadir la sección del mapa la suite pasó
+de 19 a 21 escrituras, así que dos corridas seguidas suman 42: con un tope de
+40 la segunda se cortaba por el mismo sitio de siempre. Si vuelves a subir el
+número de pruebas que crean algo, sube este número también — o reinicia el
+backend entre corrida y corrida, que es lo que hace el contador a cero.
 
 Dos protecciones para no volver a confundirlo con un bug:
 
@@ -124,8 +140,8 @@ Dos protecciones para no volver a confundirlo con un bug:
 - La suite **aborta en el primer `429`** y dice qué limitador fue. Antes no lo
   hacía, y por eso el fallo de escritura se manifestaba como 18 fallos sueltos
   en lugar de un mensaje. El de escritura no se puede sondear antes —su
-  cabecera solo llega en una respuesta de escritura, y sondearlo gastaría una
-  de las 20—, así que se detecta al chocar.
+  cabecera solo llega en una respuesta de escritura, y sondearla gastaría una
+  escritura—, así que se detecta al chocar.
 
 Ambas suites cubren la API a mano mejor que un archivo de peticiones: incluyen los casos que importan (escalada de privilegios, XSS, ownership) que sería fácil olvidar documentar.
 
@@ -218,7 +234,8 @@ los tres fallos posibles da error: solo se ven mal.
 ### Reglas al tocar el sistema
 
 - **Un color suelto en un componente es un fallo.** Ni `#008B9B` en un `.tsx`, ni en JavaScript.
-- **Mapbox no es una excepción.** Sus marcadores y globos se construyen desde JavaScript, así que sus colores viven en `globals.css` como clases (`.marcador`, `.marcador-destacado`, `.marcador-seleccionado`, `.globo-*`) y el componente solo enciende y apaga clases. El `background-color` en línea que había antes parecía funcionar y no: **una imagen de fondo se pinta encima del color**, así que un marcador destacado se habría quedado verde al seleccionarlo, sin error.
+- **Mapbox no es una excepción.** Sus marcadores y globos se construyen desde JavaScript, así que sus colores viven en `globals.css` como clases (`.marcador`, `.marcador-destacado`, `.marcador-seleccionado`, `.marcador-grupo*`, `.globo-*`) y el componente solo enciende y apaga clases. El `background-color` en línea que había antes parecía funcionar y no: **una imagen de fondo se pinta encima del color**, así que un marcador destacado se habría quedado verde al seleccionarlo, sin error.
+- **El grupo de chinchetas va en marino, no en turquesa.** Un grupo es un *resumen* de lo que hay en una zona; el turquesa brillante está reservado para la propiedad **destacada**, que es un anuncio pagado. Pintar los dos igual convertiría cualquier racimo en un anuncio. Y el grupo no tiene estado "seleccionado" a propósito: lo que se selecciona es una propiedad, y una propiedad no *está* en un grupo —está debajo—, así que al elegirla el mapa se acerca hasta que sale suelta. Los tres tamaños (`.marcador-grupo-chico/medio/grande`, por debajo de 10 / de 100 / a partir de 100) los decide `claseDeGrupo()` en `lib/clustering.ts`.
 - **`destacado` y `aviso` son tokens distintos a propósito.** Uno es un anuncio pagado; el otro, una tarea pendiente. Antes compartían un único color ("latón"), y eso significaba que ajustar el color del destaque habría cambiado los avisos de todo el panel sin querer.
 - **El logo tiene dos copias y no se generan automáticamente:** `frontend/src/components/Logo.tsx` (el icono, para la interfaz) y `frontend/src/app/icon.svg` (el favicon). Si cambia el dibujo, se cambian las dos. La palabra "Innover" **no** está en el SVG: es texto HTML en Inter, para que se pueda seleccionar, buscar e indexar.
 - **El foco por teclado se hereda de `--foco`.** Un anillo de un solo color no vale para fondos claros y oscuros a la vez: el turquesa oscuro se pierde sobre el marino y el claro sobre el blanco. Cada superficie declara `--foco` (`.sobre-marino`, `.superficie-clara`) y los hijos lo recogen. Un selector de descendencia no sirve: el menú del usuario cuelga de la barra oscura pero tiene fondo blanco.
@@ -245,7 +262,11 @@ los tres fallos posibles da error: solo se ven mal.
 
 **Tailwind v4** — **no hay `tailwind.config.js` y no debes crear uno**. Los tokens viven en `@theme` dentro de `src/app/globals.css`. Un config JS v3 se ignora en silencio: compila sin error y **sin estilos**.
 
-**Rutas parametrizadas y orden** — en `propiedadRoutes.js`, `/mias` y `/cercanas` van **antes** de `/:id`. Si no, Express los interpreta como id y devuelven 404.
+**npm iza las dependencias nuevas y Turbopack no mira fuera de su `root`.** Al instalar un paquete en un workspace (`npm install x --workspace=frontend`), npm lo sube al `node_modules` de la **raíz** del monorepo, no a `frontend/node_modules` —donde viven los ~290 paquetes que ya había—. Y Turbopack resuelve los módulos **dentro de su `root`**: lo que quede fuera no existe para él (documentado en la guía de Turbopack, *"Files outside of the project root are not resolved"*). El síntoma es un `Module not found: Can't resolve 'x'` **al compilar**, nunca al instalar: `supercluster` se quedó sin resolver y la única pantalla rota era el mapa del buscador. Por eso `turbopack.root` en `next.config.ts` apunta a la raíz del monorepo, que engloba los dos `node_modules`. ⛔ No lo devuelvas a `frontend/`.
+
+⚠️ Y si cambias `turbopack.root`, **borra `frontend/.next`** antes de levantar otra vez el dev server. La caché de disco se queda con el manifiesto de rutas de la raíz anterior y todas las rutas `/api/...` del puente empiezan a devolver 404 —con la página de "no encontrado" de Next, sin un solo error en la consola, y con el backend respondiendo perfectamente si lo llamas directo—.
+
+**Rutas parametrizadas y orden** — en `propiedadRoutes.js`, `/mias`, `/cercanas` y `/mapa` van **antes** de `/:id`. Si no, Express los interpreta como id y devuelven 404. Con `/mapa` el síntoma sería de los que engañan: la petición acabaría en la ficha buscando una propiedad llamada "mapa" y el mapa del buscador se quedaría vacío, sin un solo error en la consola.
 
 **Login vs registro** — el campo se llama `contrasena` (sin ñ), no `password`. Mandar `password` da 500.
 
@@ -328,7 +349,9 @@ Son errores ya corregidos. Reabrirlos reintroduce agujeros explotables:
 - El **plan nunca** se acepta del propio usuario: lo escribe un `ADMIN` vía `PATCH /api/usuarios/:id/plan`
 - `/api/usuarios` exige `ADMIN`; los usuarios editan su perfil vía `/api/auth`
 - `verificarDuenio` va siempre **después** de `verificarToken`
-- **La búsqueda exige sesión; la ficha no.** `GET /api/propiedades` y `GET /api/propiedades/cercanas` llevan `verificarToken`; `GET /api/propiedades/:id` (que acepta id o slug) es la lectura pública de propiedades. Es el enlace que se comparte por WhatsApp y lo que indexa Google: si cerrara, cada enlace compartido daría contra un muro y el producto se quedaría sin puerta de entrada orgánica. Las dos mitades son igual de importantes y las dos están probadas —cerrar la búsqueda "del todo" parece más seguro y rompe el producto. En el frontend, `components/Buscador.tsx` no se monta sin sesión por un motivo aparte: **Mapbox se cobra por carga de mapa**.
+- **La búsqueda exige sesión; la ficha no.** `GET /api/propiedades`, `GET /api/propiedades/cercanas` y `GET /api/propiedades/mapa` llevan `verificarToken`; `GET /api/propiedades/:id` (que acepta id o slug) es la lectura pública de propiedades. Es el enlace que se comparte por WhatsApp y lo que indexa Google: si cerrara, cada enlace compartido daría contra un muro y el producto se quedaría sin puerta de entrada orgánica. Las dos mitades son igual de importantes y las dos están probadas —cerrar la búsqueda "del todo" parece más seguro y rompe el producto. En el frontend, `components/Buscador.tsx` no se monta sin sesión por un motivo aparte: **Mapbox se cobra por carga de mapa**.
+
+  📌 **`/mapa` es la búsqueda, no la ficha.** Devuelve el resultado filtrado **entero** —no una página: si el mapa enseñara solo los 50 primeros, alejarse para ver "¿dónde hay?" diría que hay barrios vacíos que no lo están— y con los mismos filtros que la lista, porque comparten `construirWhere()`. Por eso exige token igual que ella: el mapa *es* el buscador con otra forma. Y por eso también lleva tope (`MAX_PUNTOS_MAPA = 1000`) y lo confiesa: cuando recorta, lo dice en la respuesta (`recortado`) y la interfaz lo avisa. Un mapa que calla que le faltan puntos es peor que uno que lo admite.
 - **Hay una segunda lectura pública y devuelve DOS campos:** `GET /api/propiedades/sitemap` → `{ slug, fecha_actualizacion }` de las `PUBLICADA`, que es lo que se convierte en `/sitemap.xml`. Existe porque *pública* no es *encontrable*: con el buscador detrás del muro, un rastreador no tenía un solo enlace interno hacia una ficha, así que el SEO de la ficha no se cobraba. ⛔ Si alguien le añade campos "por comodidad", eso deja de ser una lista de URLs y pasa a ser el catálogo abierto —con precios y todo— que es justo lo que el muro evita. Tiene prueba: un `BORRADOR` no aparece.
 - **`usuarioOpcional` NO protege: identifica.** Solo puede ir en rutas que ya son públicas — hoy, solo la ficha. Es un recepcionista, no un guardia: si no reconoce el token, deja pasar **sin usuario** en lugar de cortar. Ponerlo donde iba `verificarToken` no da ningún error: deja la ruta abierta y en silencio. Al revés, poner `verificarToken` en la ficha tampoco da error y rompe el enlace compartido para quien tenga la sesión caducada — hay una prueba para cada dirección.
 - Los popups del mapa se construyen con `textContent`, **nunca** `setHTML`

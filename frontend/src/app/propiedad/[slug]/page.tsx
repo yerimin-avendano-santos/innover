@@ -49,6 +49,7 @@ import BotonFavorito from '@/components/BotonFavorito';
 import Galeria from '@/components/Galeria';
 import { Mapa } from '@/components/Mapa';
 import { formatearPrecio, precioPorM2, etiquetaTipo } from '@/lib/api';
+import { aPuntosDeMapa } from '@/lib/mapa';
 import type { Propiedad } from '@/lib/tipos';
 
 /**
@@ -304,7 +305,7 @@ export default async function PaginaPropiedad({
               la frontera son las props, y una propiedad es un objeto plano. */}
           {propiedad.latitud !== null && propiedad.longitud !== null && (
             <div className="mb-6 h-80 overflow-hidden rounded-grande border border-linea">
-              <Mapa propiedades={[propiedad]} className="h-full w-full" />
+              <Mapa puntos={aPuntosDeMapa([propiedad])} className="h-full w-full" />
             </div>
           )}
 

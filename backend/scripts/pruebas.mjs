@@ -1754,7 +1754,147 @@ seccion('16. El índice espacial sigue existiendo');
 }
 
 // ========================================
-seccion('17. Logout');
+seccion('17. El mapa: los puntos de la búsqueda');
+// ========================================
+//
+// 📌 QUÉ PROTEGE ESTA SECCIÓN, QUE ES MÁS DE LO QUE PARECE.
+//
+// El mapa del buscador no pinta lo que la lista enseña, sino el resultado
+// entero (hasta un tope) — si pintara solo la página, alejarse para ver
+// "¿dónde hay?" mentiría: un barrio se vería vacío porque sus propiedades
+// cayeron en la página 2.
+//
+// Eso solo funciona si las dos pantallas comparten los filtros. En el backend
+// es una sola función (`construirWhere`), y aquí se comprueba desde fuera:
+// los dos extremos tienen que contar lo mismo. El día que alguien "arregle"
+// una ruta y olvide la otra, la primera prueba que se pondrá roja es esta.
+{
+  // --- Sin sesión no hay puntos ---
+  const sinToken = await pedir('GET', '/api/propiedades/mapa');
+  afirmar(
+    sinToken.estado === 401,
+    '⛔ el mapa exige sesión, igual que el buscador (es la misma información)',
+    `recibido ${sinToken.estado}`
+  );
+
+  // Una propiedad CON coordenadas: las de `cuerpoPropiedad` no las traen, y
+  // una propiedad sin coordenadas no puede aparecer en el mapa.
+  const creada = await pedir('POST', '/api/propiedades', {
+    token: tokenCliente,
+    cuerpo: cuerpoPropiedad({
+      titulo: 'Punto del mapa (prueba)',
+      latitud: -9.9305,
+      longitud: -76.2402,
+    }),
+  });
+  afirmar(
+    creada.estado === 201,
+    'se crea una propiedad con coordenadas para la prueba',
+    `recibido ${creada.estado}`
+  );
+  const idPunto = creada.cuerpo?.propiedad?.id;
+
+  const delMapa = await pedir('GET', '/api/propiedades/mapa', { token: tokenCliente });
+  afirmar(
+    delMapa.estado === 200,
+    'el mapa responde 200 con sesión (y NO entra por la ficha: /mapa va antes que /:id)',
+    `recibido ${delMapa.estado}: ${JSON.stringify(delMapa.cuerpo)}`
+  );
+
+  // --- Los dos extremos cuentan lo mismo ---
+  const lista = await pedir('GET', '/api/propiedades?porPagina=1', { token: tokenCliente });
+  afirmar(
+    delMapa.cuerpo?.total === lista.cuerpo?.paginacion?.total,
+    '⛔ el mapa y la lista cuentan el mismo conjunto (comparten los filtros)',
+    `mapa ${delMapa.cuerpo?.total} vs lista ${lista.cuerpo?.paginacion?.total}`
+  );
+
+  // --- El punto llega con lo que hace falta para pintarlo ---
+  const punto = delMapa.cuerpo?.datos?.find((p) => p.id === idPunto);
+  afirmar(!!punto, 'la propiedad creada aparece entre los puntos del mapa');
+  afirmar(
+    typeof punto?.precio === 'number',
+    '⛔ el precio llega como NÚMERO, no como el texto de Prisma',
+    `recibido ${JSON.stringify(punto?.precio)}`
+  );
+  afirmar(
+    typeof punto?.latitud === 'number' && typeof punto?.longitud === 'number',
+    '⛔ y las coordenadas también: una chincheta con coordenadas de texto no se pinta',
+    `recibido ${JSON.stringify({ lat: punto?.latitud, lng: punto?.longitud })}`
+  );
+
+  // --- Los contadores del aviso cuadran ---
+  afirmar(
+    delMapa.cuerpo?.con_coordenadas + delMapa.cuerpo?.sin_coordenadas === delMapa.cuerpo?.total,
+    'con_coordenadas + sin_coordenadas = total (el aviso de "N no aparecen" no puede inventarse el número)',
+    `${delMapa.cuerpo?.con_coordenadas} + ${delMapa.cuerpo?.sin_coordenadas} vs ${delMapa.cuerpo?.total}`
+  );
+  afirmar(
+    delMapa.cuerpo?.recortado === false,
+    'con pocas propiedades el mapa no recorta (y lo dice)',
+    `recibido ${delMapa.cuerpo?.recortado}`
+  );
+
+  // --- Los filtros son los mismos de verdad ---
+  const vacio = await pedir('GET', '/api/propiedades/mapa?busqueda=zzz-nada-que-ver-zzz', {
+    token: tokenCliente,
+  });
+  afirmar(
+    vacio.cuerpo?.datos?.length === 0 && vacio.cuerpo?.total === 0,
+    'un filtro sin resultados deja el mapa vacío (y con total 0, no con los de antes)',
+    `recibido ${JSON.stringify(vacio.cuerpo?.total)}`
+  );
+
+  // --- Un BORRADOR no se pinta, ni en el mapa ni en la lista ---
+  //
+  // La lista ya estaba protegida —`construirWhere` fuerza PUBLICADA— pero NO
+  // estaba probada por ningún lado: se comprobaba la ficha y el sitemap, no el
+  // buscador. Se prueba aquí, una vez, para las dos rutas que comparten filtro.
+  const escondido = await pedir('POST', '/api/propiedades', {
+    token: tokenCliente,
+    cuerpo: cuerpoPropiedad({
+      titulo: 'Borrador que no se debe pintar',
+      estado: 'BORRADOR',
+      latitud: -9.931,
+      longitud: -76.241,
+    }),
+  });
+  afirmar(
+    escondido.estado === 201,
+    'se crea un BORRADOR con coordenadas para la prueba',
+    `recibido ${escondido.estado}`
+  );
+  const idEscondido = escondido.cuerpo?.propiedad?.id;
+
+  const conBorrador = await pedir('GET', '/api/propiedades/mapa', { token: tokenCliente });
+  afirmar(
+    !conBorrador.cuerpo?.datos?.some((p) => p.id === idEscondido),
+    '⛔ un BORRADOR no aparece en el mapa aunque tenga coordenadas',
+    `la respuesta trae ${conBorrador.cuerpo?.datos?.length} puntos`
+  );
+
+  const listaConBorrador = await pedir(
+    'GET',
+    `/api/propiedades?busqueda=${encodeURIComponent('Borrador que no se debe pintar')}`,
+    { token: tokenCliente }
+  );
+  afirmar(
+    listaConBorrador.cuerpo?.paginacion?.total === 0,
+    '⛔ ni en el buscador: filtrar por su título exacto no lo saca',
+    `recibido ${JSON.stringify(listaConBorrador.cuerpo?.paginacion?.total)}`
+  );
+
+  // Las dos propiedades de esta sección se borran aquí: la limpieza final
+  // borra las propiedades de los usuarios de prueba, pero una prueba no tiene
+  // por qué depender de eso (ni dejar un anuncio publicado mientras corre).
+  for (const id of [idPunto, idEscondido]) {
+    const borrada = await pedir('DELETE', `/api/propiedades/${id}`, { token: tokenCliente });
+    afirmar(borrada.estado === 200, `la propiedad ${id} de la prueba se limpia sola`);
+  }
+}
+
+// ========================================
+seccion('18. Logout');
 // ========================================
 {
   const r = await pedir('POST', '/api/auth/logout');

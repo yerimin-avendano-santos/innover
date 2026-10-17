@@ -531,10 +531,73 @@
     background-color: var(--color-marino);
     background-image: none;
     color: white;
+    /* Va un punto más grande y por encima del resto: es el que se está
+       leyendo. El tamaño vive aquí y no en un `style.transform` que escriba
+       el componente, por el mismo motivo que los colores: un estilo en
+       línea gana siempre, así que pisaría también el `:hover` de abajo y
+       el marcador dejaría de responder al ratón en cuanto se hubiera
+       seleccionado una vez. */
+    transform: scale(1.15);
+    z-index: 10;
   }
 
-  .marc:hover .marcador {
+  /* `:not(.marcador-seleccionado)` para que pasar el ratón por encima del
+     seleccionado no lo encoja: el seleccionado mantiene su tamaño. */
+  .marcador:hover:not(.marcador-seleccionado) {
     transform: scale(1.12);
+  }
+
+  /* --- Grupo de chinchetas ---
+     Sustituye a las chinchetas sueltas cuando hay muchas juntas: a la
+     distancia a la que dos precios se pisan, un número dice más que veinte
+     cajas amontonadas.
+
+     Va en azul marino, NO en el turquesa de acción: el turquesa brillante
+     está reservado para la propiedad destacada (ver `.marcador-destacado`), y
+     si el grupo lo usara, un grupo cualquiera se leería como un anuncio
+     pagado. El grupo no es un anuncio: es un resumen de lo que hay ahí.
+
+     También por eso el grupo no tiene estado "seleccionado": lo que se
+     selecciona es una propiedad, y una propiedad no está en un grupo —está
+     debajo—; al elegirla, el mapa se acerca hasta que sale suelta. */
+  .marcador-grupo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 2px solid white;
+    background-color: var(--color-marino);
+    color: white;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgb(15 41 90 / 0.4);
+    transition: transform 120ms ease;
+  }
+
+  /* Tres escalones, no una fórmula continua: el tamaño de un grupo tiene que
+     ser el mismo entre dos búsquedas o el mapa parece roto. Los cortes los
+     pone `claseDeGrupo()` en `lib/clustering.ts`. */
+  .marcador-grupo-chico {
+    width: 36px;
+    height: 36px;
+    font-size: 12px;
+  }
+
+  .marcador-grupo-medio {
+    width: 46px;
+    height: 46px;
+    font-size: 13px;
+  }
+
+  .marcador-grupo-grande {
+    width: 58px;
+    height: 58px;
+    font-size: 15px;
+  }
+
+  .marcador-grupo:hover {
+    transform: scale(1.08);
   }
 
   /* --- Globo del mapa ---

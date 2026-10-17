@@ -35,11 +35,20 @@ import { Mapa } from '@/components/Mapa';
 import { FichaPropiedad } from '@/components/FichaPropiedad';
 import { BarraFiltros, FILTROS_VACIOS, type Filtros } from '@/components/BarraFiltros';
 import { api, conQuery, ErrorPeticion } from '@/lib/api';
-import type { Distrito, RespuestaPropiedades } from '@/lib/tipos';
+import type { Distrito, RespuestaMapa, RespuestaPropiedades } from '@/lib/tipos';
 
 export function Buscador() {
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_VACIOS);
   const [datos, setDatos] = useState<RespuestaPropiedades | null>(null);
+
+  /**
+   * Los puntos del mapa: el resultado filtrado ENTERO, no la página de la lista.
+   *
+   * Va en su propio estado porque es otra petición y otra cosa: la lista
+   * pagina (50) y el mapa no. Ver `obtenerPuntosDelMapa` en el backend.
+   */
+  const [puntos, setPuntos] = useState<RespuestaMapa | null>(null);
+
   const [distritos, setDistritos] = useState<Distrito[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -111,7 +120,14 @@ export function Buscador() {
     setError(null);
     setSesionCaducada(false);
 
-    const consulta = conQuery('/api/propiedades', {
+    // 📌 LOS MISMOS FILTROS PARA LAS DOS PETICIONES.
+    //
+    // El mapa y la lista tienen que enseñar el mismo conjunto, así que los
+    // parámetros se construyen una vez y se usan en las dos. En el backend
+    // pasa lo mismo con el `where` (ver `construirWhere`): si cada pantalla
+    // tuviera su copia, bastaría con olvidar un filtro para que la lista
+    // dijera "38 resultados" y el mapa pintara otra cosa sin dar un solo error.
+    const parametros = {
       tipo: filtrosActuales.tipo || undefined,
       tipo_inmueble: filtrosActuales.tipo_inmueble || undefined,
       distrito_id: filtrosActuales.distrito_id ?? undefined,
@@ -119,19 +135,29 @@ export function Buscador() {
       precioMax: filtrosActuales.precioMax ?? undefined,
       busqueda: filtrosActuales.busqueda || undefined,
       orden: filtrosActuales.orden,
-      porPagina: 50,
-    });
+    };
 
     try {
-      const respuesta = await api<RespuestaPropiedades>(consulta, {
-        signal: controlador.signal,
-      });
+      // En paralelo: son la misma pregunta por dos caminos, y encadenarlas
+      // solo sumaría esperas.
+      const [respuesta, delMapa] = await Promise.all([
+        api<RespuestaPropiedades>(
+          conQuery('/api/propiedades', { ...parametros, porPagina: 50 }),
+          { signal: controlador.signal }
+        ),
+        api<RespuestaMapa>(conQuery('/api/propiedades/mapa', parametros), {
+          signal: controlador.signal,
+        }),
+      ]);
+
       setDatos(respuesta);
+      setPuntos(delMapa);
     } catch (e) {
       // Una búsqueda cancelada no es un error: la reemplazó otra.
       if ((e as Error).name === 'AbortError') return;
 
       setDatos(null);
+      setPuntos(null);
 
       // El 401 se cuenta aparte y SIN mensaje de error: no hay nada que el
       // usuario pueda arreglar en esta pantalla, así que en vez de un aviso
@@ -177,6 +203,17 @@ export function Buscador() {
   }, [filtros, buscar]);
 
   const propiedades = useMemo(() => datos?.datos ?? [], [datos]);
+
+  /**
+   * La firma de la búsqueda actual.
+   *
+   * Cambia cuando cambian los filtros, NO cuando el usuario mueve el mapa. El
+   * mapa la usa para saber cuándo volver a encuadrar: una pregunta nueva merece
+   * una vista nueva (buscar en Tingo María y quedarse mirando Huánuco parece
+   * que "no hay nada"), pero arrastrar el mapa es una decisión del usuario y no
+   * se pisa.
+   */
+  const claveVista = useMemo(() => JSON.stringify(filtros), [filtros]);
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
@@ -252,9 +289,13 @@ export function Buscador() {
             barras de desplazamiento fantasma.
           */}
           <Mapa
-            propiedades={propiedades}
+            puntos={puntos?.datos ?? []}
+            total={puntos?.total ?? 0}
+            sinCoordenadas={puntos?.sin_coordenadas ?? 0}
+            recortado={puntos?.recortado ?? false}
             seleccionada={seleccionada}
             alSeleccionar={(id) => setSeleccionada(id)}
+            claveVista={claveVista}
             className="h-full w-full"
           />
         </section>

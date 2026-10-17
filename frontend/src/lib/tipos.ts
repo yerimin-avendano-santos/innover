@@ -241,6 +241,35 @@ export interface Favorito extends Propiedad {
   guardado_en: string;
 }
 
+/**
+ * Lo que el mapa necesita de una propiedad: la chincheta y su globo. Nada más.
+ *
+ * 📌 NO ES `Propiedad` RECORTADA, ES SU PROPIO TIPO, Y ESO ES LO IMPORTANTE.
+ *
+ * `Propiedad` es lo que pinta la lista; esto es lo que pinta un cuadrado de
+ * 28 px sobre un mapa. Si el endpoint del mapa devolviera propiedades a medias
+ * con el tipo `Propiedad`, la lista de al lado podría recibirlas sin que
+ * TypeScript dijera nada y reventaría al leer `descripcion` o `imagenes` — que
+ * no vienen. Aquí el compilador lo ve venir.
+ *
+ * `latitud` y `longitud` son `number` y no `number | null` a propósito: el
+ * backend no manda puntos sin coordenadas, porque no se pueden pintar. El
+ * tipo lo dice, y así nadie tiene que repetir el `if` que ya se hizo allí.
+ */
+export interface PuntoMapa {
+  id: number;
+  latitud: number;
+  longitud: number;
+  titulo: string;
+  precio: number;
+  moneda: Moneda;
+  tipo_inmueble: TipoInmueble;
+  habitaciones: number;
+  area_m2: number | null;
+  destacado: boolean;
+  distrito: { id: number; nombre: string } | null;
+}
+
 // ========================================
 // Respuestas de la API
 // ========================================
@@ -260,6 +289,24 @@ export interface RespuestaPropiedades {
     minimo: number | null;
     maximo: number | null;
   };
+}
+
+/**
+ * La respuesta del mapa: el resultado filtrado ENTERO, no una página.
+ *
+ * Por eso no hay `paginacion` aquí: el mapa no pagina, agrupa. Y como el mapa
+ * no puede decir "no hay más" sin mentir, la respuesta lleva sus propios
+ * contadores: cuántas propiedades caen fuera por no tener coordenadas y si el
+ * tope del backend dejó alguna fuera.
+ */
+export interface RespuestaMapa {
+  datos: PuntoMapa[];
+  /** Propiedades que cumplen los filtros (coincida con el total de la lista). */
+  total: number;
+  con_coordenadas: number;
+  sin_coordenadas: number;
+  /** `true` si se alcanzó el tope y hay puntos que NO se están pintando. */
+  recortado: boolean;
 }
 
 export interface RespuestaLead {

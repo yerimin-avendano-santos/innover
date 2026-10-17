@@ -47,6 +47,7 @@ Cada fase tiene dos listas: lo que **hay que aprender** y lo que **hay que const
 - [x] **Desarrollo:** buscador con mapa a pantalla completa
 - [x] **Desarrollo:** filtros por tipo, distrito, habitaciones, precio y orden
 - [x] **Desarrollo:** marcadores con precio y popup seguro (sin XSS)
+- [x] **Desarrollo:** chinchetas agrupadas por cercanía, con tres tamaños y el número dentro, y el mapa enseñando el resultado filtrado **entero** (hasta un tope de 1.000, y confesando cuándo recorta). *Sin agrupar, cuarenta precios repartidos por la conurbación se pisan unos sobre otros y el mapa deja de contestar lo único que tiene que contestar: dónde hay qué. Y con solo la primera página de la lista, alejarse para ver "¿dónde hay?" diría que hay barrios vacíos que no lo están: el mapa y la lista comparten el `where` del backend (`construirWhere`) para que no puedan divergir. La lógica de agrupar vive aparte, en `lib/clustering.ts`, y es lo único del frontend con prueba propia (`verificar:clustering`)*
 - [x] **Desarrollo:** ficha de detalle con URL por slug
 - [x] **Desarrollo:** ficha como **Server Component**: el contenido y los metadatos (`title`, `description`, `og:`) viajan escritos en el HTML. Antes llegaba vacía y la pintaba JavaScript — servía para una persona y no para lo que la página existe (el enlace que se comparte y lo que indexa Google). *Sin `loading.tsx` a propósito: con streaming, `notFound()` contestaría 200 en vez de 404*
 - [x] **Desarrollo:** descubrimiento para buscadores: `/robots.txt` y `/sitemap.xml` generados desde la API. Sin esto, la ficha más indexable del mundo no se encuentra — el buscador está detrás del muro, así que un rastreador no tiene un solo enlace interno hacia una propiedad
@@ -98,7 +99,7 @@ Cada fase tiene dos listas: lo que **hay que aprender** y lo que **hay que const
 
 Lo que queda pendiente y conviene no olvidar:
 
-- [ ] **Tests unitarios** (hay 236 de integración, ninguno aislado de un componente)
+- [ ] **Tests de componentes** (hay 251 de integración —207 de API y 44 del puente— y una unitaria, `verificar:clustering`, que prueba la lógica de agrupar del mapa; lo que no hay es forma de probar un componente de React sin navegador, y los marcadores del mapa son justo eso)
 - [ ] **Refresh tokens** (la sesión caduca a las 2 h sin renovación)
 - [ ] **Subida de fotos** (hoy se pegan direcciones y la ficha las enseña; falta el botón de subir, que necesita almacenamiento y credenciales. El dato que se guarda es el mismo, así que no hay que rehacer nada)
 - [ ] **Verificación contra RENIEC** (hoy el admin valida a ojo el documento)

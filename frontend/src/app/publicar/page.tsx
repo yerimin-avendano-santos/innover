@@ -22,7 +22,7 @@ import { Mapa } from '@/components/Mapa';
 import CampoImagenes from '@/components/CampoImagenes';
 import { api, ErrorPeticion } from '@/lib/api';
 import { useAuth } from '@/contextos/Auth';
-import type { Propiedad } from '@/lib/tipos';
+import type { PuntoMapa, Propiedad, TipoInmueble } from '@/lib/tipos';
 
 interface Formulario {
   titulo: string;
@@ -279,35 +279,30 @@ export default function PaginaPublicar() {
     );
   }
 
-  // Pin approximation to show on the map while the user types coordinates.
-  const pinAproximada: Propiedad[] =
+  /**
+   * El pin de la vista previa: la chincheta con el precio, mientras se escriben
+   * las coordenadas.
+   *
+   * 📌 Antes esto fabricaba una `Propiedad` ENTERA —slug `'preview'`,
+   * descripción vacía, estado `PUBLICADA`, fechas de hoy...— solo para encajar
+   * con las props del mapa. Quince campos inventados para pintar un cuadrado de
+   * 28 px, y con datos que no son verdad. Con el tipo del mapa se escribe lo que
+   * se pinta y nada más: no hay que fingir que existe un anuncio.
+   */
+  const pinAproximada: PuntoMapa[] =
     formulario.latitud && formulario.longitud
       ? [
           {
             id: 0,
-            slug: 'preview',
-            titulo: formulario.titulo || 'Tu publicación',
-            descripcion: '',
-            precio: Number(formulario.precio) || 0,
-            moneda: formulario.moneda,
-            tipo: formulario.tipo,
-            tipo_inmueble: formulario.tipo_inmueble as never,
-            estado: 'PUBLICADA',
-            area_m2: formulario.area_m2 ? Number(formulario.area_m2) : null,
-            habitaciones: 0,
-            banos: 0,
-            parkederos: 0,
-            distrito_id: null,
-            direccion: null,
             latitud: Number(formulario.latitud),
             longitud: Number(formulario.longitud),
-            tour_3d_url: null,
-            imagenes: [],
+            titulo: formulario.titulo || 'Tu publicación',
+            precio: Number(formulario.precio) || 0,
+            moneda: formulario.moneda,
+            tipo_inmueble: formulario.tipo_inmueble as TipoInmueble,
+            habitaciones: 0,
+            area_m2: formulario.area_m2 ? Number(formulario.area_m2) : null,
             destacado: false,
-            vistas: 0,
-            fecha_creacion: new Date().toISOString(),
-            fecha_actualizacion: new Date().toISOString(),
-            propietario: null,
             distrito: null,
           },
         ]
@@ -462,7 +457,7 @@ export default function PaginaPublicar() {
           {/* Vista previa mientras se escriben las coordenadas. */}
           {pinAproximada.length > 0 && (
             <div className="h-56 overflow-hidden rounded-medio border border-linea">
-              <Mapa propiedades={pinAproximada} className="h-full w-full" />
+              <Mapa puntos={pinAproximada} className="h-full w-full" />
             </div>
           )}
         </Seccion>

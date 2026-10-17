@@ -4,6 +4,7 @@
 // Lee cada línea como una regla de permiso:
 //
 //   GET  /            → TOKEN      (el buscador exige sesión)
+//   GET  /mapa        → TOKEN      (los puntos del mapa: misma información)
 //   GET  /cercanas    → TOKEN      (es la misma información, misma regla)
 //   GET  /:id         → PÚBLICA    (es la ficha, y tiene que serlo)
 //   GET  /mias        → TOKEN      (y solo devuelve las tuyas)
@@ -57,6 +58,7 @@ import {
   eliminarPropiedad,
   obtenerPropiedadesCercanas,
   obtenerListaParaSitemap,
+  obtenerPuntosDelMapa,
 } from '../controllers/propiedadController.js';
 
 const router = express.Router();
@@ -92,6 +94,22 @@ router.get(
 
 // El buscador. Todos los filtros son opcionales y llegan validados por Zod.
 router.get('/', verificarToken, validar(filtrosPropiedadSchema, 'query'), obtenerPropiedades);
+
+// El mapa: los MISMOS filtros que el buscador, pero sin paginar.
+//
+// La lista enseña 50 por página; el mapa enseña el resultado entero (hasta su
+// tope) porque su trabajo es contestar "¿dónde hay?", y con una sola página esa
+// respuesta sería falsa. Mismo candado que el buscador: es la misma
+// información.
+//
+// ⚠️ Antes de `/:id`, como todo lo que tiene texto literal: si estuviera debajo,
+// "mapa" entraría por la ficha como si fuera un slug.
+router.get(
+  '/mapa',
+  verificarToken,
+  validar(filtrosPropiedadSchema, 'query'),
+  obtenerPuntosDelMapa
+);
 
 // --- PROTEGIDAS ---
 

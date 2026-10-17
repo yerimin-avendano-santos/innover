@@ -256,24 +256,44 @@ export const crearPropiedad = async (req, res) => {
 };
 
 // ========================================
-// [READ] Buscar propiedades (público)
+// Los filtros de la búsqueda, en un solo sitio
 // ========================================
-export const obtenerPropiedades = async (req, res) => {
+/**
+ * Construye el `where` de Prisma a partir de los filtros de la query.
+ *
+ * 📌 ESTÁ FUERA DE `obtenerPropiedades` PORQUE LO COMPARTEN DOS PANTALLAS.
+ *
+ * La lista y el mapa tienen que enseñar EL MISMO conjunto. Si el mapa llevara
+ * su propia copia de los filtros, bastaría con olvidar un `if` para que la
+ * lista dijera "38 resultados" y el mapa pintara otra cosa — y eso no da
+ * error, solo miente. Con una sola función, o coinciden los dos o no coincide
+ * ninguno.
+ *
+ * ⛔ Y SOLO ENSEÑA `PUBLICADA`: ESO NO ES UN FILTRO, ES UN CANDADO.
+ *
+ * Aquí hubo un `estado ? [estado] : ['PUBLICADA']` que hoy no hace nada —el
+ * schema de filtros es lista blanca y ni siquiera acepta `estado`, así que Zod
+ * lo descarta antes de llegar— y que el día que alguien añada ese filtro
+ * "razonable" ("enséñame también las vendidas") convertirá estas dos rutas en
+ * la puerta de los borradores ajenos: sin error, sin prueba roja, sin nada.
+ * La razón por la que pueden pedir solo sesión es que un BORRADOR no sale
+ * nunca de aquí.
+ *
+ * Los borradores propios se ven en `/api/propiedades/mias`, que es otra ruta y
+ * otro candado.
+ *
+ * Es `async` por la búsqueda por radio: PostGIS no se consulta con el
+ * generador de Prisma, sino con SQL.
+ */
+async function construirWhere(filtros) {
   const {
-    tipo, tipo_inmueble, estado,
+    tipo, tipo_inmueble,
     precioMin, precioMax, areaMin, areaMax,
     habitaciones, banos, distrito_id, moneda, busqueda,
-    pagina, porPagina, orden,
-  } = req.query;
+    latitud, longitud, radioKm,
+  } = filtros;
 
-  /**
-   * Los Drafts son privados por definición: son el borrador de trabajo del
-   * dueño. Que aparezcan en el buscador público sería filtrar información
-   * de propiedades que todavía no quieren mostrar.
-   */
-  const where = {
-    estado: { in: estado ? [estado] : ['PUBLICADA'] },
-  };
+  const where = { estado: { in: ['PUBLICADA'] } };
 
   if (tipo) where.tipo = tipo;
   if (tipo_inmueble) where.tipo_inmueble = tipo_inmueble;
@@ -299,22 +319,6 @@ export const obtenerPropiedades = async (req, res) => {
   if (busqueda) {
     where.titulo = { contains: busqueda, mode: 'insensitive' };
   }
-
-  /**
-   * 📡 EL DESTACADO PAGA.
-   *
-   * El modelo de monetización del startup es cobrar por aparecer primero.
-   * El `orderBy` con array de objetos se aplica en orden: primero los
-   * destacados, y dentro de cada grupo por el criterio elegido.
-   */
-  const ordenes = {
-    recientes: [{ destacado: 'desc' }, { fecha_creacion: 'desc' }],
-    populares: [{ destacado: 'desc' }, { vistas: 'desc' }],
-    precio_asc: [{ destacado: 'desc' }, { precio: 'asc' }],
-    precio_desc: [{ destacado: 'desc' }, { precio: 'desc' }],
-  };
-
-  const { latitud, longitud, radioKm } = req.query;
 
   /**
    * 🌍 BÚSQUEDA GEOGRÁFICA CON POSTGIS
@@ -345,6 +349,31 @@ export const obtenerPropiedades = async (req, res) => {
     const ids = dentroDelRadio.map((r) => r.id);
     where.id = { in: ids.length > 0 ? ids : [-1] }; // [-1] = lista vacía
   }
+
+  return where;
+}
+
+// ========================================
+// [READ] Buscar propiedades (con sesión)
+// ========================================
+export const obtenerPropiedades = async (req, res) => {
+  const { pagina, porPagina, orden } = req.query;
+
+  const where = await construirWhere(req.query);
+
+  /**
+   * 📡 EL DESTACADO PAGA.
+   *
+   * El modelo de monetización del startup es cobrar por aparecer primero.
+   * El `orderBy` con array de objetos se aplica en orden: primero los
+   * destacados, y dentro de cada grupo por el criterio elegido.
+   */
+  const ordenes = {
+    recientes: [{ destacado: 'desc' }, { fecha_creacion: 'desc' }],
+    populares: [{ destacado: 'desc' }, { vistas: 'desc' }],
+    precio_asc: [{ destacado: 'desc' }, { precio: 'asc' }],
+    precio_desc: [{ destacado: 'desc' }, { precio: 'desc' }],
+  };
 
   const skip = (pagina - 1) * porPagina;
 
@@ -383,6 +412,100 @@ export const obtenerPropiedades = async (req, res) => {
     },
   });
 };
+
+// ========================================
+// [READ] Los puntos del mapa (con sesión)
+// ========================================
+/**
+ * Todo lo que el mapa necesita para dibujar la búsqueda. Nada más.
+ *
+ * 📌 POR QUÉ NO ES `obtenerPropiedades` CON `porPagina=100`.
+ *
+ * Porque el mapa NO pagina. Si enseñara solo la primera página, alejarse para
+ * ver "¿dónde hay?" mentiría —un barrio se vería vacío porque sus propiedades
+ * cayeron en la página 2— y el mapa existe justo para eso: la lista contesta
+ * "cuáles", el mapa contesta "dónde". Así que devuelve el conjunto filtrado
+ * entero (hasta un tope) y con los campos justos para pintar la chincheta y su
+ * globo: mil propiedades con `descripcion` e `imagenes` serían cientos de
+ * kilobytes para dibujar mil cuadrados de 28 px.
+ *
+ * ⛔ El tope SÍ recorta, y por eso la respuesta dice si recortó. Es la
+ * diferencia entre "no hay más" y "no te estoy enseñando todo": el mapa no
+ * puede permitirse confundirlas, porque la conclusión que saca quien mira es
+ * "aquí no hay nada".
+ */
+const MAX_PUNTOS_MAPA = 1000;
+
+export const obtenerPuntosDelMapa = async (req, res) => {
+  const where = await construirWhere(req.query);
+
+  // Una propiedad sin coordenadas no se puede pintar, y desaparecer sin decir
+  // nada es justo lo que se lee como "aquí no hay nada". Se cuentan aparte
+  // para poder avisarlo en pantalla.
+  const sinCoordenadas = await prisma.propiedad.count({
+    where: { ...where, OR: [{ latitud: null }, { longitud: null }] },
+  });
+
+  const [total, puntos] = await Promise.all([
+    prisma.propiedad.count({ where }),
+    prisma.propiedad.findMany({
+      where: { ...where, latitud: { not: null }, longitud: { not: null } },
+      select: {
+        id: true,
+        latitud: true,
+        longitud: true,
+        titulo: true,
+        precio: true,
+        moneda: true,
+        tipo_inmueble: true,
+        habitaciones: true,
+        area_m2: true,
+        destacado: true,
+        distrito: { select: { id: true, nombre: true } },
+      },
+      // El mismo criterio que la lista: si el tope recorta, recorta por el
+      // final, así que quedan fuera los que peor cumplen el orden que el
+      // usuario pidió.
+      orderBy: [{ destacado: 'desc' }, { fecha_creacion: 'desc' }],
+      take: MAX_PUNTOS_MAPA,
+    }),
+  ]);
+
+  const conCoordenadas = total - sinCoordenadas;
+
+  res.json({
+    datos: puntos.map(puntoParaMapa),
+    total,
+    con_coordenadas: conCoordenadas,
+    sin_coordenadas: sinCoordenadas,
+    recortado: conCoordenadas > MAX_PUNTOS_MAPA,
+  });
+};
+
+/**
+ * La proyección del mapa: lo justo para la chincheta y su globo.
+ *
+ * `precio` pasa por `decimalANumero` igual que en `propiedadPublica`, y aquí
+ * importa más que allí: Prisma devuelve Decimal como texto, y la chincheta
+ * enseña el precio dentro de una caja de 28 px de alto. "S/ 275000.00" no cabe
+ * y, peor, `destacado`/`precio` alimentan decisiones de color: un string donde
+ * se espera un número no falla, solo pinta mal.
+ */
+function puntoParaMapa(propiedad) {
+  return {
+    id: propiedad.id,
+    latitud: propiedad.latitud,
+    longitud: propiedad.longitud,
+    titulo: propiedad.titulo,
+    precio: decimalANumero(propiedad.precio),
+    moneda: propiedad.moneda,
+    tipo_inmueble: propiedad.tipo_inmueble,
+    habitaciones: propiedad.habitaciones,
+    area_m2: decimalANumero(propiedad.area_m2),
+    destacado: propiedad.destacado,
+    distrito: propiedad.distrito,
+  };
+}
 
 // ========================================
 // [READ] Una propiedad por ID o slug

@@ -11,6 +11,12 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
+    // Los scripts de `scripts/*.mts` importan módulos de `src/` CON la
+    // extensión (`import ... from '../src/lib/clustering.ts'`), porque los
+    // ejecuta Node directamente y su resolución de módulos la exige. Sin esta
+    // opción, TypeScript los rechaza con TS5097 y el typecheck falla por un
+    // archivo que ni siquiera forma parte del bundle de la aplicación.
+    "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
     "incremental": true,
     "plugins": [
