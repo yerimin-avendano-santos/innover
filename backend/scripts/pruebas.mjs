@@ -578,6 +578,24 @@ let idPropiedadPropia = null;
   );
 }
 
+/**
+ * El cuerpo base de una propiedad válida.
+ *
+ * Vive aquí arriba y no junto a la sección 14 —donde nació— porque lo usan dos
+ * sitios: las pruebas de validación de las fotos (sección 7) y las del candado
+ * del plan (sección 14). Duplicarlo sería peor: el día que cambie un campo
+ * obligatorio habría que acordarse de los dos, y el que se olvide fallará con
+ * un 400 que no dice por qué.
+ */
+const cuerpoPropiedad = (extra = {}) => ({
+  titulo: 'Propiedad creada por la suite de pruebas',
+  descripcion: 'Descripción de prueba con más de treinta caracteres para pasar la validación.',
+  precio: 250000,
+  tipo: 'VENTA',
+  tipo_inmueble: 'DEPARTAMENTO',
+  ...extra,
+});
+
 // ========================================
 seccion('7. Validación de entrada');
 // ========================================
@@ -634,6 +652,48 @@ seccion('7. Validación de entrada');
 {
   const r = await pedir('GET', '/api/ruta/que/no/existe');
   afirmar(r.estado === 404, 'ruta inexistente devuelve 404');
+}
+
+{
+  // --- Fotos: la lista de direcciones que la ficha enseña ---
+  //
+  // Se crea una propiedad CON fotos y se comprueba que vuelven en el mismo
+  // orden. El orden no es un detalle estético: la primera es la portada, y de
+  // ella dependen la miniatura de la lista, la foto grande de la ficha y la
+  // imagen que aparece al compartir el enlace por WhatsApp.
+  const FOTOS = [
+    'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1200',
+    'https://example.com/segunda-foto.jpg',
+  ];
+
+  const r = await pedir('POST', '/api/propiedades', {
+    token: tokenCliente,
+    cuerpo: cuerpoPropiedad({ imagenes: FOTOS }),
+  });
+
+  afirmar(r.estado === 201, 'una propiedad con fotos se crea', `recibido ${r.estado}`);
+  afirmar(
+    JSON.stringify(r.cuerpo?.propiedad?.imagenes) === JSON.stringify(FOTOS),
+    '⛔ las fotos vuelven enteras y EN ORDEN (la primera es la portada)',
+    `volvieron: ${JSON.stringify(r.cuerpo?.propiedad?.imagenes)}`
+  );
+}
+
+{
+  // `javascript:` es lo primero que se le ocurre a quien busca un agujero en un
+  // campo que termina dentro de un `src`. El esquema `url` de Zod ya lo rechaza
+  // —no es una dirección, es código— y esta prueba existe para que nadie lo
+  // cambie por un `z.string()` "porque total, es solo una foto".
+  const r = await pedir('POST', '/api/propiedades', {
+    token: tokenCliente,
+    cuerpo: cuerpoPropiedad({ imagenes: ['javascript:alert(1)'] }),
+  });
+
+  afirmar(
+    r.estado === 400,
+    '⛔ una foto con esquema `javascript:` se rechaza',
+    `recibido ${r.estado}: ${JSON.stringify(r.cuerpo)}`
+  );
 }
 
 // ========================================
@@ -1211,14 +1271,8 @@ const TOUR = 'https://my.matterport.com/show/?m=SxQL3iGyoDo';
 // exista: la petición se rechaza ANTES de que nadie la visite.
 const TOUR_DISTINTO = 'https://my.matterport.com/show/?m=OtroRecorridoDistinto';
 
-const cuerpoPropiedad = (extra = {}) => ({
-  titulo: 'Propiedad creada por la suite de pruebas',
-  descripcion: 'Descripción de prueba con más de treinta caracteres para pasar la validación.',
-  precio: 250000,
-  tipo: 'VENTA',
-  tipo_inmueble: 'DEPARTAMENTO',
-  ...extra,
-});
+// `cuerpoPropiedad` se define arriba, antes de la sección 7: lo usan también
+// las pruebas de las fotos, que van allí.
 
 {
   // Ojo: el usuario acaba de ser ascendido a AGENTE en la sección anterior.

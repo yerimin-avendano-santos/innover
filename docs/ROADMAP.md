@@ -36,7 +36,7 @@ Cada fase tiene dos listas: lo que **hay que aprender** y lo que **hay que const
 - [x] **Desarrollo:** el rol **nunca** se autoasigna en el registro
 - [x] **Desarrollo:** validación de entrada con Zod en todas las rutas
 - [x] **Desarrollo:** rate limiting, CORS con lista blanca y cabeceras de seguridad
-- [x] **Desarrollo:** 208 pruebas de integración y seguridad (168 API + 40 puente)
+- [x] **Desarrollo:** 214 pruebas de integración y seguridad (171 API + 43 puente)
 
 ## Fase 4: Frontend y mapas interactivos 🎨
 
@@ -70,8 +70,9 @@ Cada fase tiene dos listas: lo que **hay que aprender** y lo que **hay que const
 ## Fase 6: Multimedia y 3D 🏠
 
 - [ ] **Aprender:** almacenamiento de archivos en la nube (S3 / Cloudinary)
-- [ ] **Desarrollo:** subida de imágenes de propiedades
-- [ ] **Desarrollo:** galería en la ficha
+- [x] **Desarrollo:** fotos del anuncio: se publican pegando direcciones en `/publicar` y la ficha las enseña en una galería, con la portada escrita en el HTML y como `og:image` al compartir el enlace. *El campo `imagenes` ya guardaba direcciones, así que no hizo falta tocar la base ni esperar a Cloudinary — y por eso tampoco hace falta volver atrás: cuando llegue la subida, guardará la dirección que devuelva el almacenamiento y ni la ficha ni la tarjeta del buscador cambian una línea*
+- [ ] **Desarrollo:** subida de archivos desde el formulario (lo que falta de verdad: almacenamiento y credenciales)
+- [x] **Desarrollo:** galería en la ficha
 - [x] **Desarrollo:** campo e incrustación del recorrido 3D
 - [ ] **Desarrollo:** recorrido 360° con Matterport
 
@@ -96,9 +97,9 @@ Cada fase tiene dos listas: lo que **hay que aprender** y lo que **hay que const
 
 Lo que queda pendiente y conviene no olvidar:
 
-- [ ] **Tests unitarios** (hay 208 de integración, ninguno aislado de un componente)
+- [ ] **Tests unitarios** (hay 214 de integración, ninguno aislado de un componente)
 - [ ] **Refresh tokens** (la sesión caduca a las 2 h sin renovación)
-- [ ] **Fotos de propiedades** (el campo `imagenes` existe y se guarda, pero no hay subida ni galería)
+- [ ] **Subida de fotos** (hoy se pegan direcciones y la ficha las enseña; falta el botón de subir, que necesita almacenamiento y credenciales. El dato que se guarda es el mismo, así que no hay que rehacer nada)
 - [ ] **Verificación contra RENIEC** (hoy el admin valida a ojo el documento)
 - [ ] **Rate limiting distribuido** (el actual guarda contadores en memoria; con varias instancias hace falta Redis)
 - [ ] **Búsqueda de texto completo** (PostgreSQL `tsvector` o Meilisearch)

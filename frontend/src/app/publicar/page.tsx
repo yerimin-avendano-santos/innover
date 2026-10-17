@@ -19,6 +19,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Mapa } from '@/components/Mapa';
+import CampoImagenes from '@/components/CampoImagenes';
 import { api, ErrorPeticion } from '@/lib/api';
 import { useAuth } from '@/contextos/Auth';
 import type { Propiedad } from '@/lib/tipos';
@@ -41,6 +42,8 @@ interface Formulario {
   tour_3d_url: string;
   /** Solo se manda si el usuario puede usarlo. Ver `puedePlanPro`. */
   destacado: boolean;
+  /** Direcciones de las fotos, en orden. La primera es la portada. */
+  imagenes: string[];
 }
 
 const FORMULARIO_VACIO: Formulario = {
@@ -60,6 +63,7 @@ const FORMULARIO_VACIO: Formulario = {
   longitud: '',
   tour_3d_url: '',
   destacado: false,
+  imagenes: [],
 };
 
 export default function PaginaPublicar() {
@@ -134,6 +138,7 @@ export default function PaginaPublicar() {
           longitud: propiedad.longitud !== null ? String(propiedad.longitud) : '',
           tour_3d_url: propiedad.tour_3d_url ?? '',
           destacado: propiedad.destacado,
+          imagenes: propiedad.imagenes ?? [],
         });
         setTourOriginal(propiedad.tour_3d_url ?? null);
       })
@@ -193,6 +198,14 @@ export default function PaginaPublicar() {
     tour_3d_url: formulario.tour_3d_url.trim(),
 
     /*
+     * Las filas vacías se descartan AQUÍ. El servidor valida cada elemento con
+     * `z.string().url()`, así que una cadena vacía —una fila que se añadió y no
+     * se llegó a rellenar— devolvería un 400 por un campo que el usuario
+     * probablemente ni miró.
+     */
+    imagenes: formulario.imagenes.map((u) => u.trim()).filter(Boolean),
+
+    /*
      * ⛔ `destacado` SOLO viaja si la cuenta puede usarlo, y no es una
      * optimización: el servidor rechaza el campo ENTERO —también un `false`—
      * cuando quien lo manda no tiene plan. Un usuario GRATIS editando el precio
@@ -235,7 +248,19 @@ export default function PaginaPublicar() {
     } catch (e) {
       if (e instanceof ErrorPeticion) {
         setError(e.message);
-        setErrorCampo(Object.fromEntries(e.detalles.map((d) => [d.campo, d.mensaje])));
+        setErrorCampo(Object.fromEntries(
+          e.detalles.map((d) => [
+            /*
+             * Zod identifica el elemento concreto de una lista —`imagenes.0`,
+             * `imagenes.7`—, y el formulario solo tiene un control llamado
+             * `imagenes`. Sin recortar el índice, el error de una foto no se
+             * pegaría a ningún campo: saldría el aviso general y el usuario
+             * tendría que adivinar cuál de las ocho direcciones está mal.
+             */
+            d.campo.split('.')[0],
+            d.mensaje,
+          ])
+        ));
       } else {
         setError('No pudimos guardar la publicación.');
       }
@@ -326,6 +351,15 @@ export default function PaginaPublicar() {
             minLength={30}
             multiline
             filas={5}
+          />
+        </Seccion>
+
+        {/* ---------- Fotos ---------- */}
+        <Seccion titulo="Fotos">
+          <CampoImagenes
+            valor={formulario.imagenes}
+            onChange={(urls) => cambiar('imagenes', urls)}
+            error={errorCampo.imagenes}
           />
         </Seccion>
 

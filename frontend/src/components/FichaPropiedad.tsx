@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element -- el motivo está en components/Galeria.tsx */
+
 // ========================================
 // 📋 FICHA DE PROPIEDAD
 // ========================================
@@ -47,27 +49,35 @@ export function FichaPropiedad({ propiedad, seleccionada, alSeleccionar }: Props
       role="button"
       aria-pressed={seleccionada}
     >
-      {/* --- Cabecera --- */}
-      <header className="mb-3">
-        <div className="mb-1.5 flex items-start justify-between gap-3">
-          <h3 className="text-grande font-semibold leading-tight text-tinta">
-            {propiedad.titulo}
-          </h3>
+      {/* --- Cabecera ---
+          La miniatura va a la izquierda y SIEMPRE mide lo mismo: sin foto
+          enseña un hueco neutro del mismo tamaño. Una lista donde unas
+          tarjetas miden 64 px de alto y otras 40 se vuelve difícil de recorrer
+          justo cuando se está comparando, que es lo único que se hace aquí. */}
+      <div className="mb-3 flex gap-3">
+        <Foto url={propiedad.imagenes?.[0]} />
 
-          {/* El distintivo de "destacado" es lo que el agente PAGÓ por
-              tener. Por eso tiene color propio (ámbar) y no el color
-              de acción: el usuario no debe confundirlo con un
-              elemento interactivo. */}
-          {propiedad.destacado && (
-            <span className="distintivo distintivo-destacado shrink-0">Destacado</span>
-          )}
-        </div>
+        <header className="min-w-0 flex-1">
+          <div className="mb-1.5 flex items-start justify-between gap-3">
+            <h3 className="text-grande font-semibold leading-tight text-tinta">
+              {propiedad.titulo}
+            </h3>
 
-        <p className="text-menor text-tinta-50">
-          {etiquetaTipo(propiedad.tipo_inmueble)}
-          {propiedad.distrito && ` · ${propiedad.distrito.nombre}`}
-        </p>
-      </header>
+            {/* El distintivo de "destacado" es lo que el agente PAGÓ por
+                tener. Por eso tiene color propio (ámbar) y no el color
+                de acción: el usuario no debe confundirlo con un
+                elemento interactivo. */}
+            {propiedad.destacado && (
+              <span className="distintivo distintivo-destacado shrink-0">Destacado</span>
+            )}
+          </div>
+
+          <p className="text-menor text-tinta-50">
+            {etiquetaTipo(propiedad.tipo_inmueble)}
+            {propiedad.distrito && ` · ${propiedad.distrito.nombre}`}
+          </p>
+        </header>
+      </div>
 
       {/* --- Precio ---
           Es el dato dominante. Por eso va grande y en la señal. */}
@@ -112,6 +122,39 @@ export function FichaPropiedad({ propiedad, seleccionada, alSeleccionar }: Props
         )}
       </footer>
     </article>
+  );
+}
+
+/**
+ * La miniatura de la tarjeta, o su hueco exacto.
+ *
+ * `alt=""` a propósito: el título de la propiedad está al lado, así que
+ * describir la foto otra vez solo alarga el recorrido de un lector de pantalla
+ * para decir lo mismo dos veces.
+ *
+ * ⛔ `<img>` y no `next/image`, por el motivo que explica `components/Galeria.tsx`:
+ * el optimizador descargaría en el servidor una dirección escrita por quien
+ * publica, y eso es un SSRF con permiso de publicación.
+ */
+function Foto({ url }: { url?: string }) {
+  if (!url) {
+    return (
+      <div
+        aria-hidden="true"
+        className="h-16 w-20 shrink-0 rounded-chico border border-linea bg-papel-hundido"
+      />
+    );
+  }
+
+  return (
+    <img
+      src={url}
+      alt=""
+      width={200}
+      height={160}
+      loading="lazy"
+      className="h-16 w-20 shrink-0 rounded-chico border border-linea object-cover"
+    />
   );
 }
 

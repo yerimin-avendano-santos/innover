@@ -171,6 +171,36 @@ let slugCompartible = null;
     abre >= 0 && cierra > abre && html.slice(abre, cierra).includes(d.propiedad.titulo),
     '⛔ y va dentro de un <h1>, no en cualquier parte del HTML'
   );
+
+  // --- Las FOTOS, que también tienen que venir en el HTML ---
+  //
+  // La foto principal la pinta el servidor en la primera pasada: la isla de
+  // cliente sirve para CAMBIARLA, no para que aparezca. Si alguien moviera la
+  // galería a un `useEffect`, la ficha se vería igual de bien en un navegador
+  // y para un rastreador sería una página sin una sola imagen.
+  const fotos = d.propiedad.imagenes ?? [];
+  afirmar(
+    fotos.length > 0,
+    'la propiedad de ejemplo trae fotos (si no, esto no comprueba nada)',
+    'las pone el seed: revisa que siga haciéndolo'
+  );
+
+  // ⚠️ Las direcciones llevan `&` (los parámetros de la imagen) y React los
+  // escribe escapados como `&amp;` dentro del atributo. Buscar la dirección
+  // literal fallaría con el HTML perfecto, así que se buscan las dos formas.
+  const enHtml = (url) => html.includes(url) || html.includes(url.replace(/&/g, '&amp;'));
+
+  afirmar(
+    fotos.every(enHtml),
+    '⛔ las direcciones de las fotos vienen escritas en el HTML',
+    `de ${fotos.length} fotos, en el HTML: ${fotos.filter(enHtml).length}`
+  );
+
+  afirmar(
+    html.includes('property="og:image"'),
+    '⛔ al compartir el enlace, la previsualización trae la portada',
+    'sin og:image, WhatsApp muestra el enlace sin ninguna imagen'
+  );
 }
 
 // --- 7b. Una propiedad que no existe responde 404, no 200 ---

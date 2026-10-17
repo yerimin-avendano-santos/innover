@@ -44,6 +44,7 @@ import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { AccionesDuenio, PanelContacto } from '@/components/AccionesPropiedad';
+import Galeria from '@/components/Galeria';
 import { Mapa } from '@/components/Mapa';
 import { formatearPrecio, precioPorM2, etiquetaTipo } from '@/lib/api';
 import type { Propiedad } from '@/lib/tipos';
@@ -165,15 +166,26 @@ export async function generateMetadata({
   const propiedad = busqueda.propiedad;
   const descripcion = descripcionDe(propiedad);
 
+  /**
+   * La portada: la primera foto. Es lo que convierte el enlace en una tarjeta
+   * con imagen al compartirlo, que es para lo que existe esta página.
+   *
+   * No hay que componer ninguna dirección con el dominio del sitio: las fotos
+   * ya son direcciones absolutas porque las escribe quien publica (y el
+   * esquema solo acepta `http://` o `https://`).
+   */
+  const portada = propiedad.imagenes?.[0];
+
   return {
     title: propiedad.titulo,
     description: descripcion,
-    // Sin `images`: todavía no hay fotos (Bloque 5). Cuando las haya, esta es
-    // la línea que hace que la previsualización traiga miniatura.
     openGraph: {
       title: propiedad.titulo,
       description: descripcion,
       type: 'article',
+      // Sin foto NO se manda un `images` vacío: la previsualización saldría
+      // con un recuadro roto, que se ve peor que no tener miniatura.
+      ...(portada ? { images: [{ url: portada, alt: propiedad.titulo }] } : {}),
     },
   };
 }
@@ -236,6 +248,14 @@ export default async function PaginaPropiedad({
           </p>
         )}
       </header>
+
+      {/* --- Fotos ---
+          Van después del encabezado y antes que todo lo demás, fuera de la
+          rejilla de dos columnas, porque son lo primero que mira quien entra:
+          la foto decide si esa visita sigue leyendo el precio. */}
+      {(propiedad.imagenes?.length ?? 0) > 0 && (
+        <Galeria imagenes={propiedad.imagenes} titulo={propiedad.titulo} />
+      )}
 
       <div className="grid gap-8 lg:grid-cols-[1.6fr_1fr]">
         {/* ---------- Columna principal ---------- */}

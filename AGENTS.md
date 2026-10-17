@@ -73,10 +73,10 @@ Dos suites, ambas de integración contra el backend **real** (no hay mocks). Req
 
 ```bash
 npm run dev:backend                      # terminal 1
-npm run prueba                           # terminal 2 → 168 pruebas
+npm run prueba                           # terminal 2 → 171 pruebas
 
 npm run dev:frontend                     # terminal 1 (además del backend)
-node backend/scripts/pruebas-puente.mjs  # terminal 2 → 40 pruebas
+node backend/scripts/pruebas-puente.mjs  # terminal 2 → 43 pruebas
 ```
 
 **`pruebas-puente.mjs` no tiene script en package.json** — hay que invocarlo con la ruta completa, y necesita frontend **y** backend.
@@ -88,12 +88,12 @@ Hay **tres** limitadores, y una corrida de la suite toca dos:
 | Limitador | Tope | Lo que gasta una corrida |
 |---|---|---|
 | `limitadorAuth` | 10 **fallos** de login / 15 min | 6 |
-| `limitadorEscritura` | 20 escrituras / **hora** | 15 |
+| `limitadorEscritura` | 20 escrituras / **hora** | 17 |
 | `limitadorGeneral` | 300 peticiones / 15 min | sobra |
 
 El que engaña es **`limitadorEscritura`**: su ventana dura una hora, no quince
-minutos, y no tiene nada que ver con el login. Como la suite gasta 15 de 20,
-**dos corridas seguidas suman 30 y la segunda se corta a mitad**. Su síntoma
+minutos, y no tiene nada que ver con el login. Como la suite gasta 17 de 20,
+**dos corridas seguidas suman 34 y la segunda se corta a mitad**. Su síntoma
 es el peor posible: 18 pruebas fallan de golpe, sin relación entre sí, y
 parece que acabas de romper el código.
 
@@ -319,3 +319,4 @@ Son errores ya corregidos. Reabrirlos reintroduce agujeros explotables:
 - El `usuario_id` de una propiedad sale del **token**, nunca del body
 - `destacado` y `tour_3d_url` son campos de pago: los escribe un `ADMIN` o alguien con **plan PRO vigente**, nunca un usuario cualquiera. *(`destacado` era `ADMIN`-only; se abrió al plan PRO porque el destaque va incluido en él. La comprobación está en `resolverDestacado()`, en el servidor. Al bajar de plan se retiran los destaques con `sincronizarDestacados()`: si no, un plan vencido conservaría las ventajas.)*
 - Los borrados de usuario son **baja lógica** (`activo = false`), nunca `DELETE`
+- **Las fotos se pintan con `<img>`, nunca con `next/image`.** Las direcciones las escribe quien publica, y el optimizador de Next **descarga la imagen en el servidor** para redimensionarla: con `next/image`, pegar `http://169.254.169.254/latest/meta-data/` convierte la ficha en una puerta hacia la red interna — un SSRF de manual, y basta con tener cuenta para publicar. Con `<img>` la descarga la hace el navegador de quien mira, que no alcanza nada que no alcanzara ya. Un `next/image` "para optimizar" reabre esto sin que ningún test se ponga en rojo. El otro candado es el esquema: `imagenes` valida cada dirección con el esquema `url` de Zod (`http://` o `https://`), y `javascript:alert(1)` tiene prueba propia.

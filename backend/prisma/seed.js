@@ -255,6 +255,51 @@ async function main() {
   // inmobiliarios: departamentos entre US$ 60,000 (86 m², Fonavi II) y
   // US$ 139,000 (dúplex de 163 m² frente al puente Calicanto), alquileres de
   // S/ 500 a S/ 1,300 al mes, y terrenos en los alrededores desde US$ 42,000.
+  //
+  // ── Fotos de relleno ──
+  //
+  // 📌 SON FOTOS DE BANCO, Y NINGUNA ES DE LA PROPIEDAD QUE LA ENSEÑA.
+  //
+  // El proyecto todavía no tiene almacenamiento —la subida de archivos llega
+  // con Cloudinary—, pero `imagenes` guarda DIRECCIONES, así que un anuncio
+  // puede enseñar fotos desde hoy. Estas son de Unsplash (licencia libre, sin
+  // atribución obligatoria) y se comprobó una por una que responden antes de
+  // ponerlas aquí: una dirección muerta no rompe el seed, deja un recuadro roto
+  // en la ficha — que es peor, porque parece un fallo del sitio.
+  //
+  // El reparto es aproximado, no exacto: interiores para los departamentos,
+  // exteriores para las casas, oficinas para los locales. Lo que NO se comprobó
+  // es qué enseña cada imagen en concreto, así que no llevan nombres que lo
+  // afirmen (`casaConJardin`) — un nombre así sería una afirmación que nadie
+  // verificó, y el seed es justo donde una afirmación sin verificar se repite
+  // durante años. Son tres montones y se coge de cada uno.
+  const FOTOS_INTERIOR = [
+    'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1554995207-c18c203602cb?auto=format&fit=crop&w=1200&q=80',
+  ];
+  const FOTOS_CASA = [
+    'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1416331108676-a22ccb276e35?auto=format&fit=crop&w=1200&q=80',
+  ];
+  const FOTOS_COMERCIAL = [
+    'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1604014237800-1c9102c219da?auto=format&fit=crop&w=1200&q=80',
+  ];
+
   const propiedades = [
     {
       // El más caro de la cartera: el centro de Huánuco es la zona más
@@ -268,6 +313,7 @@ async function main() {
       distrito_id: mapaDistritos['Huánuco'].id,
       direccion: 'Jr. Dos de Mayo 340, Huánuco',
       latitud: -9.9299, longitud: -76.2401, destacado: true, vistas: 342,
+      imagenes: FOTOS_INTERIOR.slice(0, 3),
       // Recorrido 3D de ejemplo. Es un espacio de demostración PÚBLICO de
       // Matterport, y se comprobó que responde antes de ponerlo aquí: la otra
       // URL que se probó devolvía 404. Una URL de mentira no rompe el seed,
@@ -289,6 +335,7 @@ async function main() {
       distrito_id: mapaDistritos['Huánuco'].id,
       direccion: 'Av. Malecón Leoncio Prado 220, Huánuco',
       latitud: -9.9320, longitud: -76.2380, destacado: false, vistas: 128,
+      imagenes: FOTOS_INTERIOR.slice(3, 6),
     },
     {
       usuario_id: propietario.id,
@@ -300,6 +347,7 @@ async function main() {
       distrito_id: mapaDistritos['Huánuco'].id,
       direccion: 'Jr. 28 de Julio 620, Huánuco',
       latitud: -9.9280, longitud: -76.2415, destacado: false, vistas: 176,
+      imagenes: FOTOS_COMERCIAL.slice(2, 4),
     },
     {
       usuario_id: agente.id,
@@ -311,6 +359,7 @@ async function main() {
       distrito_id: mapaDistritos['Huánuco'].id,
       direccion: 'Jr. Hermilio Valdizán 555, Huánuco',
       latitud: -9.9275, longitud: -76.2425, destacado: false, vistas: 95,
+      imagenes: FOTOS_COMERCIAL.slice(0, 2),
     },
     {
       // En Amarilis, al otro lado del río. Es el distrito residencial por
@@ -324,6 +373,7 @@ async function main() {
       distrito_id: mapaDistritos['Amarilis'].id,
       direccion: 'Av. Esteban Pabletich 450, Amarilis',
       latitud: -9.9455, longitud: -76.2405, destacado: false, vistas: 87,
+      imagenes: FOTOS_CASA.slice(0, 3),
       // 📌 ESTE RECORRIDO 3D ES UN CASO LÍMITE A PROPÓSITO.
       //
       // Lucia tiene el plan PRO VENCIDO hace 15 días. La propiedad conserva el
@@ -345,6 +395,7 @@ async function main() {
       distrito_id: mapaDistritos['Pillco Marca'].id,
       direccion: 'Av. Universitaria 1250, Pillco Marca',
       latitud: -9.9570, longitud: -76.2480, destacado: false, vistas: 213,
+      imagenes: FOTOS_INTERIOR.slice(6, 8),
     },
     {
       usuario_id: propietario.id,
@@ -356,6 +407,12 @@ async function main() {
       distrito_id: mapaDistritos['Santa María del Valle'].id,
       direccion: 'Carretera Huánuco–Santa María del Valle km 8',
       latitud: -9.8640, longitud: -76.1720, destacado: false, vistas: 54,
+      // Sin fotos, y no es un olvido: un terreno se enseña con una foto del
+      // terreno, y de esto no hay. Además así la demo cubre el caso que la
+      // interfaz también tiene que resolver —la tarjeta de la búsqueda enseña
+      // un hueco del mismo tamaño— en vez de que aparezca la primera vez en
+      // producción.
+      imagenes: [],
     },
     {
       usuario_id: propietario.id,
@@ -367,6 +424,7 @@ async function main() {
       distrito_id: mapaDistritos['Churubamba'].id,
       direccion: 'Jr. Los Álamos s/n, Churubamba',
       latitud: -9.8265, longitud: -76.1345, destacado: false, vistas: 66,
+      imagenes: FOTOS_CASA.slice(6, 7),
     },
     {
       // El borrador existe para poder probar que un aviso sin publicar NO
@@ -380,6 +438,7 @@ async function main() {
       distrito_id: mapaDistritos['Tingo María'].id,
       direccion: 'Por definir, Tingo María',
       latitud: -9.2990, longitud: -76.0000, destacado: false, vistas: 0,
+      imagenes: [],
     },
   ];
 
@@ -393,7 +452,9 @@ async function main() {
           .replace(/[\u0300-\u036f]/g, '')
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/^-+|-+$/g, '')}-${indice + 1}`,
-        imagenes: [],
+        // Explícito y no dentro del spread: la columna es `NOT NULL` y un
+        // `undefined` la dejaría fuera del INSERT. El valor sale de arriba.
+        imagenes: datos.imagenes ?? [],
       },
     });
   }
