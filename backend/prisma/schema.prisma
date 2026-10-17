@@ -196,6 +196,9 @@ model Usuario {
   /// sin ella no se puede responder "¿quién aprobó a este agente?".
   solicitudesRevisadas SolicitudAgente[] @relation("RevisorAgente")
 
+  /// Anuncios que este usuario guardó para volver a ellos.
+  favoritos Favorito[]
+
   // El login busca por email, así que este índice acelera esa consulta.
   @@index([rol, activo])
   @@map("Usuario")
@@ -330,6 +333,12 @@ model Propiedad {
 
   contactos Contacto[]
 
+  /// Quiénes guardaron este anuncio. Además de la lista de cada usuario, sirve
+  /// para responder "¿cuánta gente lo tiene guardado?", que es una señal de
+  /// demanda más honesta que `vistas`: una visita puede ser un rebote, guardar
+  /// es una intención.
+  favoritos Favorito[]
+
   // Índices para los filtros más frecuentes del buscador.
   // Sin ellos, un `WHERE estado = 'PUBLICADA' AND precio BETWEEN ...`
   // sobre 100k filas revuelve la tabla entera.
@@ -443,4 +452,55 @@ model SolicitudAgente {
   /// Para responder "¿cuál es la solicitud de este usuario?".
   @@index([usuario_id])
   @@map("SolicitudAgente")
+}
+
+// ==========================================
+// MODELO: Favorito
+// ==========================================
+//
+// 📌 POR QUÉ ES UNA TABLA Y NO UNA LISTA DENTRO DEL USUARIO
+//
+// Guardar `propiedad_ids Int[]` en `Usuario` es lo primero que se ocurre y es
+// un callejón: una lista metida en una columna no se puede consultar ("¿cuánta
+// gente guardó este anuncio?"), no se puede paginar sin traerla entera, y crece
+// dentro de una sola fila hasta que reescribirla cuesta más que escribir una
+// fila aparte. Lo que se gana con una tabla es poder preguntar.
+//
+// La clave es el par (usuario, propiedad) y es ÚNICA, y eso no es una
+// restricción de integridad más: el botón de guardar es un INTERRUPTOR. Un
+// doble clic, dos pestañas o una petición repetida no deben crear dos filas ni
+// devolver un error que el usuario tenga que entender. Con el índice único, el
+// servidor puede hacer un `upsert` y responder siempre lo mismo.
+
+model Favorito {
+  id Int @id @default(autoincrement())
+
+  /// Quién lo guardó. En cascada: si se borra la cuenta, sus favoritos no
+  /// significan nada. (El borrado de usuarios es lógico, así que casi nunca
+  /// se ejecuta: es una red de seguridad, como en SolicitudAgente.)
+  usuario_id Int
+  usuario    Usuario @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  /// Qué guardó. En cascada también: un favorito que apunta a un anuncio
+  /// borrado no se puede enseñar ni comprobar, y dejarlo sería una fila que
+  /// ocupa sitio y no se puede leer.
+  propiedad_id Int
+  propiedad    Propiedad @relation(fields: [propiedad_id], references: [id], onDelete: Cascade)
+
+  /// Cuándo se guardó. Es lo que se ordena y lo que se enseña ("guardado hace
+  /// 3 días"). El `id` crecería igual de rápido, pero una fecha dice además
+  /// CUÁNDO, que es lo que se quiere mostrar.
+  fecha_creacion DateTime @default(now())
+
+  /// Un anuncio, guardado una sola vez, por una persona.
+  @@unique([usuario_id, propiedad_id])
+
+  /// El listado es "los míos, el más reciente primero": este índice lo sirve
+  /// sin recorrer la tabla.
+  @@index([usuario_id, fecha_creacion])
+
+  /// Para contar guardados por anuncio (la señal de demanda del anunciante).
+  @@index([propiedad_id])
+
+  @@map("Favorito")
 }

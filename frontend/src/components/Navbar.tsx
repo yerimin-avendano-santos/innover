@@ -169,6 +169,22 @@ export function Navbar() {
                     Mi perfil
                   </Link>
 
+                  {/*
+                    "Guardados" va aquí y no en la barra principal: es una
+                    lista personal, como el perfil, no una sección del producto.
+                    En la barra competiría con "Buscar" —que es lo que hace todo
+                    el mundo todo el rato— y le quitaría sitio a la navegación
+                    que sí se usa a diario.
+                  */}
+                  <Link
+                    href="/favoritos"
+                    role="menuitem"
+                    onClick={() => setMenuAbierto(false)}
+                    className="block px-3 py-2 text-cuerpo text-tinta-70 transition-colors hover:bg-papel-hundido hover:text-tinta"
+                  >
+                    Guardados
+                  </Link>
+
                   {esAgente && (
                     <Link
                       href="/leads"

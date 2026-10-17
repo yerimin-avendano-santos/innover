@@ -201,6 +201,18 @@ let slugCompartible = null;
     '⛔ al compartir el enlace, la previsualización trae la portada',
     'sin og:image, WhatsApp muestra el enlace sin ninguna imagen'
   );
+
+  // --- Guardar: sin sesión, ENLACE; nunca un botón que devuelva 401 ---
+  //
+  // Esta petición va sin cookie, así que no hay sesión. El servidor no manda
+  // `es_favorito` —no hay nadie a quien guardarle nada— y la página responde
+  // con un enlace a entrar en vez del interruptor. Ofrecer el corazón a un
+  // visitante anónimo sería ofrecerle un 401 al primer clic.
+  afirmar(
+    html.includes('/login?redirect=/propiedad/'),
+    '⛔ sin sesión, "Guardar" lleva a entrar en vez de mandar al muro',
+    'la ficha es pública: el botón que exige cuenta no puede aparecer aquí'
+  );
 }
 
 // --- 7b. Una propiedad que no existe responde 404, no 200 ---

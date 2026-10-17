@@ -76,6 +76,24 @@ const config = {
     ventanaMs: 15 * 60 * 1000,
     maxIntentosAuth: Number(opcional('RATE_LIMIT_AUTH', 10)),
     maxPeticionesGeneral: Number(opcional('RATE_LIMIT_GENERAL', 300)),
+
+    /**
+     * Escrituras (publicar, mandar un lead, guardar un favorito) por hora.
+     *
+     * 📌 ESTA VARIABLE NO EXISTÍA, Y `AGENTS.md` DECÍA QUE SÍ.
+     *
+     * El tope estaba escrito a mano en el limitador (`max: 20`), así que la
+     * recomendación de "súbelo en `backend/.env` si vas a iterar" no hacía
+     * absolutamente nada: se podía poner `RATE_LIMIT_ESCRITURA=200`, reiniciar
+     * el backend y seguir cortándose a mitad de suite, sin ninguna pista de
+     * por qué. Un ajuste documentado que no existe es peor que no tenerlo.
+     *
+     * El valor por defecto sigue siendo 20 —es un tope de producción— y quien
+     * necesite margen lo sube en su `.env` (`.env.example` ya trae 40, que es
+     * lo que cuestan dos corridas seguidas de las suites).
+     */
+    maxEscrituras: Number(opcional('RATE_LIMIT_ESCRITURA', 20)),
+    ventanaEscriturasMs: 60 * 60 * 1000,
   },
 
   paginacion: {

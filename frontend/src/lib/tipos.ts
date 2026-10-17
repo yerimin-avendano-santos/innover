@@ -216,6 +216,29 @@ export interface Propiedad {
 
   /** Solo en la ruta /cercanas. */
   distancia_km?: number;
+
+  /**
+   * Solo en la FICHA, y solo si hay sesión.
+   *
+   * Es el estado de quien mira, no un dato del anuncio: el mismo anuncio es
+   * favorito para uno y no para otro. Y es opcional a propósito — su AUSENCIA
+   * significa "no hay sesión", que no es lo mismo que "no lo tienes guardado":
+   * con `false` la ficha no podría distinguir a un visitante anónimo de un
+   * usuario que no lo ha guardado, y ofrecería un corazón que devuelve 401.
+   */
+  es_favorito?: boolean;
+}
+
+/**
+ * Un anuncio guardado: la propiedad entera más cuándo se guardó.
+ *
+ * Es `Propiedad` y no un resumen a propósito: la lista de favoritos pinta las
+ * mismas tarjetas que el buscador (`FichaPropiedad`), y si este tipo trajera
+ * menos campos, ese componente reventaría al recibirlo.
+ */
+export interface Favorito extends Propiedad {
+  /** ISO de cuándo se guardó. Es lo que ordena la lista. */
+  guardado_en: string;
 }
 
 // ========================================

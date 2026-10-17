@@ -22,6 +22,7 @@ import { manejadorErrores, noEncontrado } from './src/middleware/errores.js';
 import authRoutes from './src/routes/authRoutes.js';
 import usuarioRoutes from './src/routes/usuarioRoutes.js';
 import propiedadRoutes from './src/routes/propiedadRoutes.js';
+import favoritoRoutes from './src/routes/favoritoRoutes.js';
 import contactoRoutes from './src/routes/contactoRoutes.js';
 import distritoRoutes from './src/routes/distritoRoutes.js';
 import solicitudRoutes from './src/routes/solicitudRoutes.js';
@@ -125,6 +126,7 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/usuarios', usuarioRoutes);
 app.use('/api/propiedades', propiedadRoutes);
+app.use('/api/favoritos', favoritoRoutes);
 app.use('/api/contactos', contactoRoutes);
 app.use('/api/distritos', distritoRoutes);
 app.use('/api/solicitudes', solicitudRoutes);

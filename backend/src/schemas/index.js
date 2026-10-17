@@ -423,6 +423,38 @@ export const actualizarContactoSchema = z.object({
 });
 
 // ========================================
+// FAVORITOS
+// ========================================
+
+/**
+ * Guardar un anuncio.
+ *
+ * Solo el identificador: el usuario sale del token —como en todo el proyecto—
+ * y la fecha la pone la base. Aceptar `usuario_id` del cuerpo sería dejar que
+ * cualquiera escribiera en la lista de otro.
+ *
+ * Se reutiliza el `id` de arriba en vez de escribir otro `z.coerce.number()`
+ * equivalente: los dos validan lo mismo, pero este comparte los mensajes de
+ * error, y un anuncio con id "abc" tiene que responder igual venga por donde
+ * venga.
+ */
+export const crearFavoritoSchema = z.object({
+  propiedad_id: id,
+});
+
+/**
+ * Paginación, para los listados que no tienen más filtros que los suyos.
+ *
+ * Mismos topes y mismos valores por defecto que el buscador (`porPagina`
+ * máximo 100), a propósito: dos listados del mismo producto no deberían
+ * comportarse distinto sin un motivo.
+ */
+export const paginacionSchema = z.object({
+  pagina: z.coerce.number().int().min(1).default(1),
+  porPagina: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+// ========================================
 // USUARIOS (solo ADMIN)
 // ========================================
 

@@ -36,7 +36,7 @@ Cada fase tiene dos listas: lo que **hay que aprender** y lo que **hay que const
 - [x] **Desarrollo:** el rol **nunca** se autoasigna en el registro
 - [x] **Desarrollo:** validación de entrada con Zod en todas las rutas
 - [x] **Desarrollo:** rate limiting, CORS con lista blanca y cabeceras de seguridad
-- [x] **Desarrollo:** 214 pruebas de integración y seguridad (171 API + 43 puente)
+- [x] **Desarrollo:** 236 pruebas de integración y seguridad (192 API + 44 puente)
 
 ## Fase 4: Frontend y mapas interactivos 🎨
 
@@ -52,6 +52,7 @@ Cada fase tiene dos listas: lo que **hay que aprender** y lo que **hay que const
 - [x] **Desarrollo:** descubrimiento para buscadores: `/robots.txt` y `/sitemap.xml` generados desde la API. Sin esto, la ficha más indexable del mundo no se encuentra — el buscador está detrás del muro, así que un rastreador no tiene un solo enlace interno hacia una propiedad
 - [x] **Desarrollo:** formulario de publicación con vista previa en el mapa
 - [x] **Desarrollo:** perfil del usuario y gestión de publicaciones
+- [x] **Desarrollo:** favoritos: el corazón de la ficha y la lista en `/favoritos`. *La lista es privada por definición —saber que alguien guardó una casa es saber que está buscando—, así que el `usuario_id` sale del token y el candado de guardar es el mismo que el de la ficha: no se puede guardar lo que no se puede abrir. La tabla es aparte y con clave única `(usuario, propiedad)`, para que el botón sea un interruptor y no un contador: apretarlo dos veces guarda una, no falla*
 
 ## Fase 5: CRM para agentes (B2B) 🤝
 
@@ -97,12 +98,13 @@ Cada fase tiene dos listas: lo que **hay que aprender** y lo que **hay que const
 
 Lo que queda pendiente y conviene no olvidar:
 
-- [ ] **Tests unitarios** (hay 214 de integración, ninguno aislado de un componente)
+- [ ] **Tests unitarios** (hay 236 de integración, ninguno aislado de un componente)
 - [ ] **Refresh tokens** (la sesión caduca a las 2 h sin renovación)
 - [ ] **Subida de fotos** (hoy se pegan direcciones y la ficha las enseña; falta el botón de subir, que necesita almacenamiento y credenciales. El dato que se guarda es el mismo, así que no hay que rehacer nada)
 - [ ] **Verificación contra RENIEC** (hoy el admin valida a ojo el documento)
 - [ ] **Rate limiting distribuido** (el actual guarda contadores en memoria; con varias instancias hace falta Redis)
 - [ ] **Búsqueda de texto completo** (PostgreSQL `tsvector` o Meilisearch)
+- [ ] **Quitar un guardado sin entrar en el anuncio** (desde la lista de favoritos, el corazón no está: hay que abrir la ficha. Ponerlo en la tarjeta obliga a decidir qué pasa con el hueco —¿desaparece?, ¿se puede deshacer?—: es una decisión de diseño, no una línea de código)
 - [ ] **Auditoría de cambios** (bitácora de quién editó qué)
 - [ ] **El destaque no recuerda su origen** (al bajar a GRATIS se retiran *todos* los destaques del usuario, incluidos los que puso un admin a mano. Se arregla con una columna `destacado_origen`, pero hoy no hay forma de distinguirlos)
 

@@ -49,12 +49,16 @@ export const limitadorAuth = rateLimit({
 });
 
 /**
- * Límite para crear recursos (propiedades, contactos).
+ * Límite para crear recursos (propiedades, contactos, favoritos).
  * Evita spam de publicaciones y de leads falsos.
+ *
+ * El tope sale de `RATE_LIMIT_ESCRITURA` (20 por hora por defecto). Antes
+ * estaba escrito aquí a mano y la variable de entorno no existía: subirla no
+ * cambiaba nada. Ver el comentario largo en `config/env.js`.
  */
 export const limitadorEscritura = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hora
-  max: 20,
+  windowMs: config.rateLimit.ventanaEscriturasMs,
+  max: config.rateLimit.maxEscrituras,
   standardHeaders: true,
   legacyHeaders: false,
   message: {

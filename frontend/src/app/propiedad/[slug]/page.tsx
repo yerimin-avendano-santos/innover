@@ -41,9 +41,11 @@
 
 import { cache } from 'react';
 import { cookies } from 'next/headers';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { AccionesDuenio, PanelContacto } from '@/components/AccionesPropiedad';
+import BotonFavorito from '@/components/BotonFavorito';
 import Galeria from '@/components/Galeria';
 import { Mapa } from '@/components/Mapa';
 import { formatearPrecio, precioPorM2, etiquetaTipo } from '@/lib/api';
@@ -235,10 +237,38 @@ export default async function PaginaPropiedad({
             {propiedad.titulo}
           </h1>
 
-          <AccionesDuenio
-            propiedadId={propiedad.id}
-            propietarioId={propiedad.propietario?.id ?? null}
-          />
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            {/*
+              Guardar es lo ÚNICO de esta página que hace alguien que todavía
+              no es cliente, así que va arriba y con nombre: un corazón suelto
+              hay que adivinarlo.
+
+              📌 Y SIN SESIÓN NO HAY BOTÓN: HAY ENLACE.
+
+              Guardar exige cuenta, así que ofrecer el botón a un visitante
+              sería ofrecerle un 401. El servidor manda `es_favorito` solo si
+              reconoce a quien mira (ver `obtenerPropiedadPorId`), así que su
+              ausencia es la señal — la interfaz no adivina nada mirando una
+              cookie que no puede leer. El enlace lleva de vuelta aquí después
+              de entrar, porque el interés ya está demostrado y perderlo sería
+              tirar el único dato bueno que ha dado este visitante.
+            */}
+            {propiedad.es_favorito === undefined ? (
+              <Link
+                href={`/login?redirect=/propiedad/${propiedad.slug}`}
+                className="btn btn-secundario text-menor"
+              >
+                <span aria-hidden="true">♡</span> Guardar
+              </Link>
+            ) : (
+              <BotonFavorito propiedadId={propiedad.id} inicial={propiedad.es_favorito} />
+            )}
+
+            <AccionesDuenio
+              propiedadId={propiedad.id}
+              propietarioId={propiedad.propietario?.id ?? null}
+            />
+          </div>
         </div>
 
         {propiedad.distrito && (

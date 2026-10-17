@@ -73,10 +73,10 @@ Dos suites, ambas de integración contra el backend **real** (no hay mocks). Req
 
 ```bash
 npm run dev:backend                      # terminal 1
-npm run prueba                           # terminal 2 → 171 pruebas
+npm run prueba                           # terminal 2 → 192 pruebas
 
 npm run dev:frontend                     # terminal 1 (además del backend)
-node backend/scripts/pruebas-puente.mjs  # terminal 2 → 43 pruebas
+node backend/scripts/pruebas-puente.mjs  # terminal 2 → 44 pruebas
 ```
 
 **`pruebas-puente.mjs` no tiene script en package.json** — hay que invocarlo con la ruta completa, y necesita frontend **y** backend.
@@ -88,14 +88,14 @@ Hay **tres** limitadores, y una corrida de la suite toca dos:
 | Limitador | Tope | Lo que gasta una corrida |
 |---|---|---|
 | `limitadorAuth` | 10 **fallos** de login / 15 min | 6 |
-| `limitadorEscritura` | 20 escrituras / **hora** | 17 |
+| `limitadorEscritura` | `RATE_LIMIT_ESCRITURA`, 20 por defecto | 19 |
 | `limitadorGeneral` | 300 peticiones / 15 min | sobra |
 
 El que engaña es **`limitadorEscritura`**: su ventana dura una hora, no quince
-minutos, y no tiene nada que ver con el login. Como la suite gasta 17 de 20,
-**dos corridas seguidas suman 34 y la segunda se corta a mitad**. Su síntoma
-es el peor posible: 18 pruebas fallan de golpe, sin relación entre sí, y
-parece que acabas de romper el código.
+minutos, y no tiene nada que ver con el login. Como la suite gasta 19, dos
+corridas seguidas suman 38: con el tope de producción (20) la segunda se corta
+a mitad. Su síntoma es el peor posible: decenas de pruebas fallan de golpe, sin
+relación entre sí, y parece que acabas de romper el código.
 
 No es un bug. Los contadores viven **en memoria**, así que reiniciar el
 backend los pone a cero:
@@ -104,12 +104,17 @@ backend los pone a cero:
 npm run dev:backend
 ```
 
-Si vas a iterar mucho, súbelos en `backend/.env` (y reinicia):
+⚠️ **Solo se cuentan las escrituras que crean algo.** El limitador va montado
+en los `POST` que publican (propiedades, contactos); los `DELETE`, los `PUT` y
+los favoritos no pasan por él — los favoritos ni siquiera lo llevan, porque son
+privados y la clave única impide repetirlos: no hay nada que limitar.
 
-```bash
-RATE_LIMIT_AUTH=100
-RATE_LIMIT_ESCRITURA=200
-```
+📌 **Y `RATE_LIMIT_ESCRITURA` NO EXISTÍA.** El tope estaba escrito a mano en el
+limitador (`max: 20`) mientras esta guía recomendaba subirlo en `.env`: ponerlo
+no hacía absolutamente nada, y seguir cortándose a mitad de suite sin una pista
+de por qué. Ahora la variable existe de verdad y `.env.example` trae **40**, que
+es lo que cuestan dos corridas. El valor por defecto del código sigue siendo 20
+(es el tope de producción).
 
 Dos protecciones para no volver a confundirlo con un bug:
 
@@ -269,6 +274,17 @@ los tres fallos posibles da error: solo se ven mal.
 
 ⚠️ `generate` y `migrate:dev` **solo existen en el workspace del backend**. En la raíz no están: hay que hacer `cd backend`.
 
+⚠️ **`generate` falla si el backend está levantado.** En Windows, el proceso que
+tiene cargado el cliente bloquea `query_engine-windows.dll.node` y Prisma no
+puede reescribirlo: el comando sale con código 1, el mensaje real se pierde
+entre líneas y lo que queda es un cliente **a medias** —el modelo nuevo no
+existe para el código y las peticiones revientan raro—. Antes de regenerar:
+
+```bash
+# parar el backend, regenerar, y volver a levantarlo
+cd backend && npm run generate
+```
+
 ### ⛔ Prisma SIEMPRE propondrá borrar el índice espacial
 
 En **cualquier** migración que generes va a aparecer esta línea:
@@ -285,7 +301,7 @@ Comprobado con `EXPLAIN`: el plan dice `Index Scan using "Propiedad_locacion_gis
 
 Dos protecciones y ninguna es opcional:
 
-- La prueba **"el índice espacial sigue existiendo"** de `scripts/pruebas.mjs` (sección 15) consulta `pg_indexes` y pide el `EXPLAIN`. Ninguna prueba de API puede sustituirla: un `Seq Scan` y un `Index Scan` devuelven exactamente los mismos datos, uno más despacio.
+- La prueba **"el índice espacial sigue existiendo"** de `scripts/pruebas.mjs` (sección 16) consulta `pg_indexes` y pide el `EXPLAIN`. Ninguna prueba de API puede sustituirla: un `Seq Scan` y un `Index Scan` devuelven exactamente los mismos datos, uno más despacio.
 - Si la base ya es Supabase, puede que no tengas permiso para crear la *shadow database* que necesita `migrate dev`. `prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --script` genera el SQL sin shadow database — y con el `DROP INDEX` dentro, así que revísalo igual.
 
 Las migraciones aplicadas **no se editan**. Si una ya corrió, crea otra.
@@ -319,4 +335,6 @@ Son errores ya corregidos. Reabrirlos reintroduce agujeros explotables:
 - El `usuario_id` de una propiedad sale del **token**, nunca del body
 - `destacado` y `tour_3d_url` son campos de pago: los escribe un `ADMIN` o alguien con **plan PRO vigente**, nunca un usuario cualquiera. *(`destacado` era `ADMIN`-only; se abrió al plan PRO porque el destaque va incluido en él. La comprobación está en `resolverDestacado()`, en el servidor. Al bajar de plan se retiran los destaques con `sincronizarDestacados()`: si no, un plan vencido conservaría las ventajas.)*
 - Los borrados de usuario son **baja lógica** (`activo = false`), nunca `DELETE`
+- **Los favoritos son privados: cada quien ve la suya y solo la suya.** No hay endpoint para preguntar "quién guardó esto" — saber que alguien guardó una casa es saber que está buscando, y eso es información suya. El `usuario_id` sale **siempre del token**, nunca del cuerpo; la lista se filtra por la misma regla de visibilidad que la ficha (lo publicado, más lo mío), de modo que un anuncio retirado desaparece de la lista en vez de quedarse como un enlace que devuelve 403. Guardar algo que no se puede abrir también da 403: guardar es la antesala de volver a mirarlo.
+- **`es_favorito` solo viaja en la ficha, y solo si hay sesión.** Es el estado de *quien mira*, no un dato del anuncio (el mismo anuncio es favorito para uno y no para otro), así que no vive en `propiedadPublica`. Y es **tri-estado a propósito**: su ausencia significa "no hay sesión", que no es lo mismo que "no lo tienes guardado". Con `false` para los anónimos, la ficha ofrecería un corazón que devuelve 401 al primer clic; con la ausencia, ofrece un enlace a `login` y guarda el interés. Devuelve `undefined` = no hay quien lo tenga guardado, y la interfaz no adivina mirando una cookie que no puede leer (es httpOnly).
 - **Las fotos se pintan con `<img>`, nunca con `next/image`.** Las direcciones las escribe quien publica, y el optimizador de Next **descarga la imagen en el servidor** para redimensionarla: con `next/image`, pegar `http://169.254.169.254/latest/meta-data/` convierte la ficha en una puerta hacia la red interna — un SSRF de manual, y basta con tener cuenta para publicar. Con `<img>` la descarga la hace el navegador de quien mira, que no alcanza nada que no alcanzara ya. Un `next/image` "para optimizar" reabre esto sin que ningún test se ponga en rojo. El otro candado es el esquema: `imagenes` valida cada dirección con el esquema `url` de Zod (`http://` o `https://`), y `javascript:alert(1)` tiene prueba propia.

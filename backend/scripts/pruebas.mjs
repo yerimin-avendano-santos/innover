@@ -1532,7 +1532,183 @@ let idPropiedadPro = null;
 }
 
 // ========================================
-seccion('15. El índice espacial sigue existiendo');
+seccion('15. Favoritos (los anuncios guardados)');
+// ========================================
+//
+// Un favorito es privado: cada quien ve su lista y solo la suya. Por eso las
+// pruebas que importan aquí no son "funciona" sino las cuatro que un favorito
+// puede romper sin que nada falle de forma visible:
+//
+//   · que la lista de uno se vea desde la cuenta de otro;
+//   · que guardar dos veces (un doble clic) devuelva un error de duplicado;
+//   · que la ficha diga `es_favorito` a quien no tiene sesión, o lo diga por
+//     el anuncio en vez de por quien mira;
+//   · que se pueda guardar un BORRADOR ajeno, que es una forma de confirmar
+//     que existe.
+//
+// La cuenta del intruso que se usa aquí es la misma de las pruebas de permisos
+// (`emailIntruso`). Que el candado sea el mismo que el de la ficha es a
+// propósito: guardar es la antesala de volver a mirarlo.
+
+{
+  const sinToken = await pedir('GET', '/api/favoritos');
+  afirmar(
+    sinToken.estado === 401,
+    '⛔ sin sesión no hay lista de favoritos',
+    `recibido ${sinToken.estado}`
+  );
+}
+
+// La cuenta del intruso (la que ya se usa para las pruebas de permisos).
+const tokenOtraCuenta = (
+  await pedir('POST', '/api/auth/login', {
+    cuerpo: { email: emailIntruso, contrasena },
+  })
+).cuerpo?.token;
+
+{
+  const vacia = await pedir('GET', '/api/favoritos', { token: tokenCliente });
+  afirmar(vacia.estado === 200, 'la lista responde 200 con sesión', `recibido ${vacia.estado}`);
+  afirmar(
+    vacia.cuerpo?.datos?.length === 0 && vacia.cuerpo?.paginacion?.total === 0,
+    'quien no guardó nada tiene la lista vacía',
+    JSON.stringify(vacia.cuerpo)?.slice(0, 140)
+  );
+}
+
+{
+  // Una propiedad propia y PUBLICADA para guardar. Se usa `cuerpoPropiedad`,
+  // el mismo cuerpo que las pruebas del plan: dentro de la suite no puede
+  // haber dos ideas distintas de "propiedad válida".
+  const creada = await pedir('POST', '/api/propiedades', {
+    token: tokenCliente,
+    cuerpo: cuerpoPropiedad({ estado: 'PUBLICADA' }),
+  });
+  afirmar(creada.estado === 201, 'se crea una propiedad para guardar', `recibido ${creada.estado}`);
+  const idGuardable = creada.cuerpo?.propiedad?.id;
+
+  const guardado = await pedir('POST', '/api/favoritos', {
+    token: tokenCliente,
+    cuerpo: { propiedad_id: idGuardable },
+  });
+  afirmar(
+    guardado.estado === 200,
+    'guardar responde 200',
+    `recibido ${guardado.estado}: ${JSON.stringify(guardado.cuerpo)}`
+  );
+
+  // --- Mi lista ---
+  const lista = await pedir('GET', '/api/favoritos', { token: tokenCliente });
+  afirmar(lista.cuerpo?.datos?.length === 1, 'el anuncio aparece en mi lista');
+  afirmar(lista.cuerpo?.datos?.[0]?.id === idGuardable, 'y es el que guardé');
+  afirmar(
+    typeof lista.cuerpo?.datos?.[0]?.precio === 'number',
+    '⛔ el precio sigue siendo número (Prisma manda Decimal como texto y la tarjeta lo pintaría mal)'
+  );
+  afirmar(!!lista.cuerpo?.datos?.[0]?.guardado_en, 'la lista dice cuándo se guardó');
+
+  // --- Guardar dos veces ---
+  const otraVez = await pedir('POST', '/api/favoritos', {
+    token: tokenCliente,
+    cuerpo: { propiedad_id: idGuardable },
+  });
+  afirmar(
+    otraVez.estado === 200,
+    '⛔ guardar dos veces no devuelve error de duplicado (el botón es un interruptor)',
+    `recibido ${otraVez.estado}: ${JSON.stringify(otraVez.cuerpo)}`
+  );
+  const sigueUna = await pedir('GET', '/api/favoritos', { token: tokenCliente });
+  afirmar(sigueUna.cuerpo?.datos?.length === 1, 'y sigue habiendo un solo favorito');
+
+  // --- ¿Quién ve qué? ---
+  const fichaAnonima = await pedir('GET', `/api/propiedades/${idGuardable}`);
+  afirmar(
+    fichaAnonima.cuerpo?.propiedad?.es_favorito === undefined,
+    '⛔ la ficha sin sesión NO manda es_favorito: un `false` diría que no lo tienes guardado a quien no puede tenerlo'
+  );
+  const fichaMia = await pedir('GET', `/api/propiedades/${idGuardable}`, { token: tokenCliente });
+  afirmar(
+    fichaMia.cuerpo?.propiedad?.es_favorito === true,
+    '⛔ la ficha con mi sesión dice es_favorito: true'
+  );
+  const fichaAjena = await pedir('GET', `/api/propiedades/${idGuardable}`, {
+    token: tokenOtraCuenta,
+  });
+  afirmar(
+    fichaAjena.cuerpo?.propiedad?.es_favorito === false,
+    '⛔ y con OTRA sesión dice false: el estado es de quien mira, no del anuncio'
+  );
+
+  const listaAjena = await pedir('GET', '/api/favoritos', { token: tokenOtraCuenta });
+  afirmar(
+    listaAjena.cuerpo?.datos?.length === 0,
+    '⛔ la lista de otra cuenta no incluye mi favorito',
+    `ve ${listaAjena.cuerpo?.datos?.length} favoritos`
+  );
+
+  // --- Quitar ---
+  const quitado = await pedir('DELETE', `/api/favoritos/${idGuardable}`, {
+    token: tokenCliente,
+  });
+  afirmar(
+    quitado.estado === 200 && quitado.cuerpo?.quitado === true,
+    'quitar responde quitado: true',
+    `recibido ${quitado.estado}: ${JSON.stringify(quitado.cuerpo)}`
+  );
+  const quitarOtraVez = await pedir('DELETE', `/api/favoritos/${idGuardable}`, {
+    token: tokenCliente,
+  });
+  afirmar(
+    quitarOtraVez.estado === 200 && quitarOtraVez.cuerpo?.quitado === false,
+    '⛔ quitar dos veces no es un error',
+    `recibido ${quitarOtraVez.estado}`
+  );
+
+  const limpia = await pedir('GET', '/api/favoritos', { token: tokenCliente });
+  afirmar(limpia.cuerpo?.datos?.length === 0, 'y la lista vuelve a estar vacía');
+}
+
+{
+  // --- Un BORRADOR ajeno no se guarda ---
+  //
+  // 📌 EL BORRADOR SE CREA AQUÍ Y NO SE REAPROVECHA EL DE OTRA SECCIÓN.
+  //
+  // La primera versión de esta prueba usaba el borrador de la sección 6, y
+  // fallaba: aquel bloque lo borra al terminar (la suite no deja basura a
+  // propósito), así que llegaba un 404 — y un 404 habría pasado por "no
+  // existe", que NO es lo que se quiere comprobar. Un 403 y un 404 se parecen
+  // mucho cuando solo se mira "que no se pueda".
+  const borrador = await pedir('POST', '/api/propiedades', {
+    token: tokenCliente,
+    cuerpo: cuerpoPropiedad({ estado: 'BORRADOR' }),
+  });
+  afirmar(
+    borrador.estado === 201,
+    'se crea un BORRADOR ajeno para la prueba',
+    `recibido ${borrador.estado}`
+  );
+
+  const r = await pedir('POST', '/api/favoritos', {
+    token: tokenOtraCuenta,
+    cuerpo: { propiedad_id: borrador.cuerpo?.propiedad?.id },
+  });
+  afirmar(
+    r.estado === 403,
+    '⛔ guardar el BORRADOR de otro devuelve 403 (y no 404: existe, lo que pasa es que no se puede ver)',
+    `recibido ${r.estado}: ${JSON.stringify(r.cuerpo)}`
+  );
+
+  // Se borra aquí para no dejar el borrador rondando por la base: la limpieza
+  // final borra las propiedades de los usuarios de prueba, pero esta prueba no
+  // tiene por qué depender de eso.
+  const limpiado = await pedir('DELETE', `/api/propiedades/${borrador.cuerpo?.propiedad?.id}`, {
+    token: tokenCliente,
+  });
+  afirmar(limpiado.estado === 200, 'y el borrador de la prueba se limpia solo');
+}
+
+// ========================================
+seccion('16. El índice espacial sigue existiendo');
 // ========================================
 //
 // 📌 POR QUÉ ESTA PRUEBA ES DE BASE DE DATOS Y NO DE API
@@ -1578,7 +1754,7 @@ seccion('15. El índice espacial sigue existiendo');
 }
 
 // ========================================
-seccion('16. Logout');
+seccion('17. Logout');
 // ========================================
 {
   const r = await pedir('POST', '/api/auth/logout');

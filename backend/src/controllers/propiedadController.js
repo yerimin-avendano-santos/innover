@@ -136,8 +136,16 @@ async function resolverDestacado(valorNuevo, usuarioId, usuario, propiedadId = n
  * 2. Un usuario malicioso podría inyectar datos en su `nombre` o `titulo`
  *    (tipo "Mi nombre es <script>..."). Devolvemos solo campos concretos
  *    en lugar de `...usuario` para no filtrar de más por accidente.
+ *
+ * 📌 ESTÁ EXPORTADA PORQUE LA COMPARTE LA LISTA DE FAVORITOS.
+ *
+ * Un favorito es una propiedad más, y la tarjeta que la pinta es la misma: si
+ * cada endpoint armara su propia versión "pública", bastaría con que uno se
+ * olvidara de convertir `precio` a número para que la interfaz enseñara
+ * "275000.00" en una pantalla y 275000 en la de al lado. Un solo sitio decide
+ * qué se ve de un anuncio.
  */
-function propiedadPublica(propiedad) {
+export function propiedadPublica(propiedad) {
   if (!propiedad) return null;
 
   const { usuario, distrito, ...datos } = propiedad;
@@ -409,14 +417,62 @@ export const obtenerPropiedadPorId = async (req, res) => {
       .catch(() => {});
   }
 
-  res.json({ propiedad: propiedadPublica(propiedad) });
+  /**
+   * 📌 ¿LA TIENE GUARDADA QUIEN MIRA?
+   *
+   * Es el estado del visitante, no un dato del anuncio: el mismo anuncio es
+   * favorito para uno y no para otro. Por eso no vive en `propiedadPublica`
+   * —que describe el anuncio— y por eso se pregunta solo si hay alguien
+   * mirando: `usuarioOpcional` deja `req.usuario` vacío cuando no reconoce el
+   * token, y un rastreador no tiene favoritos.
+   *
+   * Va aquí y no en una llamada aparte desde la isla del corazón porque el
+   * botón necesita saber su estado al pintarse: preguntándolo después, se
+   * vería apagado un instante aunque estuviera encendido. Es una consulta por
+   * índice único sobre una tabla pequeña.
+   */
+  const favorito = req.usuario
+    ? await prisma.favorito.findUnique({
+        where: {
+          usuario_id_propiedad_id: {
+            usuario_id: req.usuario.id,
+            propiedad_id: propiedad.id,
+          },
+        },
+        select: { id: true },
+      })
+    : null;
+
+  /**
+   * 📌 `es_favorito` SOLO VIAJA SI HAY ALGUIEN IDENTIFICADO.
+   *
+   * Un `false` para un visitante anónimo sería un dato que miente: dice "no lo
+   * tienes guardado" a quien no puede tenerlo. Y la ficha necesita distinguir
+   * los dos casos, porque no es lo mismo ofrecer un corazón —un botón que
+   * guarda— que un enlace a `login` —guardar exige cuenta—.
+   *
+   * La ausencia del campo es la señal, y la decide el servidor: la interfaz no
+   * adivina si hay sesión mirando una cookie que no puede leer (es httpOnly).
+   */
+  const respuesta = { ...propiedadPublica(propiedad) };
+  if (req.usuario) {
+    respuesta.es_favorito = favorito !== null;
+  }
+
+  res.json({ propiedad: respuesta });
 };
 
 /**
  * Regla de visibilidad reutilizable.
  * El dueño y el admin ven todo; el resto solo lo publicado.
+ *
+ * 📌 ESTÁ EXPORTADA PORQUE LA COMPARTEN LA FICHA Y LOS FAVORITOS.
+ *
+ * Guardar un anuncio es una forma de mirarlo, así que el candado es el mismo:
+ * no se puede guardar lo que no se puede abrir. Escribirlo dos veces sería
+ * pedir que las dos copias sigan coincidiendo para siempre.
  */
-function esVisiblePara(usuario, propiedad) {
+export function esVisiblePara(usuario, propiedad) {
   if (!usuario) return false;
   return usuario.rol === 'ADMIN' || usuario.id === propiedad.usuario_id;
 }
