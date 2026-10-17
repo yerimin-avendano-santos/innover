@@ -1,5 +1,3 @@
-'use client';
-
 // ========================================
 // 📄 FICHA DE UNA PROPIEDAD
 // ========================================
@@ -9,152 +7,195 @@
 // Un id numérico se puede adivinar recorriendo /propiedad/1, /2, /3.
 // Un slug no, y de paso le dice al usuario de qué trata el enlace antes
 // de abrirlo.
+//
+// 📌 ESTA PÁGINA SE DIBUJA EN EL SERVIDOR, Y ESO ES EL MOTIVO DEL BLOQUE
+//
+// Antes era un componente de cliente que pedía la propiedad en un
+// `useEffect`. Funcionaba para una persona y no servía para lo único para lo
+// que esta página existe: ser el enlace que se comparte por WhatsApp y lo que
+// indexa Google. El HTML llegaba VACÍO —sin titular, sin precio, sin un solo
+// dato, sin metadatos propios— y el contenido aparecía después, cuando
+// arrancaba JavaScript.
+//
+// Se comprobó pidiendo la página de una propiedad real: el `<title>` era el
+// genérico del layout y el nombre de la propiedad no aparecía por ningún
+// lado. La mitad de la regla —"la ficha es pública"— estaba cumplida; la otra
+// mitad, la razón por la que se dejó pública, no.
+//
+// La guía visual lo pedía desde el principio (`design/desing.md`): *Server
+// Components para el SEO de las fichas públicas*. Aquí está.
+//
+// Lo interactivo —los botones del dueño y el formulario de contacto— vive en
+// `components/AccionesPropiedad.tsx`.
+//
+// ⚠️ NO HAY `loading.tsx` A PROPÓSITO.
+//
+// Añadirlo sería lo natural para enseñar un esqueleto mientras se carga, y
+// rompería el SEO de esta página. La documentación de Next lo dice: cuando la
+// respuesta se envía en streaming el estado es 200, y sin streaming es 404.
+// Con un `loading.tsx` esta ruta emitiría 200 incluso para una propiedad que
+// no existe —un "soft 404"— y Google indexaría como válidas las URLs
+// inventadas. El esqueleto es más bonito; el 404 de verdad es lo correcto.
+// Sin `loading.tsx` tampoco se pierde nada al navegar: el router mantiene la
+// pantalla anterior hasta que llega la nueva.
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { cache } from 'react';
+import { cookies } from 'next/headers';
+import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
+import { AccionesDuenio, PanelContacto } from '@/components/AccionesPropiedad';
 import { Mapa } from '@/components/Mapa';
-import { api, ErrorPeticion, formatearPrecio, precioPorM2, etiquetaTipo } from '@/lib/api';
-import { useAuth } from '@/contextos/Auth';
+import { formatearPrecio, precioPorM2, etiquetaTipo } from '@/lib/api';
 import type { Propiedad } from '@/lib/tipos';
 
-export default function PaginaPropiedad() {
-  const params = useParams<{ slug: string }>();
-  const router = useRouter();
-  const { estaConectado, usuario } = useAuth();
+/**
+ * URL del backend. Solo la ve el SERVIDOR, nunca el navegador: por eso no
+ * lleva el prefijo NEXT_PUBLIC_. Es la misma variable que usa el puente
+ * (`app/api/[...ruta]/route.ts`).
+ */
+const BACKEND = process.env.BACKEND_URL || 'http://localhost:5000';
 
-  const [propiedad, setPropiedad] = useState<Propiedad | null>(null);
-  const [error, setError] = useState<string | null>(null);
+/**
+ * El resultado de buscar una propiedad, con los dos fallos SEPARADOS.
+ *
+ * 📌 POR QUÉ NO BASTA CON `Propiedad | null`
+ *
+ * "Esta propiedad no existe" y "el backend no me contestó" acaban los dos en
+ * `null`, y no son lo mismo ni de lejos:
+ *
+ *   · No existe        → 404. Es la verdad, y Google debe dejar de indexarla.
+ *   · No me contestó   → un fallo temporal. Devolver 404 aquí sería decirle a
+ *                        Google que una propiedad que SÍ existe ha
+ *                        desaparecido: la desindexaría, y el dueño perdería
+ *                        su enlace por un corte de red.
+ *
+ * Distinguirlos es la diferencia entre una caída pasajera y perder el
+ * catálogo de cara al buscador.
+ */
+type Busqueda =
+  | { estado: 'ok'; propiedad: Propiedad }
+  | { estado: 'no-existe' }
+  | { estado: 'fallo' };
 
-  /**
-   * Guardamos el slug que YA Terminó de cargar (con éxito o con error).
-   *
-   * `cargando` se DERIVA comparando con el slug actual:
-   *
-   *     cargando = slugTerminado !== slugActual
-   *
-   * Así, al navegar de una propiedad a otra, el esqueleto reaparece
-   * solo por cambiar la URL. No hace falta un setCargando(true) dentro
-   * del efecto, que es lo que provocaba el render de más y la advertencia
-   * del linter.
-   */
-  const [slugTerminado, setSlugTerminado] = useState<string | null>(null);
+/**
+ * Trae la propiedad del backend, desde el servidor.
+ *
+ * Va envuelto en `cache()` de React para que `generateMetadata` y la página
+ * —que necesitan lo mismo— no pidan la propiedad dos veces en la misma
+ * petición. Es una caché de UN SOLO render: no guarda nada entre visitantes.
+ *
+ * La cookie SÍ se reenvía, y hace falta: la ruta de la ficha es pública,
+ * pero el backend solo deja ver un BORRADOR a su dueño. Sin reenviarla, el
+ * dueño no podría abrir su propio anuncio sin publicar.
+ */
+const traerPropiedad = cache(async (slug: string): Promise<Busqueda> => {
+  const jar = await cookies();
+  const cookie = jar.toString();
 
-  const [mensaje, setMensaje] = useState('');
-  const [enviando, setEnviando] = useState(false);
-  const [enviado, setEnviado] = useState(false);
-  const [errorContacto, setErrorContacto] = useState<string | null>(null);
+  try {
+    const respuesta = await fetch(
+      `${BACKEND}/api/propiedades/${encodeURIComponent(slug)}`,
+      {
+        headers: cookie ? { cookie } : {},
+        // Nada de caché: si el dueño cambia el precio y recarga, tiene que
+        // verlo. Es el mismo criterio que sigue el puente.
+        cache: 'no-store',
+      }
+    );
 
-  const slug = params.slug;
+    if (respuesta.status === 404) return { estado: 'no-existe' };
 
-  /**
-   * Cargar la propiedad del slug actual.
-   *
-   * Los setState van DENTRO de los callbacks de la promesa, nunca en el
-   * cuerpo del efecto. Así React solo repinta cuando hay algo nuevo que
-   * mostrar, en vez de descartar un render y repetirlo.
-   */
-  useEffect(() => {
-    let vivo = true;
+    // 403 = "existe, pero no es para ti": un BORRADOR ajeno. Hacia fuera se
+    // contesta lo mismo que si no existiera, y no es un detalle de estilo:
+    // decir "existe pero no puedes verlo" convierte esta ruta en un oráculo
+    // para averiguar qué hay sin publicar. Un borrador es justo lo que su
+    // dueño todavía no ha decidido enseñar.
+    if (respuesta.status === 403) return { estado: 'no-existe' };
 
-    api<{ propiedad: Propiedad }>(`/api/propiedades/${slug}`)
-      .then((r) => {
-        if (!vivo) return;
-        setPropiedad(r.propiedad);
-        setError(null);
-      })
-      .catch((e) => {
-        if (!vivo) return;
-        setPropiedad(null);
-        setError(
-          e instanceof ErrorPeticion
-            ? e.message
-            : 'No pudimos cargar esta propiedad.'
-        );
-      })
-      .finally(() => {
-        if (vivo) setSlugTerminado(slug);
-      });
+    if (!respuesta.ok) return { estado: 'fallo' };
 
-    return () => {
-      vivo = false;
-    };
-  }, [slug]);
+    const datos = await respuesta.json();
+    if (!datos?.propiedad) return { estado: 'no-existe' };
 
-  const esDueña =
-    propiedad !== null &&
-    usuario !== null &&
-    (usuario.id === propiedad.propietario?.id || usuario.rol === 'ADMIN');
+    return { estado: 'ok', propiedad: datos.propiedad as Propiedad };
+  } catch {
+    // El backend no respondió: está caído, o arrancando.
+    return { estado: 'fallo' };
+  }
+});
 
-  // Derivado, no un estado que haya que poner a mano.
-  const cargando = slugTerminado !== slug;
+/** Un renglón con los datos que caben en un resultado de búsqueda. */
+function descripcionDe(propiedad: Propiedad): string {
+  return [
+    `${etiquetaTipo(propiedad.tipo_inmueble)} en ${
+      propiedad.tipo === 'VENTA' ? 'venta' : 'alquiler'
+    }`,
+    propiedad.distrito?.nombre ? `en ${propiedad.distrito.nombre}` : 'en Huánuco',
+    `· ${formatearPrecio(propiedad.precio, propiedad.moneda)}`,
+    propiedad.area_m2 ? `· ${propiedad.area_m2} m²` : null,
+    propiedad.habitaciones ? `· ${propiedad.habitaciones} habitaciones` : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
 
-  const alEliminar = async () => {
-    if (!propiedad) return;
-    if (!confirm('¿Eliminar esta publicación? No se puede deshacer.')) return;
+/**
+ * Los metadatos de la ficha.
+ *
+ * Es lo que hace que un enlace compartido por WhatsApp se vea como LA
+ * PROPIEDAD y no como "Innover · Propiedades en el mapa": sin esto, los
+ * títulos y la descripción son los de la portada, y quien recibe el enlace no
+ * sabe qué le están mandando.
+ *
+ * El `title` de aquí se combina con la plantilla del layout (`%s · Innover`),
+ * así que se devuelve solo el nombre de la propiedad.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const busqueda = await traerPropiedad(slug);
 
-    try {
-      await api(`/api/propiedades/${propiedad.id}`, { metodo: 'DELETE' });
-      router.push('/');
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof ErrorPeticion ? e.message : 'No se pudo eliminar.');
-    }
+  if (busqueda.estado !== 'ok') {
+    return { title: 'Propiedad no encontrada' };
+  }
+
+  const propiedad = busqueda.propiedad;
+  const descripcion = descripcionDe(propiedad);
+
+  return {
+    title: propiedad.titulo,
+    description: descripcion,
+    // Sin `images`: todavía no hay fotos (Bloque 5). Cuando las haya, esta es
+    // la línea que hace que la previsualización traiga miniatura.
+    openGraph: {
+      title: propiedad.titulo,
+      description: descripcion,
+      type: 'article',
+    },
   };
+}
 
-  // ---------- Estados de carga y error ----------
-  if (cargando) {
-    return (
-      <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
-        <div className="h-8 w-2/3 animate-pulse rounded-chico bg-papel-hundido" />
-        <div className="mt-4 h-4 w-1/3 animate-pulse rounded-chico bg-papel-hundido" />
-        <div className="mt-8 h-64 animate-pulse rounded-grande bg-papel-hundido" />
-      </div>
-    );
+export default async function PaginaPropiedad({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const busqueda = await traerPropiedad(slug);
+
+  // Los tres finales posibles, cada uno con su estado HTTP correcto:
+  // 404 si no existe, error de servidor si no se pudo preguntar, y la ficha
+  // si todo fue bien.
+  if (busqueda.estado === 'no-existe') notFound();
+  if (busqueda.estado === 'fallo') {
+    throw new Error('No se pudo cargar la propiedad: el backend no respondió.');
   }
 
-  if (error || !propiedad) {
-    return (
-      <div className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
-        <h1 className="text-titulo font-semibold text-tinta">
-          {error ?? 'Propiedad no encontrada'}
-        </h1>
-        <p className="mt-2 text-cuerpo text-tinta-50">
-          Es posible que se haya vendido o que el enlace esté mal escrito.
-        </p>
-        <Link href="/" className="btn btn-principal mt-6">
-          Volver al buscador
-        </Link>
-      </div>
-    );
-  }
-
+  const propiedad = busqueda.propiedad;
   const porM2 = precioPorM2(propiedad.precio, propiedad.area_m2, propiedad.moneda);
-
-  const alContactar = async (evento: React.FormEvent) => {
-    evento.preventDefault();
-    setEnviando(true);
-    setErrorContacto(null);
-
-    try {
-      await api('/api/contactos', {
-        metodo: 'POST',
-        cuerpo: {
-          propiedad_id: propiedad.id,
-          mensaje,
-          telefono: usuario?.telefono ?? undefined,
-        },
-      });
-      setEnviado(true);
-      setMensaje('');
-    } catch (e) {
-      setErrorContacto(
-        e instanceof ErrorPeticion ? e.message : 'No pudimos enviar tu mensaje.'
-      );
-    } finally {
-      setEnviando(false);
-    }
-  };
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -168,10 +209,12 @@ export default function PaginaPropiedad() {
             {propiedad.tipo === 'VENTA' ? 'Venta' : 'Alquiler'}
           </span>
           {propiedad.destacado && (
-            <span className="distintivo distintivo-latón">Destacado</span>
+            // `destacado` es el anuncio pagado; `aviso` es otra cosa (una
+            // tarea pendiente). Compartían color y por eso se separaron.
+            <span className="distintivo distintivo-destacado">Destacado</span>
           )}
           {propiedad.estado !== 'PUBLICADA' && (
-            <span className="distintivo distintivo-latón">{propiedad.estado}</span>
+            <span className="distintivo distintivo-aviso">{propiedad.estado}</span>
           )}
         </div>
 
@@ -180,23 +223,10 @@ export default function PaginaPropiedad() {
             {propiedad.titulo}
           </h1>
 
-          {esDueña && (
-            <div className="flex shrink-0 gap-2">
-              <Link
-                href={`/publicar/${propiedad.id}`}
-                className="btn btn-secundario text-menor"
-              >
-                Editar
-              </Link>
-              <button
-                type="button"
-                onClick={alEliminar}
-                className="btn btn-secundario text-menor text-alerta"
-              >
-                Eliminar
-              </button>
-            </div>
-          )}
+          <AccionesDuenio
+            propiedadId={propiedad.id}
+            propietarioId={propiedad.propietario?.id ?? null}
+          />
         </div>
 
         {propiedad.distrito && (
@@ -218,19 +248,22 @@ export default function PaginaPropiedad() {
             {porM2 && <p className="cifra text-cuerpo text-tinta-50">{porM2}</p>}
           </div>
 
-          {/* --- Mapa: una sola propiedad, con zoom cercano --- */}
+          {/* --- Mapa: una sola propiedad, con zoom cercano ---
+              `Mapa` es un componente de cliente (Mapbox vive en el
+              navegador), pero se puede usar desde el servidor: lo que cruza
+              la frontera son las props, y una propiedad es un objeto plano. */}
           {propiedad.latitud !== null && propiedad.longitud !== null && (
             <div className="mb-6 h-80 overflow-hidden rounded-grande border border-linea">
-              <Mapa
-                propiedades={[propiedad]}
-                className="h-full w-full"
-              />
+              <Mapa propiedades={[propiedad]} className="h-full w-full" />
             </div>
           )}
 
           {/* --- Especificaciones --- */}
           <dl className="mb-6 grid grid-cols-2 gap-px overflow-hidden rounded-medio border border-linea bg-linea sm:grid-cols-4">
-            <Celda etiqueta="Área" valor={propiedad.area_m2 ? `${propiedad.area_m2} m²` : '—'} />
+            <Celda
+              etiqueta="Área"
+              valor={propiedad.area_m2 ? `${propiedad.area_m2} m²` : '—'}
+            />
             <Celda etiqueta="Habitaciones" valor={propiedad.habitaciones || '—'} />
             <Celda etiqueta="Baños" valor={propiedad.banos || '—'} />
             <Celda etiqueta="Estacionamientos" valor={propiedad.parkederos || '—'} />
@@ -283,63 +316,11 @@ export default function PaginaPropiedad() {
               </div>
             )}
 
-            {enviado ? (
-              <div className="py-4 text-center">
-                <p className="text-cuerpo font-medium text-tinta">
-                  Mensaje enviado
-                </p>
-                <p className="mt-1 text-menor text-tinta-50">
-                  Te responderemos por correo. Revisa tu bandeja de spam.
-                </p>
-              </div>
-            ) : esDueña ? (
-              <p className="text-cuerpo text-tinta-50">
-                Esta publicación es tuya.
-              </p>
-            ) : !estaConectado ? (
-              <div>
-                <p className="mb-3 text-cuerpo text-tinta-50">
-                  Entra para contactar al propietario.
-                </p>
-                <Link
-                  href={`/login?redirect=/propiedad/${propiedad.slug}`}
-                  className="btn btn-principal w-full"
-                >
-                  Entrar
-                </Link>
-              </div>
-            ) : (
-              <form onSubmit={alContactar} className="space-y-3">
-                <div>
-                  <label htmlFor="mensaje" className="etiqueta">
-                    Tu mensaje
-                  </label>
-                  <textarea
-                    id="mensaje"
-                    value={mensaje}
-                    onChange={(e) => setMensaje(e.target.value)}
-                    required
-                    minLength={10}
-                    rows={4}
-                    placeholder="Hola, me interesa esta propiedad…"
-                    className="campo resize-y"
-                  />
-                  {errorContacto && (
-                    <p role="alert" className="mt-1 text-micro text-alerta">
-                      {errorContacto}
-                    </p>
-                  )}
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={enviando || mensaje.trim().length < 10}
-                  className="btn btn-principal w-full"
-                >
-                  {enviando ? 'Enviando…' : 'Contactar'}
-                </button>
-              </form>
-            )}
+            <PanelContacto
+              propiedadId={propiedad.id}
+              propietarioId={propiedad.propietario?.id ?? null}
+              slug={propiedad.slug}
+            />
           </div>
 
           <p className="mt-3 text-micro text-tinta-30">

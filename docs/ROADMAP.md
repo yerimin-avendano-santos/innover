@@ -48,6 +48,7 @@ Cada fase tiene dos listas: lo que **hay que aprender** y lo que **hay que const
 - [x] **Desarrollo:** filtros por tipo, distrito, habitaciones, precio y orden
 - [x] **Desarrollo:** marcadores con precio y popup seguro (sin XSS)
 - [x] **Desarrollo:** ficha de detalle con URL por slug
+- [x] **Desarrollo:** ficha como **Server Component**: el contenido y los metadatos (`title`, `description`, `og:`) viajan escritos en el HTML. Antes llegaba vacía y la pintaba JavaScript — servía para una persona y no para lo que la página existe (el enlace que se comparte y lo que indexa Google). *Sin `loading.tsx` a propósito: con streaming, `notFound()` contestaría 200 en vez de 404*
 - [x] **Desarrollo:** formulario de publicación con vista previa en el mapa
 - [x] **Desarrollo:** perfil del usuario y gestión de publicaciones
 

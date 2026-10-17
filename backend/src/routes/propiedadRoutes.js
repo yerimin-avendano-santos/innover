@@ -39,7 +39,7 @@
 import express from 'express';
 import { validar } from '../middleware/validacion.js';
 import { limitadorEscritura } from '../middleware/security.js';
-import { verificarToken, verificarDuenio } from '../middleware/auth.js';
+import { verificarToken, verificarDuenio, usuarioOpcional } from '../middleware/auth.js';
 import {
   filtrosPropiedadSchema,
   filtrosPropiedadBaseSchema,
@@ -115,7 +115,25 @@ router.post(
 // Acepta id numérico O slug, así que usa el esquema mixto. Con
 // `idParamSchema` (solo números) una URL como
 // /propiedad/depa-vista-al-mar-miraflores devolvía 400.
-router.get('/:id', validar(idOSlugParamSchema, 'params'), obtenerPropiedadPorId);
+//
+// 📌 `usuarioOpcional` NO protege esta ruta: es pública y sigue siéndolo. Lo
+// que hace es que el dueño pueda abrir su propio BORRADOR en vez de comerse un
+// 403. El controlador ya lo decidía con `esVisiblePara(req.usuario, ...)`, pero
+// `req.usuario` no lo rellenaba NADIE aquí, así que la respuesta era 403
+// también para el dueño. El propio controlador lo daba por hecho: cuenta las
+// visitas con `req.usuario?.id !== propiedad.usuario_id`, y sin identidad el
+// contador subía incluso cuando el dueño miraba su propia casa.
+//
+// El orden —validar antes que identificar— es el contrario que en las rutas
+// protegidas, y a propósito: allí el 401 va primero para no filtrar si los
+// filtros eran válidos; aquí no hay nada que filtrar. Un slug mal escrito se
+// contesta sin tocar la base.
+router.get(
+  '/:id',
+  validar(idOSlugParamSchema, 'params'),
+  usuarioOpcional,
+  obtenerPropiedadPorId
+);
 
 router.put(
   '/:id',

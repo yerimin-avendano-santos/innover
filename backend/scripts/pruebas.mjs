@@ -674,6 +674,94 @@ seccion('8. Búsqueda y filtros');
   );
 }
 
+// --- Un token caducado NO cierra la ficha pública ---
+//
+// 📌 ESTA PRUEBA PROTEGE LA PALABRA "OPCIONAL".
+//
+// La ruta usa `usuarioOpcional`, que identifica a quien pueda y deja pasar al
+// resto. Si alguien la "asegurara" poniendo `verificarToken` —que es lo que
+// parece natural al ver `user` en el controlador— el enlace compartido se
+// rompería para cualquiera con la sesión caducada: le saldría un 401 en vez de
+// su propiedad. Y ese es un fallo que no se ve probando con el navegador
+// limpio, porque el navegador limpio no manda cookie.
+{
+  const r = await pedir('GET', `/api/propiedades/${idPropiedadPropia}`, {
+    token: 'esto.no.es.un.token',
+  });
+  afirmar(
+    r.estado === 200,
+    '⛔ con un token inválido la FICHA sigue abriéndose (no 401)',
+    `recibido ${r.estado}: si es 401, alguien cambió usuarioOpcional por verificarToken`
+  );
+}
+
+// --- El dueño ve su propio BORRADOR, y nadie más ---
+//
+// 📌 ESTO CUBRE UN AGUJERO QUE ESTUVO ABIERTO SIN QUE NADIE LO VIERA.
+//
+// `obtenerPropiedadPorId` decide la visibilidad de un BORRADOR con
+// `esVisiblePara(req.usuario, ...)`, y la ruta no tenía NINGÚN middleware que
+// rellenara `req.usuario`: era siempre `undefined`, así que el 403 caía
+// también sobre el dueño. El dueño no podía abrir su propio anuncio sin
+// publicar, y su propia visita le subía el contador — el controlador compara
+// con `req.usuario?.id !== propiedad.usuario_id`, o sea que esperaba que a
+// veces viniera.
+//
+// Lo arregla `usuarioOpcional`. Y ojo con el 403 de abajo: NO es un descuido
+// que un borrador ajeno no diga "no existe". La página sí contesta 404 hacia
+// fuera (para no convertirse en un oráculo de lo que está sin publicar), y esa
+// traducción se hace allí, no aquí.
+{
+  const creada = await pedir('POST', '/api/propiedades', {
+    token: tokenCliente,
+    cuerpo: {
+      titulo: 'Borrador de prueba (visibilidad del dueño)',
+      descripcion: 'Borrador que existe solo para comprobar quién puede verlo y quién no.',
+      precio: 120000,
+      tipo: 'VENTA',
+      tipo_inmueble: 'DEPARTAMENTO',
+      area_m2: 90,
+      habitaciones: 3,
+      banos: 2,
+      latitud: -9.9299,
+      longitud: -76.2401,
+      estado: 'BORRADOR',
+    },
+  });
+  afirmar(creada.estado === 201, 'se crea un BORRADOR para la prueba', `recibido ${creada.estado}`);
+  const idBorrador = creada.cuerpo?.propiedad?.id;
+  const vistasIniciales = creada.cuerpo?.propiedad?.vistas;
+
+  const anonimo = await pedir('GET', `/api/propiedades/${idBorrador}`);
+  afirmar(
+    anonimo.estado === 403,
+    '⛔ sin sesión, un BORRADOR NO se ve',
+    `recibido ${anonimo.estado}`
+  );
+
+  const dueno = await pedir('GET', `/api/propiedades/${idBorrador}`, { token: tokenCliente });
+  afirmar(
+    dueno.estado === 200,
+    '⛔ el DUEÑO sí ve su propio BORRADOR',
+    `recibido ${dueno.estado}: si es 403, falta usuarioOpcional en la ruta`
+  );
+
+  // Verlo no se cuenta como visita: el contador sirve para saber si alguien
+  // está mirando la casa, y el dueño mirando la suya no es un interesado.
+  afirmar(
+    dueno.cuerpo?.propiedad?.vistas === vistasIniciales,
+    '⛔ la visita del dueño NO le sube el contador',
+    `esperado ${vistasIniciales}, recibido ${dueno.cuerpo?.propiedad?.vistas}`
+  );
+
+  // Se borra porque la suite no limpia lo que crea, y esta prueba la correrá
+  // gente muchas veces.
+  const borrada = await pedir('DELETE', `/api/propiedades/${idBorrador}`, {
+    token: tokenCliente,
+  });
+  afirmar(borrada.estado === 200, 'y el borrador de la prueba se limpia solo');
+}
+
 {
   const r = await pedir('GET', '/api/propiedades', { token: tokenCliente });
   afirmar(r.estado === 200, 'con sesión, el buscador responde 200');

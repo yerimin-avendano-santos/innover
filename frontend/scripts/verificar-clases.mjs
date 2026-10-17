@@ -19,7 +19,17 @@
  *      `style.backgroundColor`. Sobre un marcador destacado no hacía nada,
  *      porque una imagen de fondo se pinta ENCIMA del color.
  *
- * Los dos casos tienen la misma forma: algo que se cree aplicado y no se
+ *   3. El propio comprobador tenía un punto ciego y por eso no encontró el
+ *      uso de `distintivo-latón` que quedó en la ficha: el filtro de nombres
+ *      usaba `\w`, que en JavaScript es SOLO ASCII. Un nombre con tilde —y
+ *      el nombre que originó todo esto lleva tilde— no pasaba el filtro, se
+ *      descartaba en silencio y nunca llegaba a comprobarse. La validación
+ *      que se hizo en su día usó `distintivo-laton` sin tilde, que sí pasaba:
+ *      un test que certificaba lo que no era. Ahora los nombres se aceptan
+ *      con cualquier letra Unicode y el CSS se DESESCAPA antes de buscar,
+ *      en vez de escapar el nombre para ir a su encuentro.
+ *
+ * Los tres casos tienen la misma forma: algo que se cree aplicado y no se
  * aplica. Este script los caza leyendo el DOM que Tailwind generó de verdad.
  *
  * Se ejecuta DESPUÉS de `npm run build`:
@@ -187,7 +197,17 @@ function clasesDeUnArchivo(codigo) {
   return encontradas;
 }
 
-/** Convierte el texto de un className en una lista de clases sueltas. */
+/**
+ * Convierte el texto de un `className` en una lista de clases sueltas.
+ *
+ * ⚠️ Las letras se aceptan con `\p{L}` y no con `\w`.
+ *
+ * `\w` es `[A-Za-z0-9_]`: SOLO ASCII. Con ese filtro, un nombre acentuado
+ * como `distintivo-latón` no se reconoce como clase y se descarta sin decir
+ * nada — que es justo lo contrario de lo que hace falta en un comprobador.
+ * El nombre que originó este script lleva tilde, así que el punto ciego caía
+ * precisamente sobre el caso que había que vigilar.
+ */
 function aClases(texto) {
   return texto
     .split(/\s+/)
@@ -198,7 +218,7 @@ function aClases(texto) {
         // Se descartan los trozos de plantilla que hayan podido quedar.
         !t.includes('${') &&
         !MARCADORES.test(t) &&
-        /^[a-zA-Z][\w:.[\]%()/#-]*$/.test(t)
+        /^[\p{L}][\p{L}\p{N}_:.[\]%()/#-]*$/u.test(t)
     );
 }
 
@@ -220,42 +240,50 @@ function cssCompilado() {
 }
 
 /**
- * Escapa una clase como la escribe Tailwind en el selector.
+ * Deshace los escapes de CSS para poder buscar los nombres tal cual.
  *
- * En CSS, un nombre de clase no puede llevar `:` ni `[` sin escapar, así
- * que `.hover:bg-x` se escribe `.\:hover\:bg-x`. Y un nombre que EMPIEZA
- * por dígito se escapa en hexadecimal con un espacio detrás para
- * terminarlo: `2xl:flex` → `.\32 xl\:flex`. Sin la misma regla aquí, la
- * búsqueda no encontraría clases que sí existen y el informe mentiría.
+ * 📌 POR QUÉ DESESCAPAR EL CSS EN VEZ DE ESCAPAR EL NOMBRE
+ *
+ * La versión anterior traducía el nombre a su forma escapada (`w-[100px]` →
+ * `w-\[100px\]`) y buscaba esa cadena. Funcionaba, pero obligaba a mantener a
+ * mano una copia de las reglas de escape de CSS, y ahí cabe cualquier
+ * olvido: la forma hexadecimal (`2` → `\32 `), la coma (`\2c `) y las letras
+ * no ASCII, que ni se planteaban porque el filtro las descartaba antes.
+ *
+ * Al revés hay una sola regla que cumplir: deshacer lo que CSS permite
+ * escribir. Se aplica UNA vez sobre el CSS entero, no clase por clase.
  */
-function escaparClase(clase) {
-  let salida = '';
-  for (let i = 0; i < clase.length; i++) {
-    const c = clase[i];
-    if (/[a-zA-Z0-9_-]/.test(c)) {
-      salida += c;
-    } else if (i === 0 && /[0-9]/.test(c)) {
-      salida += `\\3${c} `;
-    } else if (c === ',') {
-      salida += '\\2c ';
-    } else {
-      salida += `\\${c}`;
-    }
-  }
-  return salida;
+function sinEscapesCss(css) {
+  return (
+    css
+      // Escapes hexadecimales: `\f3 ` (el espacio cierra el número).
+      .replace(/\\([0-9a-fA-F]{1,6})\s?/g, (_, hex) =>
+        String.fromCodePoint(parseInt(hex, 16))
+      )
+      // Escapes de un solo carácter: `\:`, `\[`, `\/`.
+      .replace(/\\([^0-9a-fA-F])/g, '$1')
+  );
 }
 
-/** ¿Aparece `.clase` como selector, y no como trozo de otro nombre? */
+/**
+ * ¿Aparece `.clase` como selector, y no como trozo de otro nombre?
+ *
+ * Se busca sobre el CSS ya desescapado.
+ */
 function existeSelector(css, clase) {
-  const buscado = `.${escaparClase(clase)}`;
+  const buscado = `.${clase}`;
   let desde = 0;
   for (;;) {
     const i = css.indexOf(buscado, desde);
     if (i === -1) return false;
     const siguiente = css[i + buscado.length] ?? '';
-    // `.flex` NO debe darse por bueno al encontrar `.flex-col`: por eso
-    // el carácter siguiente tiene que cerrar el selector.
-    if (!/[-\w]/.test(siguiente) && !siguiente.startsWith('\\')) return true;
+    // `.flex` NO debe darse por bueno al encontrar `.flex-col`: por eso el
+    // carácter siguiente tiene que cerrar el selector.
+    //
+    // La comprobación es Unicode (`\p{L}`) y no `\w`: con `\w`, buscar
+    // `distintivo-lat` se daría por bueno al toparse con el `ó` de
+    // `distintivo-latón`, porque el acento no cuenta como parte del nombre.
+    if (!/[-\p{L}\p{N}_]/u.test(siguiente)) return true;
     desde = i + 1;
   }
 }
@@ -264,7 +292,8 @@ function existeSelector(css, clase) {
 // 3. Ejecutar
 // ========================================
 
-const css = cssCompilado();
+// El CSS se desescapa UNA vez, y todas las búsquedas van sobre él.
+const css = sinEscapesCss(cssCompilado());
 
 const archivos = [];
 const recolectar = (d) => {

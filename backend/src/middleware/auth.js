@@ -19,19 +19,46 @@ import config from '../config/env.js';
 import prisma from '../config/db.js';
 import { ErrorNoAutorizado, ErrorProhibido } from '../utils/errores.js';
 
+/** Los campos del usuario que se cargan en cada petición. */
+const CAMPOS_USUARIO = {
+  id: true,
+  nombre: true,
+  email: true,
+  rol: true,
+  activo: true,
+  // El plan también se lee de la base, no del token, por el mismo motivo
+  // que el rol: si a alguien le vencen el PRO, debe perder las ventajas
+  // en la siguiente petición — no cuando caduque su token.
+  plan: true,
+  plan_vence: true,
+};
+
 /**
- * Verifica que el usuario envió un token JWT válido.
+ * ¿Quién manda esta petición? — la ÚNICA respuesta a esa pregunta.
+ *
+ * Devuelve `{ usuario }` si se pudo identificar, o `{ motivo }` explicando por
+ * qué no. NO lanza excepciones por un token malo: no saber quién eres no es un
+ * error, es un dato. Quien decide si eso corta la petición es el middleware.
+ *
+ * 📌 POR QUÉ ESTÁ SEPARADA DE LOS MIDDLEWARES QUE LA USAN
+ *
+ * Porque hay DOS políticas sobre la misma comprobación, y la comprobación es
+ * larga: dos sitios donde buscar el token, verificar la firma, comprobar la
+ * caducidad y volver a la base por el rol. Escribirla dos veces sería crear
+ * dos caminos que se separan con el tiempo, y el día que alguien añada aquí
+ * una comprobación nueva —una lista de tokens revocados, por ejemplo— el
+ * camino duplicado se la saltaría en silencio. Y el que se la saltaría es
+ * justo el que NO corta la petición: el hueco quedaría del lado abierto.
  *
  * El token puede venir de dos lugares:
  *   - Header: "Authorization: Bearer <token>"  (lo usan los clientes API)
- *   - Cookie httpOnly                             (lo usan los navegadores)
+ *   - Cookie httpOnly                          (lo usan los navegadores)
  *
- * Aceptar ambos es lo que permite que el frontend use cookies seguras
- * sin que un Postman manual tenga que hacer nada raro.
+ * Aceptar ambos es lo que permite que el frontend use cookies seguras sin que
+ * un Postman manual tenga que hacer nada raro.
  */
-export const verificarToken = async (req, res, next) => {
-  try {
-    let token = null;
+async function identificar(req) {
+  let token = null;
 
     // 1. Header Authorization
     const authHeader = req.headers.authorization;
@@ -44,79 +71,137 @@ export const verificarToken = async (req, res, next) => {
       token = req.cookies.innover_token;
     }
 
-    if (!token) {
-      throw new ErrorNoAutorizado('Inicia sesión para continuar.');
-    }
+  if (!token) return { motivo: 'sin-token' };
 
-    // jwt.verify() NO es "desencriptar": firma con una clave simétrica
-    // y además verifica que no haya sido manipulado ni que haya expirado.
-    //
-    // 📌 El id va en `sub` (subject), que es el claim estándar de JWT
-    // para "quién es este token". Al verificarlo vuelve como payload.sub.
-    const payload = jwt.verify(token, config.jwt.secreto);
+  // jwt.verify() NO es "desencriptar": firma con una clave simétrica
+  // y además verifica que no haya sido manipulado ni que haya expirado.
+  //
+  // 📌 El id va en `sub` (subject), que es el claim estándar de JWT
+  // para "quién es este token". Al verificarlo vuelve como payload.sub.
+  let payload;
+  try {
+    payload = jwt.verify(token, config.jwt.secreto);
+  } catch (error) {
+    // La caducidad merece un mensaje distinto aunque se arregle igual
+    // (volviendo a entrar): "se te pasó el tiempo" y "esto no es un token"
+    // no son lo mismo para quien lo lee, y el primero le pasa a cualquiera
+    // que dejara la pestaña abierta.
+    return { motivo: error.name === 'TokenExpiredError' ? 'expirado' : 'invalido' };
+  }
 
-    const usuarioId = Number(payload.sub);
+  const usuarioId = Number(payload.sub);
+  if (!usuarioId || Number.isNaN(usuarioId)) return { motivo: 'invalido' };
 
-    if (!usuarioId || Number.isNaN(usuarioId)) {
-      throw new ErrorNoAutorizado('Sesión inválida. Vuelve a iniciar sesión.');
-    }
+  /**
+   * ⛔ POR QUÉ VOLVEMOS A BUSCAR EN LA BASE DE DATOS
+   *
+   * El token dice "soy el usuario 5". Pero:
+   *   - ¿Y si le bajaron el rol hace un rato? El token viejo conserva
+   *     sus permisos hasta que expire.
+   *   - ¿Y si la cuenta se desactivó (activo = false)?
+   *   - ¿Y si le robaron el token?
+   *
+   * Consultar la base cuesta una consulta rápida y cierra esos tres casos.
+   * Para un API de este tamaño es un intercambio muy favorable.
+   *
+   * ⚠️ Y este `await` va FUERA del `try` de arriba a propósito. Si la base no
+   * responde, eso no es "sesión inválida": es una caída. Decirle 401 a alguien
+   * por un corte de base de datos es mandarlo a volver a entrar, que es
+   * justamente lo único que no puede arreglar.
+   */
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: usuarioId },
+    select: CAMPOS_USUARIO,
+  });
 
-    /**
-     * ⛔ POR QUÉ VOLVEMOS A BUSCAR EN LA BASE DE DATOS
-     *
-     * El token dice "soy el usuario 5". Pero:
-     *   - ¿Y si le bajaron el rol hace un rato? El token viejo conserva
-     *     sus permisos hasta que expire.
-     *   - ¿Y si la cuenta se desactivó (activo = false)?
-     *   - ¿Y si le robaron el token?
-     *
-     * Consultar la base cuesta una consulta rápida y cierra esos tres casos.
-     * Para un API de este tamaño es un intercambio muy favorable.
-     */
-    const usuario = await prisma.usuario.findUnique({
-      where: { id: usuarioId },
-      select: {
-        id: true,
-        nombre: true,
-        email: true,
-        rol: true,
-        activo: true,
-        // El plan también se lee de la base, no del token, por el mismo motivo
-        // que el rol: si a alguien le vencen el PRO, debe perder las ventajas
-        // en la siguiente petición — no cuando caduque su token.
-        plan: true,
-        plan_vence: true,
-      },
-    });
+  if (!usuario) return { motivo: 'no-existe' };
+  if (!usuario.activo) return { motivo: 'inactivo' };
 
-    if (!usuario) {
-      throw new ErrorNoAutorizado('Tu sesión ya no es válida. Vuelve a iniciar sesión.');
-    }
+  return { usuario };
+}
 
-    if (!usuario.activo) {
-      throw new ErrorProhibido('Tu cuenta está desactivada. Contacta al soporte.');
+/** El texto que se le da a cada motivo, escrito una sola vez. */
+const MOTIVOS = {
+  'sin-token': 'Inicia sesión para continuar.',
+  expirado: 'Tu sesión expiró. Vuelve a iniciar sesión.',
+  invalido: 'Sesión inválida. Vuelve a iniciar sesión.',
+  'no-existe': 'Tu sesión ya no es válida. Vuelve a iniciar sesión.',
+};
+
+/**
+ * Exige un token válido: sin él, la petición se corta con 401.
+ *
+ * Es el middleware de casi todas las rutas. Lo que no es público, no se
+ * contesta sin saber a quién.
+ */
+export const verificarToken = async (req, res, next) => {
+  try {
+    const resultado = await identificar(req);
+
+    if (resultado.motivo) {
+      // La cuenta desactivada es lo único que va con 403 y no con 401: el
+      // token es válido y el usuario existe, así que insistir no arregla
+      // nada. Volver a entrar solo le daría la misma puerta en la cara.
+      if (resultado.motivo === 'inactivo') {
+        throw new ErrorProhibido('Tu cuenta está desactivada. Contacta al soporte.');
+      }
+      throw new ErrorNoAutorizado(MOTIVOS[resultado.motivo]);
     }
 
     // req.usuario es lo que leen los controladores.
     // OJO: el rol viene de la BASE, no del token. Esa es toda la diferencia
     // entre un sistema que se puede degradar de rol y uno que no.
-    req.usuario = usuario;
+    req.usuario = resultado.usuario;
 
     // Última actividad, para el panel de métricas.
     prisma.usuario
-      .update({ where: { id: usuario.id }, data: { ultimo_acceso: new Date() } })
+      .update({ where: { id: resultado.usuario.id }, data: { ultimo_acceso: new Date() } })
       .catch(() => {}); // fire-and-forget: si falla, no romper la petición
 
     next();
   } catch (error) {
-    if (error.name === 'TokenExpiredError') {
-      return next(new ErrorNoAutorizado('Tu sesión expiró. Vuelve a iniciar sesión.'));
-    }
-    if (error instanceof ErrorNoAutorizado || error instanceof ErrorProhibido) {
-      return next(error);
-    }
-    // Token malformado, firma inválida, etc.
-    next(new ErrorNoAutorizado('Sesión inválida. Vuelve a iniciar sesión.'));
+    next(error);
+  }
+};
+
+/**
+ * Identifica al usuario SI viene con sesión, y si no, sigue igual.
+ *
+ * ⛔ ESTO NO ES `verificarToken` EN SUAVE. No protege nada.
+ *
+ * `verificarToken` es un guardia: sin token, no se pasa. Este es un
+ * recepcionista: apunta quién eres si traes credencial, y si no, te deja pasar
+ * sin nombre. Por eso SOLO puede ir en rutas que ya son públicas: poner esto
+ * donde iba `verificarToken` no protege, RINDE.
+ *
+ * Sirve para las rutas públicas que se comportan distinto según quién llama.
+ * Hay una, y conviene entenderla antes de añadir otra:
+ *
+ *     GET /api/propiedades/:id   (la ficha)
+ *       · sin sesión  → 200 si está publicada; 403 si es un BORRADOR ajeno
+ *       · con sesión  → y además, el dueño ve su propio BORRADOR
+ *
+ * ⚠️ Aquí NO se decide ningún permiso, solo se rellena `req.usuario`. Quien
+ * decide sigue siendo el controlador. Si este middleware no reconoce el token,
+ * el resultado es el de un visitante anónimo: el caso MÁS restrictivo, no el
+ * más permisivo. Ese es el motivo por el que puede ser tan indulgente — un
+ * token caducado en una ruta pública no es un error, es alguien sin sesión.
+ *
+ * ⚠️ Y no actualiza `ultimo_acceso`, también a propósito: eso significa "entró
+ * a la aplicación", no "miró una ficha". La ficha la ve cualquiera, y anotar
+ * aquí convertiría cada visita con sesión en una escritura a la base.
+ */
+export const usuarioOpcional = async (req, res, next) => {
+  try {
+    const resultado = await identificar(req);
+    if (resultado.usuario) req.usuario = resultado.usuario;
+    next();
+  } catch (error) {
+    // Un fallo de verdad (la base no responde) sí sube: la ruta va a
+    // consultar la misma base un paso después y va a responder 500 de todas
+    // formas. Tragárselo aquí solo haría que el controlador tomara al usuario
+    // por anónimo y contestara un 403 que no describe lo que está pasando.
+    next(error);
   }
 };
 

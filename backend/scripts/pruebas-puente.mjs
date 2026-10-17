@@ -125,18 +125,69 @@ let slugCompartible = null;
 // nada que indexar. El producto perdería su única puerta de entrada
 // orgánica, y ninguna prueba de búsqueda se daría cuenta.
 //
-// Se envía SIN cookie a propósito: es lo que ve quien recibe el enlace.
+// Se pregunta dos veces, y no es lo mismo:
+//   · por la API    → el dato viaja
+//   · por la PÁGINA → el dato llega escrito en el HTML
+//
+// Lo segundo es lo que un buscador lee sin ejecutar JavaScript, y es
+// exactamente lo que estaba mal: la ficha se servía vacía y el contenido
+// aparecía después. Estuvo así hasta que se midió.
 {
   afirmar(slugCompartible !== null, 'se obtuvo un slug del buscador para compartir');
 
+  // Sin cookie a propósito: es lo que ve quien recibe el enlace.
   const r = await fetch(`${FRONTEND}/api/propiedades/${slugCompartible}`);
   const d = await r.json();
   afirmar(
     r.status === 200,
-    '⛔ la FICHA abre sin sesión: es el enlace que se comparte y lo que indexa Google',
+    '⛔ la API de la ficha abre sin sesión: es el enlace que se comparte',
     `status ${r.status}: ${JSON.stringify(d).slice(0, 120)}`
   );
   afirmar(d.propiedad?.slug === slugCompartible, 'la ficha devuelve la propiedad pedida');
+  afirmar(
+    typeof d.propiedad?.titulo === 'string' && d.propiedad.titulo.length > 0,
+    'la propiedad trae título (hace falta para comprobar el HTML)'
+  );
+
+  // --- La PÁGINA, no la API ---
+  const pagina = await fetch(`${FRONTEND}/propiedad/${slugCompartible}`);
+  const html = await pagina.text();
+
+  afirmar(pagina.status === 200, 'la página de la ficha responde 200 sin sesión');
+  afirmar(
+    html.includes(d.propiedad.titulo),
+    '⛔ el TÍTULO de la propiedad viene en el HTML, no lo pinta JavaScript',
+    'un buscador que no ejecute JavaScript no vería nada'
+  );
+
+  // Y dentro de un `<h1>`, que es lo que un buscador lee como título de la
+  // página. Que el texto esté en un `div` cualquiera no vale lo mismo.
+  const abre = html.indexOf('<h1');
+  const cierra = html.indexOf('</h1>', abre);
+  afirmar(
+    abre >= 0 && cierra > abre && html.slice(abre, cierra).includes(d.propiedad.titulo),
+    '⛔ y va dentro de un <h1>, no en cualquier parte del HTML'
+  );
+}
+
+// --- 7b. Una propiedad que no existe responde 404, no 200 ---
+//
+// 📌 ESTA PRUEBA VIGILA UN `loading.tsx` QUE ALGUIEN AÑADA MAÑANA.
+//
+// Añadirlo es lo natural para enseñar un esqueleto mientras carga, y
+// convierte esta ruta en una respuesta en streaming — y Next contesta 200
+// cuando envía en streaming, incluso si la propiedad no existe. Eso es un
+// "soft 404": Google indexaría como válidas URLs inventadas.
+//
+// El fallo no rompe nada visible: la página se ve bien y contesta un código
+// equivocado. Solo se nota aquí.
+{
+  const r = await fetch(`${FRONTEND}/propiedad/esta-propiedad-no-existe-000`);
+  afirmar(
+    r.status === 404,
+    '⛔ una ficha inexistente responde 404 (¿alguien añadió un loading.tsx?)',
+    `status ${r.status} — con streaming, Next contesta 200`
+  );
 }
 
 // --- 8. Filtrado por el puente ---

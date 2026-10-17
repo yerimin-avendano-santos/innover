@@ -73,10 +73,10 @@ Dos suites, ambas de integración contra el backend **real** (no hay mocks). Req
 
 ```bash
 npm run dev:backend                      # terminal 1
-npm run prueba                           # terminal 2 → 153 pruebas
+npm run prueba                           # terminal 2 → 159 pruebas
 
 npm run dev:frontend                     # terminal 1 (además del backend)
-node backend/scripts/pruebas-puente.mjs  # terminal 2 → 27 pruebas
+node backend/scripts/pruebas-puente.mjs  # terminal 2 → 32 pruebas
 ```
 
 **`pruebas-puente.mjs` no tiene script en package.json** — hay que invocarlo con la ruta completa, y necesita frontend **y** backend.
@@ -135,6 +135,8 @@ Todo va por rutas relativas `/api/...` → `src/app/api/[...ruta]/route.ts` (cat
 - no hay `NEXT_PUBLIC_BASE_URL` en el código (verifícalo antes de añadirlo)
 - `BACKEND_URL` **no** lleva prefijo `NEXT_PUBLIC_` a propósito: solo la ve el servidor
 - el puente reenvía `cookie` y copia `set-cookie`. Si tocas eso, rompes la sesión
+
+**Con una excepción, y es a propósito:** `app/propiedad/[slug]/page.tsx` es un Server Component y llama a `BACKEND_URL` directamente, reenviando la cookie a mano. No es un atajo: es la única forma de que el contenido venga **escrito en el HTML**, que es para lo que esa página existe (es el enlace que se comparte y lo que indexa Google). Pasando por el puente saldría vacía y el contenido lo pintaría JavaScript. Si añades otra llamada directa en un Server Component, mira esa primero: reenvía la cookie —sin ella el dueño no ve su propio `BORRADOR`— y distingue "no existe" de "no me contestó", porque lo primero es un 404 y lo segundo no.
 
 ### Sesión por cookie httpOnly
 
@@ -299,6 +301,7 @@ Son errores ya corregidos. Reabrirlos reintroduce agujeros explotables:
 - `/api/usuarios` exige `ADMIN`; los usuarios editan su perfil vía `/api/auth`
 - `verificarDuenio` va siempre **después** de `verificarToken`
 - **La búsqueda exige sesión; la ficha no.** `GET /api/propiedades` y `GET /api/propiedades/cercanas` llevan `verificarToken`; `GET /api/propiedades/:id` (que acepta id o slug) es la **única** lectura pública de propiedades. Es el enlace que se comparte por WhatsApp y lo que indexa Google: si cerrara, cada enlace compartido daría contra un muro y el producto se quedaría sin puerta de entrada orgánica. Las dos mitades son igual de importantes y las dos están probadas —cerrar la búsqueda "del todo" parece más seguro y rompe el producto. En el frontend, `components/Buscador.tsx` no se monta sin sesión por un motivo aparte: **Mapbox se cobra por carga de mapa**.
+- **`usuarioOpcional` NO protege: identifica.** Solo puede ir en rutas que ya son públicas — hoy, solo la ficha. Es un recepcionista, no un guardia: si no reconoce el token, deja pasar **sin usuario** en lugar de cortar. Ponerlo donde iba `verificarToken` no da ningún error: deja la ruta abierta y en silencio. Al revés, poner `verificarToken` en la ficha tampoco da error y rompe el enlace compartido para quien tenga la sesión caducada — hay una prueba para cada dirección.
 - Los popups del mapa se construyen con `textContent`, **nunca** `setHTML`
 - El `usuario_id` de una propiedad sale del **token**, nunca del body
 - `destacado` y `tour_3d_url` son campos de pago: los escribe un `ADMIN` o alguien con **plan PRO vigente**, nunca un usuario cualquiera. *(`destacado` era `ADMIN`-only; se abrió al plan PRO porque el destaque va incluido en él. La comprobación está en `resolverDestacado()`, en el servidor. Al bajar de plan se retiran los destaques con `sincronizarDestacados()`: si no, un plan vencido conservaría las ventajas.)*
