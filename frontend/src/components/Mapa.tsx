@@ -37,7 +37,7 @@
 // raros y su prueba, y vive en `lib/clustering.ts`—. Aquí solo se pinta lo que
 // dice el índice y se traduce un clic en movimiento del mapa.
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import {
@@ -189,6 +189,29 @@ export function Mapa({
   const tokenFalta = !token;
 
   /**
+   * Si este navegador no puede dibujar el mapa.
+   *
+   * Se lee con `useSyncExternalStore` —el mismo recurso que el correo recordado
+   * del acceso— y no con un `useState` que el efecto rellene: escribir estado
+   * desde un efecto es un render en cascada, y el linter lo prohíbe con razón.
+   * Preguntarlo en el primer render tampoco vale, porque el servidor no tiene
+   * canvas: pintaría el mapa y el navegador el aviso, y la hidratación saltaría.
+   * El `true` de la tercera línea es la instantánea del servidor —"aquí no se
+   * puede saber, pero lo normal es que sí"—; ya montado, React la contrasta con
+   * la realidad y repinta si no coinciden.
+   *
+   * De qué protege: Mapbox GL v3 exige WebGL2 y su constructor LANZA cuando no
+   * lo consigue. Esa excepción, dentro de un efecto, no se queda en el mapa:
+   * React desmonta el árbol entero y se cae la pantalla completa —lista,
+   * filtros y fichas— por un mapa que ni siquiera se puede pintar.
+   */
+  const sinWebGL = !useSyncExternalStore(
+    suscribirSoporteMapa,
+    leerSoporteMapa,
+    () => true
+  );
+
+  /**
    * Traduce un clic en un grupo en un movimiento del mapa.
    *
    * Se va al zoom al que ESE grupo se abre, no a un zoom fijo: un grupo de 3
@@ -282,19 +305,39 @@ export function Mapa({
     if (!token) return;
     if (!contenedor.current) return;
 
+    // Antes de tocar Mapbox: ¿puede este navegador dibujar? Sin WebGL2 el
+    // constructor lanza, así que este efecto no debe llegar hasta ahí. El aviso
+    // ocupa el sitio del mapa.
+    if (!leerSoporteMapa()) {
+      anotarQueNoSePudo();
+      return;
+    }
+
     mapboxgl.accessToken = token;
 
-    const instancia = new mapboxgl.Map({
-      container: contenedor.current,
-      style: 'mapbox://styles/mapbox/light-v11',
-      center: CENTRO_POR_DEFECTO,
-      // 12 y no 11: Lima es una mancha urbana de 50 km y necesitaba alejarse;
-      // la conurbación de Huánuco mide unos 5 km. Con el zoom de Lima, las
-      // propiedades de Huánuco, Amarilis y Pillco Marca caerían amontonadas
-      // en el mismo píxel.
-      zoom: 12,
-      attributionControl: true,
-    });
+    let instancia: mapboxgl.Map;
+    try {
+      instancia = new mapboxgl.Map({
+        container: contenedor.current,
+        style: 'mapbox://styles/mapbox/light-v11',
+        center: CENTRO_POR_DEFECTO,
+        // 12 y no 11: Lima es una mancha urbana de 50 km y necesitaba alejarse;
+        // la conurbación de Huánuco mide unos 5 km. Con el zoom de Lima, las
+        // propiedades de Huánuco, Amarilis y Pillco Marca caerían amontonadas
+        // en el mismo píxel.
+        zoom: 12,
+        attributionControl: true,
+      });
+    } catch (fallo) {
+      // La comprobación de arriba no es infalible: hay controladores que
+      // aceptan el contexto y luego fallan al compilar los sombreadores (por
+      // eso Mapbox comprueba eso mismo antes de rendirse). Para quien mira, el
+      // aviso es el mismo; el motivo real que dé Mapbox se queda en la consola,
+      // no se convierte en un mensaje genérico.
+      console.warn('[Mapa] El navegador no pudo inicializar el mapa:', fallo);
+      anotarQueNoSePudo();
+      return;
+    }
 
     instancia.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
 
@@ -441,6 +484,29 @@ export function Mapa({
     );
   }
 
+  if (sinWebGL) {
+    return (
+      <div
+        className={`flex items-center justify-center bg-papel-hundido p-8 text-center ${className}`}
+      >
+        <div className="max-w-sm">
+          <p className="text-grande font-semibold text-tinta">
+            Tu navegador no puede dibujar el mapa
+          </p>
+          <p className="mt-2 text-menor text-tinta-50">
+            El mapa necesita WebGL2 y este navegador no lo tiene disponible. Suele ser la
+            aceleración por hardware, que está desactivada: actívala y vuelve a abrirlo, o
+            míralo con otro navegador.
+          </p>
+          <p className="mt-2 text-menor text-tinta-50">
+            La búsqueda, los filtros y las fichas funcionan igual: lo único que falta es el
+            mapa.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`flex h-full flex-col ${className}`}>
       {/* `min-h-0` + `flex-1`: sin esto el div del mapa no cede altura
@@ -471,6 +537,96 @@ export function Mapa({
       )}
     </div>
   );
+}
+
+// ========================================
+// El navegador, ¿puede dibujar el mapa?
+// ========================================
+//
+// La respuesta tiene dos mitades y un solo sitio donde vivir:
+//
+//   1. ¿Hay contexto WebGL2? Lo contesta `comprobarWebGL2()`, con un canvas de
+//      usar y tirar.
+//   2. Y si lo hay, ¿arranca Mapbox con él? Hay controladores que pasan esa
+//      prueba y fallan al construir, así que la respuesta definitiva solo se
+//      sabe intentándolo.
+//
+// Por eso el veredicto vive aquí, fuera de React: el componente lo LEE con
+// `useSyncExternalStore` —en el servidor no hay canvas que probar, así que
+// durante la hidratación se da por bueno y ya montado se contrasta con la
+// realidad— y el `catch` de la construcción lo corrige. Un `useState` con un
+// `setSinWebGL()` dentro del efecto también lo contaría, pero sería un render
+// en cascada, que es justo lo que prohíbe `react-hooks/set-state-in-effect`.
+
+/** El veredicto. `null` = todavía no se ha preguntado. */
+let soporteMapa: boolean | null = null;
+
+/** Quienes miran el veredicto: `useSyncExternalStore` necesita poder suscribirse. */
+const oyentesMapa = new Set<() => void>();
+
+/**
+ * Lo que lee `useSyncExternalStore`, una vez por render.
+ *
+ * La primera vez pregunta; las demás devuelve lo guardado, y que sea un valor
+ * estable importa: una instantánea distinta en cada lectura haría que React
+ * volviera a renderizar en bucle.
+ */
+function leerSoporteMapa(): boolean {
+  if (soporteMapa === null) soporteMapa = comprobarWebGL2();
+  return soporteMapa;
+}
+
+/** La forma de suscripción que exige `useSyncExternalStore`. */
+function suscribirSoporteMapa(oyente: () => void): () => void {
+  oyentesMapa.add(oyente);
+  return () => oyentesMapa.delete(oyente);
+}
+
+/**
+ * Mapbox no pudo construir el mapa: la segunda mitad del veredicto.
+ *
+ * Da igual lo que hubiera contestado el sondeo del contexto —hay controladores
+ * que lo pasan y luego no compilan los sombreadores—: aquí ya se sabe que no se
+ * puede dibujar, así que se anota y se avisa a quien esté mirando.
+ */
+function anotarQueNoSePudo(): void {
+  if (soporteMapa === false) return;
+  soporteMapa = false;
+  for (const oyente of oyentesMapa) oyente();
+}
+
+/**
+ * ¿Puede este navegador crear un contexto WebGL2?
+ *
+ * Mapbox GL v3 exige WebGL2 —la v2 aceptaba WebGL1 y la v3 lo quitó—, así que
+ * esta es exactamente la pregunta que decide si `new mapboxgl.Map(...)` va a
+ * funcionar. De dónde venga el "no" da igual: aceleración por hardware apagada,
+ * una GPU en la lista negra del navegador, una máquina virtual sin aceleración
+ * 3D, un navegador viejo…
+ *
+ * 📌 No se usa `mapboxgl.supported()`, que es quien haría esta comprobación
+ * dentro de Mapbox: existe en tiempo de ejecución, pero la v3 no lo declara en
+ * sus tipos y llamarlo no compila. La comprobación propia dice además, de forma
+ * explícita, QUÉ hace falta. Y no se copian los atributos que pide Mapbox al
+ * contexto (alpha, stencil, depth…): si el navegador diera un contexto distinto
+ * al que Mapbox necesita, el `try/catch` de la construcción lo recoge igual.
+ *
+ * El `try` no es de adorno: hay navegadores que, en vez de devolver `null`,
+ * lanzan una excepción (modo privado, gráficos restringidos por política).
+ */
+function comprobarWebGL2(): boolean {
+  try {
+    const contexto = document.createElement('canvas').getContext('webgl2');
+    if (!contexto) return false;
+
+    // El contexto de prueba se suelta a mano. No es paranoia: cada contexto
+    // WebGL es un recurso del sistema y los navegadores mantienen unos pocos
+    // vivos a la vez. Este no pinta nada y no debe ocupar uno de esos huecos.
+    contexto.getExtension('WEBGL_lose_context')?.loseContext();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ========================================

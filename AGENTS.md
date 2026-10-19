@@ -331,6 +331,8 @@ Es una maqueta: dos PNG en `frontend/public/acceso/` (recortados a su dibujo des
 
 **Rutas parametrizadas y orden** — en `propiedadRoutes.js`, `/mias`, `/cercanas` y `/mapa` van **antes** de `/:id`. Si no, Express los interpreta como id y devuelven 404. Con `/mapa` el síntoma sería de los que engañan: la petición acabaría en la ficha buscando una propiedad llamada "mapa" y el mapa del buscador se quedaría vacío, sin un solo error en la consola.
 
+**Mapbox GL v3 exige WebGL2, y sin WebGL2 el mapa se lleva la pantalla por delante.** La v3 quitó el respaldo de WebGL1 que traía la v2, y su `supported()` —que es quien haría esta comprobación— **no está en sus tipos**: existe en tiempo de ejecución, pero llamarlo no compila. Por eso `frontend/src/components/Mapa.tsx` pregunta a mano (`hayWebGL2()`) **antes** de construir el mapa y envuelve la construcción en `try/catch`. Importa porque el fallo no se queda en el mapa: `new mapboxgl.Map(...)` lanza cuando no consigue el contexto —aceleración por hardware apagada, GPU en la lista negra, máquina virtual— y una excepción dentro de un `useEffect` desmonta el árbol entero, así que se caería la búsqueda completa —lista, filtros y fichas— por un mapa que ni se ve. Con la guarda, en el hueco del mapa sale un aviso y todo lo demás sigue funcionando; vale para las tres pantallas que lo usan (buscador, ficha y vista previa de `/publicar`).
+
 **Login vs registro** — el campo se llama `contrasena` (sin ñ), no `password`. Mandar `password` da 500.
 
 **Slugify duplicado** — la expresión de validación en `schemas/index.js` (`idOSlugParamSchema`) debe coincidir con `slugify()` en `utils/utilidades.js`. Si divergen, aparece un 400 en enlaces que sí existen.
