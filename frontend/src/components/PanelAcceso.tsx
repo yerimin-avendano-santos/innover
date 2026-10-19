@@ -121,13 +121,23 @@ export function PanelAcceso() {
           ancho, pero la altura se quedaría en los 628 px del atributo y
           la imagen saldría aplastada o estirada según el ancho del panel.
           Con `height: auto`, la altura sale de la proporción real del
-          archivo y el dibujo nunca se deforma. */}
+          archivo y el dibujo nunca se deforma.
+
+          ⚠️ Y el tope de 900 px es el ancho REAL del archivo: no es un
+          número redondo elegido a ojo. Desde que el acceso ocupa la
+          pantalla entera, el panel mide la mitad de la ventana, y sin tope
+          en un monitor de 1920 se le pedirían 1037 px a una imagen de 900
+          —se vería blanda, que en una captura de producto canta más que en
+          una foto—. El render original del diseñador mide 1152 de ancho,
+          así que tampoco hay de dónde sacar más píxeles.
+          La tarjeta de filtros de abajo no lleva tope porque su 42 % del
+          panel se queda siempre por debajo de sus 656 px reales. */}
       <img
         src="/acceso/mapa.png"
         alt=""
         width={900}
         height={628}
-        className="pointer-events-none absolute -right-[14%] -bottom-[6%] h-auto w-[108%] max-w-none select-none"
+        className="pointer-events-none absolute -right-[14%] -bottom-[6%] h-auto w-[108%] max-w-[900px] select-none"
       />
 
       {/* La tarjeta de filtros, delante y más pequeña, como si estuviera

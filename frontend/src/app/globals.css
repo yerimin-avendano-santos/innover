@@ -671,24 +671,24 @@
     font-size: 10px;
   }
 
-  /* --- Tarjeta del acceso ---
-     La tarjeta blanca de entrar / registrarse, flotando sobre el gris.
+  /* --- Superficie del acceso ---
+     El blanco de entrar / registrarse: a la izquierda el formulario y,
+     desde `lg`, el panel oscuro a la derecha.
 
-     ⚠️ Aquí NO va el radio, y es a propósito. En móvil la tarjeta es una
-     pantalla entera —sin márgenes ni esquinas, como en el diseño— y desde
-     `sm` flota con las esquinas redondeadas. Eso son dos estados y se
-     resuelven con utilidades en el componente (`rounded-none` por
-     defecto, `sm:rounded-grande`), que es donde se ve la condición. Poner
-     aquí un radio fijo obligaría a anularlo desde fuera con otro `!` y
-     el archivo acabaría con dos verdades sobre lo mismo.
+     ⚠️ Aquí no hay ni radio ni sombra, y no es un olvido. Esto era la
+     «tarjeta» que flotaba sobre el gris del fondo (máx. 1080 × mín. 660),
+     y las dos cosas estaban para levantarla: el radio la recortaba contra
+     el papel y la sombra la despegaba de él.
 
-     La sombra sí vive aquí: es la misma en cualquier tamaño, y es lo que
-     levanta la tarjeta del papel. Es más ancha y suave que la de una
-     ficha (`.ficha`) a propósito: esta tarjeta no está *sobre* la
-     página, está *delante* de ella. */
-  .tarjeta-acceso {
+     Ahora la pantalla de acceso ocupa el viewport entero —en móvil y en
+     escritorio—, así que no hay papel contra el que despegarla: un radio
+     sería una esquina redondeada contra el borde de la ventana, y una
+     sombra, una mancha recortada por él. Se fueron con la tarjeta.
+
+     (`overflow-hidden` sí sigue en el componente: las imágenes del panel
+     sangran por la derecha y por abajo y hay que recortarlas.) */
+  .superficie-acceso {
     background-color: var(--color-papel-alto);
-    box-shadow: 0 18px 48px rgb(15 41 90 / 0.14);
   }
 
   /* --- Panel del acceso ---

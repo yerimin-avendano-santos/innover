@@ -19,7 +19,7 @@
 // login (`../login/page`), que funcionaba pero dejaba a una pantalla
 // colgando del archivo de otra.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contextos/Auth';
@@ -27,7 +27,7 @@ import { ErrorPeticion } from '@/lib/api';
 import { MarcoAuth, MensajeError, Campo } from '@/components/MarcoAuth';
 
 export default function PaginaRegistro() {
-  const { registrar } = useAuth();
+  const { registrar, estaConectado, cargando: cargandoAuth } = useAuth();
   const router = useRouter();
 
   const [nombre, setNombre] = useState('');
@@ -38,6 +38,25 @@ export default function PaginaRegistro() {
   const [error, setError] = useState<string | null>(null);
   const [errorCampo, setErrorCampo] = useState<Record<string, string>>({});
   const [enviando, setEnviando] = useState(false);
+
+  /**
+   * Quien ya tiene sesión no tiene nada que hacer aquí: se le devuelve a la
+   * portada, que ya es el buscador.
+   *
+   * El `ref` se apaga en la primera comprobación por el mismo motivo que en
+   * el login (ver `(acceso)/login/page.tsx`): sin él, a quien acaba de
+   * crear la cuenta desde este formulario se le sumaría otro salto al que
+   * ya hace el envío, y el botón de atrás quedaría con dos entradas
+   * idénticas.
+   */
+  const yaEstabaDentro = useRef(true);
+  useEffect(() => {
+    if (cargandoAuth) return;
+    if (!yaEstabaDentro.current) return;
+
+    yaEstabaDentro.current = false;
+    if (estaConectado) router.replace('/');
+  }, [cargandoAuth, estaConectado, router]);
 
   const alEnviar = async (evento: React.FormEvent) => {
     evento.preventDefault();

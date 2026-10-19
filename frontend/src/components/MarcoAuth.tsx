@@ -3,7 +3,7 @@
 // ========================================
 // 🧾 MARCO DEL ACCESO
 // ========================================
-// Entrar y registrarse comparten este marco: la tarjeta, sus campos y su
+// Entrar y registrarse comparten este marco: la pantalla, sus campos y su
 // mensaje de error viven aquí, para que las dos pantallas no se vayan
 // separando. Antes el registro importaba estas piezas desde el archivo
 // del login (`../login/page`), que funciona pero deja a una pantalla
@@ -11,12 +11,19 @@
 //
 // ── Cómo se adapta ──
 //
-// · En móvil la tarjeta va a sangre, sin margen ni esquinas, como en el
-//   diseño: en una pantalla estrecha, un marco alrededor del marco es un
-//   borde que no pinta nada. Y la marca va apilada y centrada.
-// · Desde `sm` la tarjeta flota sobre el gris del fondo.
-// · Desde `lg` aparece el panel oscuro de la derecha y la marca vuelve a
-//   su fila horizontal.
+// · La pantalla de acceso NO es una tarjeta flotante: ocupa el viewport
+//   entero, sin márgenes ni esquinas. Antes flotaba desde `sm` sobre el
+//   gris del fondo (máx. 1080 × mín. 660 px) y se quitó a propósito: es la
+//   primera pantalla del producto, y un marco alrededor del marco era un
+//   borde que no separaba nada. Lo que antes decía «aquí empieza Innover»
+//   ahora lo dice que el formulario esté pegado al borde de la ventana.
+// · Desde `lg` la mitad derecha es el panel oscuro de marca.
+// · Dentro de la mitad del formulario, el contenido vive en un carril de
+//   26 rem centrado: en un monitor ancho, esa mitad son 900 px, y unos
+//   campos de 900 px no se leen —hay que girar la cabeza para ir de la
+//   etiqueta al valor—. La marca, el título, los campos y el pie comparten
+//   el carril, así que quedan alineados entre sí aunque la columna sea el
+//   doble.
 //
 // 📌 NOTA SOBRE EL NOMBRE DEL CAMPO
 // El campo se llama `contrasena` (sin ñ) porque así lo espera el backend.
@@ -27,7 +34,7 @@ import { useState, type ReactNode } from 'react';
 import { Marca } from '@/components/Logo';
 import { PanelAcceso } from '@/components/PanelAcceso';
 
-/** La tarjeta de acceso: formulario a la izquierda, marca a la derecha. */
+/** La pantalla de acceso: formulario a la izquierda, marca a la derecha. */
 export function MarcoAuth({
   titulo,
   subtitulo,
@@ -40,32 +47,36 @@ export function MarcoAuth({
   pie: ReactNode;
 }) {
   return (
-    <div className="flex flex-1 flex-col items-stretch justify-center sm:items-center sm:p-6 lg:p-8">
-      <div className="tarjeta-acceso flex w-full flex-1 flex-col overflow-hidden sm:max-w-[480px] sm:flex-none sm:rounded-grande lg:min-h-[660px] lg:max-w-[1080px] lg:grid lg:grid-cols-2">
+    <div className="flex flex-1 flex-col">
+      <div className="superficie-acceso flex w-full flex-1 flex-col overflow-hidden lg:grid lg:grid-cols-2">
         <div className="flex flex-1 flex-col px-5 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12">
-          {/* La marca: apilada y centrada en móvil (como en el diseño de
-              móvil), en fila a la izquierda desde `lg`. */}
-          <Marca
-            icono="h-14 w-14 sm:h-12 sm:w-12"
-            texto="text-grande"
-            className="flex-col items-center gap-2 text-tinta lg:flex-row lg:gap-3"
-          />
+          {/* El carril: marca, título, formulario y pie, todos al mismo
+              ancho y centrados en la mitad que les toca. */}
+          <div className="mx-auto flex w-full max-w-[26rem] flex-1 flex-col">
+            {/* La marca: apilada y centrada en móvil (como en el diseño de
+                móvil), en fila a la izquierda desde `lg`. */}
+            <Marca
+              icono="h-14 w-14 sm:h-12 sm:w-12"
+              texto="text-grande"
+              className="flex-col items-center gap-2 text-tinta lg:flex-row lg:gap-3"
+            />
 
-          {/* `flex-1` + `justify-center`: el bloque del título y el
-              formulario se centra en el hueco que queda entre la marca y
-              el pie, que es lo que reparte el aire del diseño. */}
-          <div className="flex flex-1 flex-col justify-center py-10 lg:py-12">
-            <div className="text-center">
-              <h1 className="text-titulo font-semibold text-tinta">{titulo}</h1>
-              <p className="mx-auto mt-2 max-w-[36ch] text-cuerpo text-tinta-50">
-                {subtitulo}
-              </p>
+            {/* `flex-1` + `justify-center`: el bloque del título y el
+                formulario se centra en el hueco que queda entre la marca y
+                el pie, que es lo que reparte el aire del diseño. */}
+            <div className="flex flex-1 flex-col justify-center py-10 lg:py-12">
+              <div className="text-center">
+                <h1 className="text-titulo font-semibold text-tinta">{titulo}</h1>
+                <p className="mx-auto mt-2 max-w-[36ch] text-cuerpo text-tinta-50">
+                  {subtitulo}
+                </p>
+              </div>
+
+              <div className="mt-8">{children}</div>
             </div>
 
-            <div className="mt-8">{children}</div>
+            <p className="text-center text-cuerpo text-tinta-50">{pie}</p>
           </div>
-
-          <p className="text-center text-cuerpo text-tinta-50">{pie}</p>
         </div>
 
         <PanelAcceso />

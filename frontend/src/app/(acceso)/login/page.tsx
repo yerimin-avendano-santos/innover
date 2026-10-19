@@ -30,7 +30,7 @@
 // Antes el frontend mandaba `password` y el login SIEMPRE fallaba con 500,
 // porque `bcrypt.compare(undefined, hash)` lanza excepción.
 
-import { useState, Suspense, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, Suspense, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contextos/Auth';
@@ -157,19 +157,21 @@ export default function PaginaLogin() {
 /** Placeholder mientras se resuelve la query en el servidor. */
 function MarcoEsqueleto() {
   return (
-    <div className="flex flex-1 flex-col items-stretch justify-center sm:items-center sm:p-6 lg:p-8">
-      <div className="tarjeta-acceso flex w-full flex-1 flex-col gap-4 p-6 sm:max-w-[480px] sm:flex-none sm:rounded-grande lg:min-h-[660px] lg:max-w-[1080px] lg:p-14">
-        <div className="h-14 w-14 animate-pulse rounded-full bg-papel-hundido" />
-        <div className="mt-8 h-8 w-2/3 animate-pulse rounded-chico bg-papel-hundido" />
-        <div className="h-12 animate-pulse rounded-full bg-papel-hundido" />
-        <div className="h-12 animate-pulse rounded-full bg-papel-hundido" />
+    <div className="flex flex-1 flex-col">
+      <div className="superficie-acceso flex w-full flex-1 flex-col px-5 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12">
+        <div className="mx-auto flex w-full max-w-[26rem] flex-col gap-4">
+          <div className="h-14 w-14 animate-pulse rounded-full bg-papel-hundido" />
+          <div className="mt-8 h-8 w-2/3 animate-pulse rounded-chico bg-papel-hundido" />
+          <div className="h-12 animate-pulse rounded-full bg-papel-hundido" />
+          <div className="h-12 animate-pulse rounded-full bg-papel-hundido" />
+        </div>
       </div>
     </div>
   );
 }
 
 function FormularioLogin() {
-  const { iniciarSesion } = useAuth();
+  const { iniciarSesion, estaConectado, cargando: cargandoAuth } = useAuth();
   const router = useRouter();
   const parametros = useSearchParams();
 
@@ -205,6 +207,29 @@ function FormularioLogin() {
   // A dónde ir después de entrar. Por defecto, al buscador.
   const crudo = parametros.get('redirect');
   const destino = crudo && esRutaInterna(crudo) ? crudo : '/';
+
+  /**
+   * Quien ya tiene sesión no tiene nada que hacer en esta pantalla: se le
+   * devuelve a donde iba.
+   *
+   * 📌 POR QUÉ UN `ref` Y NO UN EFECTO A SECAS
+   *
+   * El que acaba de entrar por este formulario también pasa por
+   * `estaConectado === true`, así que un efecto que dependiera solo de eso
+   * competiría con la navegación del envío: dos `router.push` al mismo
+   * sitio y dos entradas iguales en el historial —el botón de atrás se
+   * queda atascado—. El `ref` se apaga en la PRIMERA comprobación, así que
+   * lo único que dispara este rebote es «ya estabas dentro cuando abriste
+   * la pantalla».
+   */
+  const yaEstabaDentro = useRef(true);
+  useEffect(() => {
+    if (cargandoAuth) return;
+    if (!yaEstabaDentro.current) return;
+
+    yaEstabaDentro.current = false;
+    if (estaConectado) router.replace(destino);
+  }, [cargandoAuth, estaConectado, destino, router]);
 
   const alEnviar = async (evento: React.FormEvent) => {
     evento.preventDefault();

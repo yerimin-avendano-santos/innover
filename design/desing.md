@@ -115,7 +115,7 @@ La escala sigue *Elements of Typographic Style* (ratio 1,25) y los nombres son s
 - **Espaciado:** escala de 4 px (`--spacing`). Un solo número raro que aparezca en el sistema hace que dos personas discrepen.
 - **Radios:** tres, con tres trabajos — `radius-chico` 3 px (campos pequeños, chips, distintivos), `radius-medio` 6 px (botones y tarjetas del producto), `radius-grande` 12 px (paneles grandes y la tarjeta de acceso).
 - **Pastilla (`rounded-full`):** la forma del acceso —campos y botón—. Es la única pantalla que la usa. El resto del producto va a 6 px. **Qué gana en las demás pantallas es una decisión abierta**: no se copia la pastilla a una pantalla sin decidirlo.
-- **Sombras:** siempre el marino con alfa, nunca negro. Una ficha levanta poco al pasar por encima (`rgb(15 41 90 / 0,07)`); la tarjeta de acceso se levanta más (`rgb(15 41 90 / 0,14)`) porque no está *sobre* la página, está *delante* de ella.
+- **Sombras:** siempre el marino con alfa, nunca negro. Una ficha levanta poco al pasar por encima (`rgb(15 41 90 / 0,07)`). Y la pantalla de acceso **no lleva ninguna**: antes era una tarjeta que flotaba y tenía la suya (`0 18px 48px`), y se fue con el flotado cuando el acceso pasó a ocupar la pantalla entera (§2.1).
 - **Foco por teclado:** se hereda de `--foco`. Un anillo de un solo color no sirve para fondos claros y oscuros a la vez —el turquesa oscuro se pierde sobre marino (1,8:1) y el claro sobre blanco (1,9:1)—, así que cada superficie declara `--foco` (`.sobre-marino`, `.superficie-clara`) y los hijos lo recogen.
 
 ---
@@ -133,17 +133,19 @@ Reglas que valen para cualquier pantalla nueva:
 
 ### 2.1 La pantalla de acceso (hecha: es la referencia)
 
-Una tarjeta de dos columnas sobre el gris del fondo:
+Dos mitades y el viewport entero, sin tarjeta flotante:
 
 | | |
 |---|---|
-| Tarjeta | Máx. **1080 px**, mínimo **660 px** de alto desde `lg`, radio 12 px, sombra ancha |
-| Columna del formulario | La mitad izquierda, con el aire repartido: marca arriba, título y campos centrados, pie abajo |
+| La pantalla | Ocupa todo el ancho y todo el alto, sin márgenes, sin esquinas y sin sombra. Antes era una tarjeta (máx. 1080 × mín. 660) flotando sobre el gris, y se quitó: con la pantalla llena no hay papel contra el que despegarla |
+| Columna del formulario | La mitad izquierda, con el aire repartido: marca arriba, título y campos centrados, pie abajo. El contenido va en un carril de **26 rem** centrado —en un monitor ancho esa mitad son 900 px, y unos campos de 900 px no se leen— |
 | Campos | Pastilla, 16 px de relleno horizontal y 12 vertical, etiqueta arriba en `text-menor`, error debajo en `alerta` |
 | Botón | `.btn-principal` en pastilla, ancho completo |
 | Columna de marca | Degradado `210deg` de `senal-hondo` a `marino`; curvas de nivel al 13 % en turquesa; titular en serif; maqueta del buscador |
 
-**En móvil** la tarjeta va **a sangre**: sin margen, sin esquinas y a pantalla completa, con la marca apilada y centrada (en el diseño, un marco alrededor del marco es un borde que no pinta nada). Desde `sm` flota; desde `lg` aparece la columna oscura.
+**Y es lo primero que se ve.** Quien abre `/` sin sesión no se queda en una portada que le explique el producto: cae en esta pantalla, y el titular del panel es toda la presentación. Se probó «explicar antes de pedir» —una portada con tres beneficios y dos botones— y se descartó: Innover es una herramienta, y lo que enseña es la puerta. Al entrar se vuelve a `/`, que ya es el buscador.
+
+En móvil no cambia nada: siempre fue a sangre, con la marca apilada y centrada. Desde `lg` aparece la columna oscura y la marca vuelve a su fila horizontal.
 
 **El panel oscuro no es un mapa:** son dos PNG (`frontend/public/acceso/`) más unas curvas de nivel en SVG. El buscador entra sangrando por el borde derecho y por abajo, y la tarjeta de filtros va delante, abajo a la izquierda, como si estuviera desplegada encima. Todo el panel es decorativo (`aria-hidden`, imágenes con `alt=""`); lo que importa —el titular— es texto de verdad, y por eso se lee y se indexa.
 
@@ -173,7 +175,7 @@ Del panel B2B, lo que la guía pedía sigue en pie como horizonte: métricas arr
 
 ## 3. Componentes con nombre propio
 
-Los que ya existen en `globals.css` (`.btn`, `.campo`, `.etiqueta`, `.ficha`, `.distintivo`, `.marcador*`, `.globo-*`, `.franja-marca`, `.tarjeta-acceso`, `.panel-acceso`, `.contornos`) y los que la guía proponía y siguen pendientes:
+Los que ya existen en `globals.css` (`.btn`, `.campo`, `.etiqueta`, `.ficha`, `.distintivo`, `.marcador*`, `.globo-*`, `.franja-marca`, `.superficie-acceso`, `.panel-acceso`, `.contornos`) y los que la guía proponía y siguen pendientes:
 
 1. **`Tour3DViewer`** — el recorrido 3D se abre hoy en un contenedor incrustado; falta el aislamiento a pantalla completa del que hablaba la guía.
 2. **Tarjeta de propiedad con carrusel** — hoy la tarjeta del buscador enseña la portada y la galería vive en la ficha.
