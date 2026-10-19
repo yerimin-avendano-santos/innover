@@ -13,13 +13,18 @@
 // Ahora toda cuenta nace como CLIENTE. Para publicar propiedades hay un
 // proceso de verificación aparte, igual que en cualquier plataforma que
 // cobra por sus servicios.
+//
+// El marco —tarjeta, campos y mensaje de error— vive desde este bloque en
+// `components/MarcoAuth.tsx`. Antes se importaba desde el archivo del
+// login (`../login/page`), que funcionaba pero dejaba a una pantalla
+// colgando del archivo de otra.
 
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contextos/Auth';
 import { ErrorPeticion } from '@/lib/api';
-import { MarcoAuth, MensajeError, Campo } from '../login/page';
+import { MarcoAuth, MensajeError, Campo } from '@/components/MarcoAuth';
 
 export default function PaginaRegistro() {
   const { registrar } = useAuth();
@@ -71,13 +76,13 @@ export default function PaginaRegistro() {
       pie={
         <>
           ¿Ya tienes cuenta?{' '}
-          <Link href="/login" className="font-medium text-senal hover:underline">
+          <Link href="/login" className="font-semibold text-tinta hover:underline">
             Entrar
           </Link>
         </>
       }
     >
-      <form onSubmit={alEnviar} noValidate className="space-y-4">
+      <form onSubmit={alEnviar} noValidate className="space-y-5">
         <MensajeError>{error}</MensajeError>
 
         <Campo
@@ -123,7 +128,11 @@ export default function PaginaRegistro() {
           error={errorCampo.telefono}
         />
 
-        <button type="submit" disabled={enviando} className="btn btn-principal w-full">
+        <button
+          type="submit"
+          disabled={enviando}
+          className="btn btn-principal w-full rounded-full py-3"
+        >
           {enviando ? 'Creando cuenta…' : 'Crear cuenta'}
         </button>
 

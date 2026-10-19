@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="100%" height="100%">
+  <!-- Definiciones de gradientes y colores base -->
+  <defs>
+    <linearGradient id="leftBlue" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#006DE6" />
+      <stop offset="100%" stop-color="#0356C4" />
+    </linearGradient>
+    <linearGradient id="rightTeal" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0DD1D3" />
+      <stop offset="100%" stop-color="#089596" />
+    </linearGradient>
+    <linearGradient id="baseDark" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#11284A" />
+      <stop offset="50%" stop-color="#183863" />
+      <stop offset="100%" stop-color="#0E2342" />
+    </linearGradient>
+  </defs>
+
+  <!-- Base del Mapa Isométrico 3D -->
+  <!-- Base inferior oscura -->
+  <path d="M 263 566 L 512 684 L 512 705 L 263 587 Z" fill="url(#baseDark)" />
+  <path d="M 512 684 L 761 566 L 761 587 L 512 705 Z" fill="url(#baseDark)" />
+  <!-- Borde superior blanco/gris claro -->
+  <path d="M 263 556 L 512 674 L 512 684 L 263 566 Z" fill="#E2E8F0" />
+  <path d="M 512 674 L 761 556 L 761 566 L 512 684 Z" fill="#CBD5E1" />
+  <!-- Superficie principal del mapa -->
+  <path d="M 512 438 L 761 556 L 512 674 L 263 556 Z" fill="#F8FAFC" />
+
+  <!-- Bloques de zonas en el mapa -->
+  <!-- Zonas Azules (Izquierda) -->
+  <path d="M 313 556 L 412 509 L 487 544 L 388 591 Z" fill="#4A90E2" />
+  <path d="M 425 621 L 437 615 L 487 639 L 475 645 Z" fill="#71B4F8" />
+  <!-- Zonas Verdes/Teal (Derecha) -->
+  <path d="M 612 509 L 711 556 L 637 591 L 537 544 Z" fill="#78C697" />
+  <path d="M 562 603 L 599 621 L 549 645 L 512 627 Z" fill="#5EAD9E" />
+
+  <!-- Sombra del pin sobre el mapa -->
+  <ellipse cx="512" cy="595" rx="45" ry="15" fill="#000000" opacity="0.1" />
+  <ellipse cx="512" cy="590" rx="20" ry="6" fill="#000000" opacity="0.15" />
+
+  <!-- Icono Central (Pin / Escudo / Casa) -->
+  <!-- Anillo Exterior Izquierdo (Azul) -->
+  <path d="M 512 115 L 320 225 L 320 425 L 512 590 L 512 525 L 390 420 L 390 265 L 512 195 Z" fill="url(#leftBlue)" />
+  <!-- Borde Interno de la Casa Izquierdo (Azul) -->
+  <path d="M 512 245 L 420 295 L 420 445 L 512 525 L 512 515 L 460 470 L 460 330 L 512 300 Z" fill="url(#leftBlue)" />
+  
+  <!-- Anillo Exterior Derecho (Teal) -->
+  <path d="M 512 115 L 704 225 L 704 425 L 512 590 L 512 525 L 634 420 L 634 265 L 512 195 Z" fill="url(#rightTeal)" />
+  <!-- Borde Interno de la Casa Derecho (Teal) -->
+  <path d="M 512 245 L 604 295 L 604 445 L 512 525 L 512 515 L 564 470 L 564 330 L 512 300 Z" fill="url(#rightTeal)" />
+
+  <!-- Ventanas cuadradas centrales -->
+  <rect x="486" y="375" width="16" height="16" rx="2" fill="#006DE6" />
+  <rect x="522" y="375" width="16" height="16" rx="2" fill="#006DE6" />
+  <rect x="486" y="410" width="16" height="16" rx="2" fill="#006DE6" />
+  <rect x="522" y="410" width="16" height="16" rx="2" fill="#006DE6" />
+
+  <!-- Texto INNOVER -->
+  <text x="512" y="860" font-family="&#39;Montserrat&#39;, &#39;Helvetica Neue&#39;, Arial, sans-serif" font-weight="800" font-size="130" fill="#152A4A" text-anchor="middle" letter-spacing="10">INNOVER</text>
+</svg>

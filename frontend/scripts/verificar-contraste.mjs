@@ -193,6 +193,23 @@ const COMBINACIONES = [
   { texto: 'tinta-70', fondo: 'papel-hundido', minimo: NORMAL, donde: 'Distintivo neutro' },
   { texto: 'alerta', fondo: 'alerta-suave', minimo: NORMAL, donde: 'Aviso de error enmarcado' },
 
+  // ── Tarjeta de acceso ──
+  // El panel del acceso lleva el titular en blanco sobre un degradado, y
+  // un degradado no tiene un contraste único: hay que comprobar las DOS
+  // puntas. La de arriba es el turquesa hondo (esta entrada) y la de
+  // abajo es el marino, que ya está comprobado arriba —"Marca en la
+  // barra"— porque el texto blanco sobre marino aparece en más sitios.
+  //
+  // Si alguien cambia el ángulo o los colores del degradado por unos más
+  // claros, esta línea es lo único que lo detecta: la frase se vería
+  // lavada y ningún otro comprobador mira si un texto se lee.
+  {
+    texto: 'sobre-marino',
+    fondo: 'senal-hondo',
+    minimo: NORMAL,
+    donde: 'Titular del panel de acceso (punta turquesa)',
+  },
+
   // ── Anillos de foco (no son texto: basta con 3:1) ──
   { texto: 'senal', fondo: 'papel', minimo: NO_TEXTO, donde: 'Anillo de foco normal' },
   { texto: 'turquesa', fondo: 'marino', minimo: NO_TEXTO, donde: 'Anillo de foco en la barra' },

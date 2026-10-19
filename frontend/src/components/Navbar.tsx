@@ -75,7 +75,9 @@ export function Navbar() {
           aria-label="Innover, ir al inicio"
         >
           <Logo className="h-7 w-7 shrink-0" />
-          <span className="truncate text-normal font-bold tracking-tight text-sobre-marino">
+          {/* El espaciado y las mayúsculas son los de la entrega nueva del
+              logo (10 unidades de tracking sobre un tamaño de 130). */}
+          <span className="truncate text-normal font-extrabold uppercase tracking-[0.07em] text-sobre-marino">
             Innover
           </span>
         </Link>

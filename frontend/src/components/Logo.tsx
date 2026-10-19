@@ -2,17 +2,18 @@
 // 🔷 LOGO
 // ========================================
 //
-// La fuente de verdad del dibujo es `design/logosvg.svg`. Este archivo es
-// ese mismo SVG, recortado y traducido a un componente por dos motivos:
+// La fuente de verdad del dibujo es `design/nuevo/logoinnover.svg`. Este
+// archivo es ese mismo SVG, recortado y traducido a un componente por dos
+// motivos:
 //
-// 1. El original incluye la palabra "Innover" como texto SVG. Aquí se
+// 1. El original incluye la palabra "INNOVER" como texto SVG. Aquí se
 //    recorta con el `viewBox` para que la palabra sea texto HTML en la
-//    interfaz. Un texto SVG no se puede seleccionar, ni buscar, ni
-//    leer un lector de pantalla, y un buscador no lo indexa. Como
-//    rótulo de marca que es, conviene que sea texto de verdad.
+//    interfaz. Un texto SVG no se puede seleccionar, ni buscar, ni leer un
+//    lector de pantalla, y un buscador no lo indexa. Como rótulo de marca
+//    que es, conviene que sea texto de verdad.
 //
-// 2. El original mide 400×420 con márgenes. El `viewBox` que se usa
-//    aquí —`85 36 230 260`— encuadra solo el icono, así que el dibujo
+// 2. El original mide 1024×1024 con márgenes. El `viewBox` que se usa
+//    aquí —`253 105 518 610`— encuadra solo el icono, así que el dibujo
 //    llena la caja en la que se le pone.
 //
 // ⚠️ Si algún día cambia el logo, hay que actualizar los dos sitios.
@@ -27,7 +28,7 @@ interface Props {
   /**
    * Nombre accesible.
    *
-   * Cuando el icono acompaña a la palabra "Innover" escrita en HTML, hay
+   * Cuando el icono acompaña a la palabra "INNOVER" escrita en HTML, hay
    * que dejarlo vacío: si ambos se anunciaran, un lector de pantalla
    * diría "Innover Innover". Cuando va solo, sin texto al lado, este
    * prop es obligatorio para que no quede un gráfico mudo.
@@ -48,21 +49,18 @@ export function Logo({ className = 'h-8 w-8', titulo }: Props) {
        * error, solo desaparece. Los cuatro números salen de medir la
        * geometría del SVG original:
        *
-       *   dibujo (con su trazo):  x [88,5 .. 311,5]   y [42 .. 292]
-       *   sombra:                 `dy="8"`, desenfoque 6, y la región del
-       *                           filtro (-10 % / +120 %) deja el grupo del
-       *                           mapa llegando hasta y ≈ 304
+       *   dibujo:  x [263 .. 761]   y [115 .. 705]
        *
-       * Con eso, `78 32 244 274` deja 10 px de margen a los lados y arriba,
-       * y 14 abajo —los últimos no son aire, son la sombra—. El centro del
-       * recorte cae en x = 200, exactamente el centro del dibujo, así que el
-       * icono queda centrado.
+       * Con un margen de 10 px por lado queda `253 105 518 610`. El centro
+       * del recorte cae en x = 512, exactamente el centro del dibujo (el
+       * original parte el pin en dos mitades simétricas), así que el icono
+       * queda centrado.
        *
-       * Si algún día se cambia el dibujo en `design/logosvg.svg`, hay que
-       * volver a medir. Y si se recorta de más, la única señal es que el
-       * logo se ve mal: el compilador no dice nada.
+       * Si algún día se cambia el dibujo en `design/nuevo/logoinnover.svg`,
+       * hay que volver a medir. Y si se recorta de más, la única señal es
+       * que el logo se ve mal: el compilador no dice nada.
        */
-      viewBox="78 32 244 274"
+      viewBox="253 105 518 610"
       className={className}
       // Con `titulo` el SVG se anuncia con ese nombre; sin él es decorativo.
       role={titulo ? 'img' : undefined}
@@ -71,8 +69,7 @@ export function Logo({ className = 'h-8 w-8', titulo }: Props) {
       focusable="false"
     >
       <defs>
-        {/* Los degradados del logo, con los identificadores tal cual
-            vienen del original.
+        {/* Los degradados del logo, con los colores de la entrega nueva.
 
             ⚠️ Los `id` son fijos y no únicos por instancia: si el logo
             se pinta dos veces en la misma página, hay `id` duplicados.
@@ -87,79 +84,77 @@ export function Logo({ className = 'h-8 w-8', titulo }: Props) {
             arrastraría JavaScript al cliente por un dibujo estático. Se
             prefiere el `id` fijo porque el coste de la duplicación aquí
             es cero y el de hidratar no lo es. */}
-        <linearGradient id="marcaAzul" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#0052D4" />
-          <stop offset="100%" stopColor="#0082FF" />
+        <linearGradient id="marcaAzul" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#006DE6" />
+          <stop offset="100%" stopColor="#0356C4" />
         </linearGradient>
 
-        <linearGradient id="marcaTurquesa" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#00D2B8" />
-          <stop offset="100%" stopColor="#008B9B" />
+        <linearGradient id="marcaTurquesa" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#0DD1D3" />
+          <stop offset="100%" stopColor="#089596" />
         </linearGradient>
 
-        <filter id="marcaSombra" x="-10%" y="-10%" width="120%" height="120%">
-          <feDropShadow dx="0" dy="8" stdDeviation="6" floodColor="#1A3E62" floodOpacity="0.18" />
-        </filter>
+        <linearGradient id="marcaBase" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#11284A" />
+          <stop offset="50%" stopColor="#183863" />
+          <stop offset="100%" stopColor="#0E2342" />
+        </linearGradient>
       </defs>
 
-      {/* ===== Base del mapa 3D ===== */}
-      <g filter="url(#marcaSombra)">
-        {/* Borde inferior azul oscuro (base profunda) */}
-        <path d="M 95 232 L 200 282 L 305 232 L 305 242 L 200 292 L 95 242 Z" fill="#10316B" />
+      {/* ===== Base del mapa isométrico 3D =====
+          El logo no es solo una chincheta: es una chincheta sobre un mapa.
+          Ese detalle es el que dice a qué se dedica el producto antes de
+          leer una sola palabra. */}
+      <path d="M 263 566 L 512 684 L 512 705 L 263 587 Z" fill="url(#marcaBase)" />
+      <path d="M 512 684 L 761 566 L 761 587 L 512 705 Z" fill="url(#marcaBase)" />
 
-        {/* Grosor intermedio de la plataforma */}
-        <path d="M 90 218 L 200 270 L 310 218 L 310 230 L 200 282 L 90 230 Z" fill="#CBD5E1" />
+      {/* Grosor intermedio de la plataforma */}
+      <path d="M 263 556 L 512 674 L 512 684 L 263 566 Z" fill="#E2E8F0" />
+      <path d="M 512 674 L 761 556 L 761 566 L 512 684 Z" fill="#CBD5E1" />
 
-        {/* Superficie superior del mapa (rombo isométrico) */}
-        <polygon points="200,168 310,218 200,270 90,218" fill="#F8FAFC" />
+      {/* Superficie superior del mapa */}
+      <path d="M 512 438 L 761 556 L 512 674 L 263 556 Z" fill="#F8FAFC" />
 
-        {/* Parcelas y calles (izquierda, tonos azules) */}
-        <polygon points="194,178 145,200 175,214 222,191" fill="#CBD5E1" />
-        <polygon points="135,205 105,218 138,234 168,219" fill="#3898FF" />
-        <polygon points="175,223 146,238 195,261 224,246" fill="#5CA8FF" />
+      {/* Parcelas y calles (izquierda, tonos azules) */}
+      <path d="M 313 556 L 412 509 L 487 544 L 388 591 Z" fill="#4A90E2" />
+      <path d="M 425 621 L 437 615 L 487 639 L 475 645 Z" fill="#71B4F8" />
 
-        {/* Parques (derecha, tonos verdes y turquesas) */}
-        <polygon points="230,195 183,218 215,233 262,210" fill="#86CFA3" />
-        <polygon points="270,214 223,237 245,247 292,224" fill="#74B896" />
-        <polygon points="215,241 198,249 218,258 235,250" fill="#5BB5A2" />
-      </g>
+      {/* Parques (derecha, tonos verdes y turquesas) */}
+      <path d="M 612 509 L 711 556 L 637 591 L 537 544 Z" fill="#78C697" />
+      <path d="M 562 603 L 599 621 L 549 645 L 512 627 Z" fill="#5EAD9E" />
 
-      {/* ===== Pin hexagonal y casa 3D ===== */}
-      <g filter="url(#marcaSombra)">
-        {/* Fondo blanco interior del pin */}
-        <polygon points="200,52 268,90 268,162 200,238 132,162 132,90" fill="#FFFFFF" />
+      {/* Sombra de la chincheta sobre el mapa */}
+      <ellipse cx="512" cy="595" rx="45" ry="15" fill="#000000" opacity="0.1" />
+      <ellipse cx="512" cy="590" rx="20" ry="6" fill="#000000" opacity="0.15" />
 
-        {/* Mitad izquierda del pin (azul) */}
-        <path
-          d="M 200 42 L 136 78 A 16 16 0 0 0 128 92 L 128 156 A 22 22 0 0 0 135 172 L 200 245 L 200 216 L 150 160 L 150 96 L 200 68 Z"
-          fill="url(#marcaAzul)"
-        />
+      {/* ===== Chincheta hexagonal y casa =====
+          La entrega nueva dibuja el pin como un ANILLO: el hueco del
+          centro es transparente y es la superficie del mapa la que se ve
+          a través. Por eso no hay polígono blanco de relleno como en la
+          versión anterior. */}
+      <path
+        d="M 512 115 L 320 225 L 320 425 L 512 590 L 512 525 L 390 420 L 390 265 L 512 195 Z"
+        fill="url(#marcaAzul)"
+      />
+      <path
+        d="M 512 245 L 420 295 L 420 445 L 512 525 L 512 515 L 460 470 L 460 330 L 512 300 Z"
+        fill="url(#marcaAzul)"
+      />
+      <path
+        d="M 512 115 L 704 225 L 704 425 L 512 590 L 512 525 L 634 420 L 634 265 L 512 195 Z"
+        fill="url(#marcaTurquesa)"
+      />
+      <path
+        d="M 512 245 L 604 295 L 604 445 L 512 525 L 512 515 L 564 470 L 564 330 L 512 300 Z"
+        fill="url(#marcaTurquesa)"
+      />
 
-        {/* Mitad derecha del pin (turquesa) */}
-        <path
-          d="M 200 42 L 264 78 A 16 16 0 0 1 272 92 L 272 156 A 22 22 0 0 1 265 172 L 200 245 L 200 216 L 250 160 L 250 96 L 200 68 Z"
-          fill="url(#marcaTurquesa)"
-        />
-
-        {/* Casa interior, mitad izquierda */}
-        <path
-          d="M 200 96 L 162 118 L 162 174 L 178 192 L 178 130 L 200 117 Z"
-          fill="url(#marcaAzul)"
-        />
-
-        {/* Casa interior, mitad derecha */}
-        <path
-          d="M 200 96 L 238 118 L 238 174 L 222 192 L 222 130 L 200 117 Z"
-          fill="url(#marcaTurquesa)"
-        />
-
-        {/* Ventana central de 4 paneles */}
-        <g fill="#0072E5">
-          <rect x="190" y="142" width="8" height="8" rx="1.5" />
-          <rect x="202" y="142" width="8" height="8" rx="1.5" />
-          <rect x="190" y="154" width="8" height="8" rx="1.5" />
-          <rect x="202" y="154" width="8" height="8" rx="1.5" />
-        </g>
+      {/* Ventana central de 4 paneles */}
+      <g fill="#006DE6">
+        <rect x="486" y="375" width="16" height="16" rx="2" />
+        <rect x="522" y="375" width="16" height="16" rx="2" />
+        <rect x="486" y="410" width="16" height="16" rx="2" />
+        <rect x="522" y="410" width="16" height="16" rx="2" />
       </g>
     </svg>
   );
@@ -170,13 +165,30 @@ export function Logo({ className = 'h-8 w-8', titulo }: Props) {
  *
  * La palabra no va en el SVG a propósito. Así hereda la tipografía
  * (Inter), se puede seleccionar y copiar, y los buscadores la leen como
- * texto y no como un dibujo.
+ * texto y no como un dibujo. Va en mayúsculas y con espaciado porque así
+ * la escribe la entrega nueva; el espaciado de 0,07 em es el que trae el
+ * SVG (10 unidades sobre un tamaño de 130).
+ *
+ * `icono` y `texto` existen para la pantalla de acceso, donde la marca va
+ * más grande y apilada. Los dos son clases de tamaño, no colores: el
+ * color lo hereda de quien lo coloca, así que la misma marca sirve sobre
+ * papel y sobre el marino de la barra.
  */
-export function Marca({ className = '' }: { className?: string }) {
+export function Marca({
+  className = '',
+  icono = 'h-7 w-7',
+  texto = 'text-normal',
+}: {
+  className?: string;
+  icono?: string;
+  texto?: string;
+}) {
   return (
     <span className={`flex items-center gap-2 ${className}`}>
-      <Logo className="h-7 w-7 shrink-0" />
-      <span className="text-normal font-bold tracking-tight">Innover</span>
+      <Logo className={`${icono} shrink-0`} />
+      <span className={`${texto} font-extrabold uppercase tracking-[0.07em]`}>
+        Innover
+      </span>
     </span>
   );
 }

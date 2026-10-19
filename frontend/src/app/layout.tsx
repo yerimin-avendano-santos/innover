@@ -1,11 +1,10 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Playfair_Display } from 'next/font/google';
 import { ProveedorAuth } from '@/contextos/Auth';
-import { Navbar } from '@/components/Navbar';
 import './globals.css';
 
 /**
- * Una sola familia tipográfica para todo el producto.
+ * La tipografía de trabajo: todo el producto.
  *
  * Inter y no otra, por lo que pide la guía visual: está diseñada para
  * interfaces y para leer cifras —precios, metros cuadrados, habitaciones—,
@@ -21,6 +20,29 @@ import './globals.css';
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
+  display: 'swap',
+});
+
+/**
+ * La tipografía de titular: solo el panel de la pantalla de acceso.
+ *
+ * Es una serif de alto contraste para una frase grande sobre fondo
+ * oscuro. No entra en el resto del producto por dos razones: un titular
+ * de catálogo se lee mejor en Inter (y se compara con las cifras de al
+ * lado), y cada familia extra son dos archivos de fuente que alguien
+ * descarga.
+ *
+ * Se descargó del mismo sitio que Inter y la sirve el propio servidor
+ * (`next/font` las trae al compilar): no hay una petición a Google en el
+ * navegador de quien entra, así que la pantalla de acceso no depende de
+ * un tercero ni filtra la visita.
+ *
+ * Sin `weight`: Playfair Display es una fuente variable, así que pesa
+ * menos traer el eje completo que dos pesos sueltos.
+ */
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-titulo',
   display: 'swap',
 });
 
@@ -41,6 +63,25 @@ export const viewport: Viewport = {
 };
 
 /**
+ * El layout raíz ya NO dibuja la barra de navegación ni el pie.
+ *
+ * ── Por qué ──
+ *
+ * Un layout hijo no puede quitar lo que dibuja su padre: lo que hay aquí
+ * lo ven TODAS las pantallas. Y el acceso (entrar / registrarse) no es
+ * una pantalla más: es una tarjeta de marca a pantalla completa, sin
+ * navegación, como en el diseño. Dejar la barra arriba ofrecía además
+ * "Buscar" y "Publicar" a quien todavía no tiene sesión.
+ *
+ * Así que el armazón vive donde le toca, en dos grupos de rutas:
+ *
+ *   (sitio)/layout.tsx   → barra + contenido + pie  (el producto)
+ *   (acceso)/layout.tsx  → solo contenido           (entrar / registrarse)
+ *
+ * Los paréntesis son un grupo de rutas: organizan sin aparecer en la URL.
+ * `/`, `/leads` o `/login` siguen siendo exactamente las mismas
+ * direcciones que antes; lo único que cambia es qué armazón las envuelve.
+ *
  * Se declara el tipo de `children` a mano en vez de usar el `LayoutProps`
  * generado por Next.
  *
@@ -54,25 +95,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es-PE" className={`${inter.variable} h-full`}>
-      <body className="flex min-h-full flex-col">
+    <html
+      lang="es-PE"
+      className={`${inter.variable} ${playfair.variable} h-full`}
+    >
+      <body className="min-h-full">
         <ProveedorAuth>
+          {/* El enlace de salto apunta a `#contenido`, y ese id lo pone
+              cada armazón en su propio `<main>`. Va aquí arriba y no en
+              cada layout para no repetirlo dos veces. */}
           <a href="#contenido" className="saltar-contenido">
             Saltar al contenido
           </a>
 
-          <Navbar />
-
-          <main id="contenido" className="flex-1">
-            {children}
-          </main>
-
-          <footer className="border-t border-linea bg-papel-alto">
-            <div className="mx-auto flex max-w-[1600px] flex-col gap-2 px-4 py-6 text-micro text-tinta-50 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <p>Innover · Proyecto de aprendizaje full-stack</p>
-              <p>Precios de referencia. Verifica siempre antes de firmar.</p>
-            </div>
-          </footer>
+          {children}
         </ProveedorAuth>
       </body>
     </html>

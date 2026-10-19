@@ -154,14 +154,32 @@
      añaden las dos líneas y la comprobación dirá que ya se usan. */
 
   /* --- Tipografía ---
-     Inter y nada más. La guía la pide por una razón concreta: está
-     diseñada para interfaces y para leer cifras (precios, metros
-     cuadrados), y aquí la mitad de la pantalla son cifras.
+     Inter es la letra de trabajo: TODO el producto. La guía la pide por
+     una razón concreta: está diseñada para interfaces y para leer cifras
+     (precios, metros cuadrados), y aquí la mitad de la pantalla son
+     cifras.
 
      Antes se usaba Archivo por su eje de ancho condensado. Se midió y no
      se usaba en ninguna parte: era una capacidad declarada que no
      llegaba a la pantalla, así que no se pierde nada al cambiarla. */
   --font-sans: var(--font-inter), 'Segoe UI', system-ui, sans-serif;
+
+  /* Y una serif, para UNA frase: el titular del panel de acceso.
+     Sigue siendo cierto que el producto habla en Inter —la letra de una
+     pantalla de catálogo tiene que comparar bien con las cifras que
+     lleva al lado—, y por eso esta familia no sale de esa pantalla.
+
+     La excepción tiene su motivo: sobre el panel oscuro hay una sola
+     frase grande, sin cifras y sin campos, y una serif de alto contraste
+     la separa del resto del producto. Es la frase que dice qué es
+     Innover, y en el diseño viene con esa letra.
+
+     ⚠️ Se usa con la utilidad `font-display`, y esa utilidad tiene que
+     existir: Tailwind solo emite los tokens que alguna utilidad usa. Si
+     el titular pasara a pintarse con `style={{ fontFamily: ... }}`, este
+     token dejaría de emitirse y la frase caería en la Georgia del
+     respaldo sin que nada fallara. `verificar:tokens` lo caza. */
+  --font-display: var(--font-titulo), 'Playfair Display', Georgia, 'Times New Roman', serif;
 
   /* La escala sigue Elements of Typographic Style (ratio 1.25).
      Los nombres son semánticos, no numéricos:
@@ -651,6 +669,60 @@
 
   .mapboxgl-ctrl-attrib {
     font-size: 10px;
+  }
+
+  /* --- Tarjeta del acceso ---
+     La tarjeta blanca de entrar / registrarse, flotando sobre el gris.
+
+     ⚠️ Aquí NO va el radio, y es a propósito. En móvil la tarjeta es una
+     pantalla entera —sin márgenes ni esquinas, como en el diseño— y desde
+     `sm` flota con las esquinas redondeadas. Eso son dos estados y se
+     resuelven con utilidades en el componente (`rounded-none` por
+     defecto, `sm:rounded-grande`), que es donde se ve la condición. Poner
+     aquí un radio fijo obligaría a anularlo desde fuera con otro `!` y
+     el archivo acabaría con dos verdades sobre lo mismo.
+
+     La sombra sí vive aquí: es la misma en cualquier tamaño, y es lo que
+     levanta la tarjeta del papel. Es más ancha y suave que la de una
+     ficha (`.ficha`) a propósito: esta tarjeta no está *sobre* la
+     página, está *delante* de ella. */
+  .tarjeta-acceso {
+    background-color: var(--color-papel-alto);
+    box-shadow: 0 18px 48px rgb(15 41 90 / 0.14);
+  }
+
+  /* --- Panel del acceso ---
+     La columna oscura de la derecha, con el degradado que va del turquesa
+     hondo (arriba a la derecha) al azul marino (abajo a la izquierda),
+     como en el diseño.
+
+     Es un degradado y no un color plano por el mismo motivo por el que
+     `--color-senal-hondo` existe: los dos extremos tienen que soportar
+     texto blanco encima. Se comprobó uno por uno —7,9:1 en la punta
+     turquesa y 14,1:1 en la del marino— y no se comprueba "el degradado"
+     en general: un degradado no tiene un contraste único, y por eso hay
+     dos combinaciones declaradas en `scripts/verificar-contraste.mjs`,
+     una por cada punta. */
+  .panel-acceso {
+    background-image: linear-gradient(
+      210deg,
+      var(--color-senal-hondo),
+      var(--color-marino)
+    );
+  }
+
+  /* --- Curvas de nivel del panel ---
+     El fondo topográfico del panel. Es una textura y no un contenido: va
+     al 13 % para que se lea como papel con un dibujo, no como un mapa que
+     hay que descifrar. Por eso tampoco lleva combo de contraste: no hay
+     nada que leer aquí.
+
+     El color es `currentColor` en el SVG y se decide en esta clase, que es
+     la regla del sistema: ningún color suelto en un componente, y menos
+     en uno que se construye desde JavaScript. */
+  .contornos {
+    color: var(--color-turquesa);
+    opacity: 0.13;
   }
 }
 

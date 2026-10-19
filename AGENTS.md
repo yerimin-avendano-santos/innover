@@ -225,9 +225,11 @@ Consecuencias al tocar datos o mapas:
 
 ### De dónde salen los colores
 
-De la identidad de Innover: el azul marino y el turquesa **del logo** (`design/logosvg.svg`), sobre las superficies frías de la guía visual (`design/desing.md`).
+De la identidad de Innover: el azul marino y el turquesa **del logo** (`design/nuevo/logoinnover.svg`), sobre las superficies frías de la guía visual (`design/desing.md`).
 
 ⚠️ **Donde la guía y el logo no coinciden, manda el logo.** La guía propone un turquesa `#00CED1`/`#008B8B`; el logo trae `#00D2B8`/`#008B9B`. Se usan los del logo porque aparece en cada pantalla: una guía se corrige, una imagen de marca ya difundida no.
+
+⚠️ **El logo cambió y los tokens NO.** La entrega nueva trae sus propios azules (`#006DE6`→`#0356C4`) y turquesas (`#0DD1D3`→`#089596`) **para el dibujo del icono**, y esos viven dentro de `components/Logo.tsx`, no en `@theme`. Un dibujo de marca no es un token de interfaz: nadie pinta un botón con el azul de la chincheta, y meterlos en `@theme` crearía utilidades que no usa nadie. Los tokens de la interfaz siguen siendo el marino y el turquesa de siempre, y por eso **ningún contraste cambió** al cambiar el logo.
 
 ⚠️ **La guía manda crear un `tailwind.config.js`. Está prohibido.** Se toma la intención visual (paleta, jerarquía, map-first) y se traduce a `@theme`. Shadcn y Material UI también se descartaron.
 
@@ -240,7 +242,7 @@ Así que el turquesa de marca se reserva para lo que sí lo soporta —rellenos,
 **Los tres `verificar:*` existen por esto y no son opcionales.** Ninguno de
 los tres fallos posibles da error: solo se ven mal.
 
-- `npm run verificar:contraste --workspace=frontend` — calcula el contraste de 30 combinaciones **leyendo `globals.css`**, no una copia de los valores. Si alguien cambia un color por uno que no se lee, falla.
+- `npm run verificar:contraste --workspace=frontend` — calcula el contraste de 31 combinaciones **leyendo `globals.css`**, no una copia de los valores. Si alguien cambia un color por uno que no se lee, falla. (El panel del acceso cuenta por dos: es un degradado, y un degradado no tiene un contraste único — se comprueba cada punta.)
 - `npm run verificar:tokens --workspace=frontend` — comprueba que **todo token declarado se usa** y, sobre todo, que ninguno usado con `var()` se queda sin emitir. Tailwind v4 elimina los tokens que ninguna utilidad usa: si uno se usa solo dentro de `var()`, desaparece y **el color no se pinta, sin ningún error**.
 - `npm run verificar:clases --workspace=frontend` — busca en `className` las clases que **no llegan al CSS compilado**: un nombre renombrado que se olvidó en un sitio, una errata, o una utilidad que no existe. ⚠️ Necesita `build` previo, igual que `verificar:tokens`: compara contra lo que Tailwind generó.
 
@@ -252,9 +254,43 @@ los tres fallos posibles da error: solo se ven mal.
 - **Mapbox no es una excepción.** Sus marcadores y globos se construyen desde JavaScript, así que sus colores viven en `globals.css` como clases (`.marcador`, `.marcador-destacado`, `.marcador-seleccionado`, `.marcador-grupo*`, `.globo-*`) y el componente solo enciende y apaga clases. El `background-color` en línea que había antes parecía funcionar y no: **una imagen de fondo se pinta encima del color**, así que un marcador destacado se habría quedado verde al seleccionarlo, sin error.
 - **El grupo de chinchetas va en marino, no en turquesa.** Un grupo es un *resumen* de lo que hay en una zona; el turquesa brillante está reservado para la propiedad **destacada**, que es un anuncio pagado. Pintar los dos igual convertiría cualquier racimo en un anuncio. Y el grupo no tiene estado "seleccionado" a propósito: lo que se selecciona es una propiedad, y una propiedad no *está* en un grupo —está debajo—, así que al elegirla el mapa se acerca hasta que sale suelta. Los tres tamaños (`.marcador-grupo-chico/medio/grande`, por debajo de 10 / de 100 / a partir de 100) los decide `claseDeGrupo()` en `lib/clustering.ts`.
 - **`destacado` y `aviso` son tokens distintos a propósito.** Uno es un anuncio pagado; el otro, una tarea pendiente. Antes compartían un único color ("latón"), y eso significaba que ajustar el color del destaque habría cambiado los avisos de todo el panel sin querer.
-- **El logo tiene dos copias y no se generan automáticamente:** `frontend/src/components/Logo.tsx` (el icono, para la interfaz) y `frontend/src/app/icon.svg` (el favicon). Si cambia el dibujo, se cambian las dos. La palabra "Innover" **no** está en el SVG: es texto HTML en Inter, para que se pueda seleccionar, buscar e indexar.
+- **El logo tiene dos copias y no se generan automáticamente:** `frontend/src/components/Logo.tsx` (el icono, para la interfaz) y `frontend/src/app/icon.svg` (el favicon). Si cambia el dibujo, se cambian las dos. La palabra «Innover» **no** está en el SVG: es texto HTML en Inter —ahora en mayúsculas y con el espaciado de la entrega—, para que se pueda seleccionar, buscar e indexar.
+
+  ⚠️ **El `viewBox` del componente NO es un número al azar.** El original mide 1024×1024 y lleva la palabra debajo; el componente recorta con `253 105 518 610`, que sale de **medir** el dibujo (x 263…761, y 115…705) más 10 px de margen. Todo lo que caiga fuera del `viewBox` se recorta **en silencio**: ni error, ni aviso, solo un logo al que le falta un trozo. Si se cambia el dibujo, hay que volver a medirlo.
 - **El foco por teclado se hereda de `--foco`.** Un anillo de un solo color no vale para fondos claros y oscuros a la vez: el turquesa oscuro se pierde sobre el marino y el claro sobre el blanco. Cada superficie declara `--foco` (`.sobre-marino`, `.superficie-clara`) y los hijos lo recogen. Un selector de descendencia no sirve: el menú del usuario cuelga de la barra oscura pero tiene fondo blanco.
 - **La barra de navegación va en azul marino**, como pide la guía. El botón de la barra usa `.btn-turquesa`, no `.btn-principal`: el color de acción sobre marino se queda a 2,4:1 y no se lee como un botón.
+- **Inter es la letra de todo el producto, con una excepción contada.** `--font-display` existe para **una frase**: el titular del panel de acceso (`components/PanelAcceso.tsx`), que va sobre el fondo oscuro, sin cifras y sin campos. Es una serif de alto contraste y no se usa en ninguna otra pantalla. Antes de añadir una segunda familia, mira si la frase vale dos archivos de fuente que alguien descarga.
+
+---
+
+## El acceso tiene su propio armazón
+
+`/login` y `/registro` viven en `app/(acceso)/`; el resto del producto, en `app/(sitio)/`. Los paréntesis son un **grupo de rutas**: organizan sin aparecer en la URL, así que `/`, `/leads`, `/publicar` o `/login` siguen siendo exactamente las mismas direcciones.
+
+⚠️ **Un layout hijo no puede quitar lo que dibuja su padre.** Para que la pantalla de acceso no llevara la barra de navegación no bastaba con meter un `layout.tsx` dentro de `/login`: había que partir el armazón en dos hermanos y dejar el layout raíz con lo mínimo (`<html>`, `<body>`, el proveedor de sesión y el enlace de salto). **Si vuelves a meter algo en `app/layout.tsx`, aparecerá también en la pantalla de acceso.**
+
+- **El enlace de salto vive en el raíz** y apunta a `#contenido`; cada armazón pone ese `id` en su propio `<main>`. No es un problema que haya dos `<main>` en el proyecto: en cada pantalla hay uno.
+- **Cada página del acceso tiene su `layout.tsx`, y solo para el título** (`Entrar · Innover`). No es capricho: `metadata` solo se exporta desde el servidor y esas páginas son de cliente, así que un layout que se limita a dejar pasar a sus hijos es la forma más corta de titularlas.
+- **La barra se fue por un motivo de producto, no estético:** ofrecía «Buscar» y «Publicar» a quien todavía no tiene sesión, es decir, una puerta cerrada.
+
+### El panel de la derecha no es un mapa
+
+Es una maqueta: dos PNG en `frontend/public/acceso/` (recortados a su dibujo desde los renders de `design/nuevo/`) más unas curvas de nivel en SVG. **Mapbox se cobra por carga de mapa** y esa pantalla la ve quien todavía no tiene cuenta, y la ve cada rastreador que pasa. El panel entero es decorativo —`aria-hidden`, con `alt=""` en las imágenes—; lo que importa, el titular, es texto de verdad, y por eso se lee y se indexa.
+
+⚠️ Los `<img>` del panel llevan `h-auto` y no es opcional: con `width`/`height` puestos, el navegador aplica los dos atributos como estilos del elemento, así que una anchura en `%` por encima de ellos deja la altura clavada en los píxeles del atributo y el dibujo sale aplastado. `h-auto` deja que la altura salga de la proporción real del archivo.
+
+### «Recordar mi correo» guarda el correo, y nada más
+
+- **Nunca la contraseña.** En `localStorage` la lee cualquier script de la página, así que es una llave bajo el felpudo.
+- **No recuerda la sesión**, aunque el nombre lo sugiera: eso lo decide el servidor (2 h el pase, 30 días la renovación). Prometerlo sería mentir en la misma casilla que lo pide.
+- La casilla viene marcada **solo si de verdad hay un correo guardado**, y el correo se guarda **después** de que la sesión se abra: uno que no entró no se recuerda.
+- Se lee con **`useSyncExternalStore`**, y las dos alternativas están descartadas por motivos distintos: `useEffect` + `setState` encadena un segundo render (y el linter lo prohíbe con razón), y `useState(() => localStorage…)` rompe la hidratación —el servidor no tiene `localStorage`: pintaría el campo vacío y el navegador lo pintaría con el correo dentro—.
+
+### `?redirect=` solo acepta rutas internas
+
+`router.push` acepta direcciones absolutas, así que `?redirect=//otro-sitio` sacaba al usuario de Innover **justo después de escribir su contraseña**: el montaje clásico del phishing. `esRutaInterna()` en `app/(acceso)/login/page.tsx` es la lista blanca (una barra y no dos, y tampoco `/\`, porque los navegadores lo normalizan a `//`). Si otro sitio lee `redirect`, usa esa misma función.
+
+⚠️ **No hay «¿olvidaste tu contraseña?», y no es un olvido.** No existe endpoint de recuperación, ni correo saliente, ni forma de que un ADMIN restablezca la contraseña de nadie (`actualizarUsuarioAdminSchema` no acepta `contrasena`). El enlace llevaría a una pantalla que no existe. Tampoco hay botones de Google o Apple: sin OAuth en el backend, un botón así solo puede fallar.
 
 ---
 

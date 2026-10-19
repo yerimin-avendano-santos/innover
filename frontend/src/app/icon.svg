@@ -1,48 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="78 32 244 274" width="100%" height="100%">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="253 105 518 610" width="100%" height="100%">
   <!--
     Favicon de INNOVER: el icono del logo, sin la palabra.
 
-    El viewBox "85 36 230 260" encuadra solo el icono. El SVG original
-    mide 400x420 y lleva la palabra "Innover" debajo; en una pestaña de
+    El viewBox "253 105 518 610" encuadra solo el icono. El SVG original
+    mide 1024x1024 y lleva la palabra "INNOVER" debajo; en una pestaña de
     16 px esa palabra sería una mancha de dos píxeles de alto.
 
-    Aquí no hay filtro de sombra —el original lo trae— porque a este
-    tamaño no se ve y algunos renderizadores de favicons lo ignoran o lo
-    pintan mal. Las formas sí son las mismas que en
+    Aquí no hay filtro de sombra porque el dibujo nuevo no lo trae: la
+    única sombra son dos elipses bajo la chincheta, que a este tamaño no
+    se ven. Las formas sí son las mismas que en
     `src/components/Logo.tsx`: si cambia una, cambia la otra.
   -->
   <defs>
-    <linearGradient id="azul" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0052D4" />
-      <stop offset="100%" stop-color="#0082FF" />
+    <linearGradient id="azul" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#006DE6" />
+      <stop offset="100%" stop-color="#0356C4" />
     </linearGradient>
-    <linearGradient id="turquesa" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#00D2B8" />
-      <stop offset="100%" stop-color="#008B9B" />
+    <linearGradient id="turquesa" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0DD1D3" />
+      <stop offset="100%" stop-color="#089596" />
+    </linearGradient>
+    <linearGradient id="base" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#11284A" />
+      <stop offset="50%" stop-color="#183863" />
+      <stop offset="100%" stop-color="#0E2342" />
     </linearGradient>
   </defs>
 
-  <!-- Base del mapa 3D -->
-  <path d="M 95 232 L 200 282 L 305 232 L 305 242 L 200 292 L 95 242 Z" fill="#10316B" />
-  <path d="M 90 218 L 200 270 L 310 218 L 310 230 L 200 282 L 90 230 Z" fill="#CBD5E1" />
-  <polygon points="200,168 310,218 200,270 90,218" fill="#F8FAFC" />
-  <polygon points="194,178 145,200 175,214 222,191" fill="#CBD5E1" />
-  <polygon points="135,205 105,218 138,234 168,219" fill="#3898FF" />
-  <polygon points="175,223 146,238 195,261 224,246" fill="#5CA8FF" />
-  <polygon points="230,195 183,218 215,233 262,210" fill="#86CFA3" />
-  <polygon points="270,214 223,237 245,247 292,224" fill="#74B896" />
-  <polygon points="215,241 198,249 218,258 235,250" fill="#5BB5A2" />
+  <!-- Base del mapa isométrico -->
+  <path d="M 263 566 L 512 684 L 512 705 L 263 587 Z" fill="url(#base)" />
+  <path d="M 512 684 L 761 566 L 761 587 L 512 705 Z" fill="url(#base)" />
+  <path d="M 263 556 L 512 674 L 512 684 L 263 566 Z" fill="#E2E8F0" />
+  <path d="M 512 674 L 761 556 L 761 566 L 512 684 Z" fill="#CBD5E1" />
+  <path d="M 512 438 L 761 556 L 512 674 L 263 556 Z" fill="#F8FAFC" />
+  <path d="M 313 556 L 412 509 L 487 544 L 388 591 Z" fill="#4A90E2" />
+  <path d="M 425 621 L 437 615 L 487 639 L 475 645 Z" fill="#71B4F8" />
+  <path d="M 612 509 L 711 556 L 637 591 L 537 544 Z" fill="#78C697" />
+  <path d="M 562 603 L 599 621 L 549 645 L 512 627 Z" fill="#5EAD9E" />
 
-  <!-- Pin hexagonal y casa -->
-  <polygon points="200,52 268,90 268,162 200,238 132,162 132,90" fill="#FFFFFF" />
-  <path d="M 200 42 L 136 78 A 16 16 0 0 0 128 92 L 128 156 A 22 22 0 0 0 135 172 L 200 245 L 200 216 L 150 160 L 150 96 L 200 68 Z" fill="url(#azul)" />
-  <path d="M 200 42 L 264 78 A 16 16 0 0 1 272 92 L 272 156 A 22 22 0 0 1 265 172 L 200 245 L 200 216 L 250 160 L 250 96 L 200 68 Z" fill="url(#turquesa)" />
-  <path d="M 200 96 L 162 118 L 162 174 L 178 192 L 178 130 L 200 117 Z" fill="url(#azul)" />
-  <path d="M 200 96 L 238 118 L 238 174 L 222 192 L 222 130 L 200 117 Z" fill="url(#turquesa)" />
-  <g fill="#0072E5">
-    <rect x="190" y="142" width="8" height="8" rx="1.5" />
-    <rect x="202" y="142" width="8" height="8" rx="1.5" />
-    <rect x="190" y="154" width="8" height="8" rx="1.5" />
-    <rect x="202" y="154" width="8" height="8" rx="1.5" />
+  <!-- Sombra de la chincheta -->
+  <ellipse cx="512" cy="595" rx="45" ry="15" fill="#000000" opacity="0.1" />
+  <ellipse cx="512" cy="590" rx="20" ry="6" fill="#000000" opacity="0.15" />
+
+  <!-- Chincheta hexagonal (anillo) y casa -->
+  <path d="M 512 115 L 320 225 L 320 425 L 512 590 L 512 525 L 390 420 L 390 265 L 512 195 Z" fill="url(#azul)" />
+  <path d="M 512 245 L 420 295 L 420 445 L 512 525 L 512 515 L 460 470 L 460 330 L 512 300 Z" fill="url(#azul)" />
+  <path d="M 512 115 L 704 225 L 704 425 L 512 590 L 512 525 L 634 420 L 634 265 L 512 195 Z" fill="url(#turquesa)" />
+  <path d="M 512 245 L 604 295 L 604 445 L 512 525 L 512 515 L 564 470 L 564 330 L 512 300 Z" fill="url(#turquesa)" />
+
+  <!-- Ventana central de 4 paneles -->
+  <g fill="#006DE6">
+    <rect x="486" y="375" width="16" height="16" rx="2" />
+    <rect x="522" y="375" width="16" height="16" rx="2" />
+    <rect x="486" y="410" width="16" height="16" rx="2" />
+    <rect x="522" y="410" width="16" height="16" rx="2" />
   </g>
 </svg>
