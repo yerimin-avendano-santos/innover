@@ -227,6 +227,8 @@ Consecuencias al tocar datos o mapas:
 
 De la identidad de Innover: el azul marino y el turquesa **del logo** (`design/nuevo/logoinnover.svg`), sobre las superficies frías de la guía visual (`design/desing.md`).
 
+📌 El **porqué de cada token y la composición de cada pantalla** viven en `design/desing.md`, y desde el bloque de acceso está al día: paleta con el uso de cada color, escala tipográfica, formas, sombras, la pantalla de acceso medida, y las decisiones que quedan abiertas para el rediseño del resto. Este archivo (`AGENTS.md`) dice *cómo no romperlo*; aquel, *por qué es así*.
+
 ⚠️ **Donde la guía y el logo no coinciden, manda el logo.** La guía propone un turquesa `#00CED1`/`#008B8B`; el logo trae `#00D2B8`/`#008B9B`. Se usan los del logo porque aparece en cada pantalla: una guía se corrige, una imagen de marca ya difundida no.
 
 ⚠️ **El logo cambió y los tokens NO.** La entrega nueva trae sus propios azules (`#006DE6`→`#0356C4`) y turquesas (`#0DD1D3`→`#089596`) **para el dibujo del icono**, y esos viven dentro de `components/Logo.tsx`, no en `@theme`. Un dibujo de marca no es un token de interfaz: nadie pinta un botón con el azul de la chincheta, y meterlos en `@theme` crearía utilidades que no usa nadie. Los tokens de la interfaz siguen siendo el marino y el turquesa de siempre, y por eso **ningún contraste cambió** al cambiar el logo.
