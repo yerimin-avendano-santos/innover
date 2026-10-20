@@ -147,9 +147,14 @@ const COMBINACIONES = [
   // pantalla que los use. Ver `verificar-tokens.mjs`.
 
   // ── Texto sobre las tarjetas ──
-  { texto: 'tinta', fondo: 'papel-alto', minimo: NORMAL, donde: 'Título de tarjeta' },
+  { texto: 'tinta', fondo: 'papel-alto', minimo: NORMAL, donde: 'Título y precio de tarjeta' },
   { texto: 'tinta-50', fondo: 'papel-alto', minimo: NORMAL, donde: 'Apoyo en tarjeta' },
-  { texto: 'senal', fondo: 'papel-alto', minimo: NORMAL, donde: 'Precio' },
+  {
+    texto: 'senal',
+    fondo: 'papel-alto',
+    minimo: NORMAL,
+    donde: 'Enlaces de la tarjeta al pasar por encima',
+  },
 
   // ── Botones ──
   { texto: 'sobre-marino', fondo: 'senal', minimo: NORMAL, donde: 'Botón principal (texto blanco)' },
@@ -157,36 +162,44 @@ const COMBINACIONES = [
     texto: 'marino',
     fondo: 'turquesa',
     minimo: NORMAL,
-    donde: 'Botón de marca (texto marino)',
+    donde: 'Botón de marca y avatar (texto marino)',
   },
   { texto: 'sobre-marino', fondo: 'alerta', minimo: NORMAL, donde: 'Botón de borrar' },
   { texto: 'tinta', fondo: 'papel-hundido', minimo: NORMAL, donde: 'Botón secundario al pasar' },
 
   // ── Barra de navegación ──
-  { texto: 'sobre-marino', fondo: 'marino', minimo: NORMAL, donde: 'Marca en la barra' },
+  // La barra dejó de ser marino: es el teal hondo del boceto. El chip
+  // activo se invierte (blanco con texto teal) y los inactivos usan
+  // `sobre-senal-tenue`. Los pares viejos de `marino-alto` se fueron con
+  // los tokens.
   {
-    texto: 'sobre-marino-tenue',
-    fondo: 'marino',
+    texto: 'sobre-marino',
+    fondo: 'senal-hondo',
+    minimo: NORMAL,
+    donde: 'Marca y nombre en la barra',
+  },
+  {
+    texto: 'sobre-senal-tenue',
+    fondo: 'senal-hondo',
     minimo: NORMAL,
     donde: 'Enlaces de la barra',
   },
-  { texto: 'turquesa', fondo: 'marino', minimo: NORMAL, donde: 'Enlace activo de la barra' },
   {
-    texto: 'sobre-marino-tenue',
-    fondo: 'marino-alto',
+    texto: 'senal-hondo',
+    fondo: 'papel-alto',
     minimo: NORMAL,
-    donde: 'Enlaces al pasar por encima',
-  },
-  {
-    texto: 'turquesa',
-    fondo: 'marino-alto',
-    minimo: NORMAL,
-    donde: 'Enlace activo al pasar por encima',
+    donde: 'Chip activo de la barra',
   },
   { texto: 'marino', fondo: 'turquesa-claro', minimo: NORMAL, donde: 'Botón de marca al pasar' },
 
   // ── Distintivos: el texto sobre su propio fondo pálido ──
   { texto: 'destacado', fondo: 'destacado-suave', minimo: NORMAL, donde: 'Distintivo Destacado' },
+  {
+    texto: 'sobre-marino',
+    fondo: 'destacado',
+    minimo: NORMAL,
+    donde: 'Distintivo Destacado sólido de la tarjeta',
+  },
   { texto: 'aviso', fondo: 'aviso-suave', minimo: NORMAL, donde: 'Distintivo Pendiente' },
   { texto: 'senal-hondo', fondo: 'senal-suave', minimo: NORMAL, donde: 'Distintivo de función' },
   { texto: 'menta-hondo', fondo: 'menta-suave', minimo: NORMAL, donde: 'Distintivo Verificado' },
@@ -196,23 +209,35 @@ const COMBINACIONES = [
   // ── Tarjeta de acceso ──
   // El panel del acceso lleva el titular en blanco sobre un degradado, y
   // un degradado no tiene un contraste único: hay que comprobar las DOS
-  // puntas. La de arriba es el turquesa hondo (esta entrada) y la de
-  // abajo es el marino, que ya está comprobado arriba —"Marca en la
-  // barra"— porque el texto blanco sobre marino aparece en más sitios.
+  // puntas. La de arriba es el teal hondo; la de abajo, el marino. El
+  // blanco sobre marino ya no se comprueba en la barra —la barra es teal—,
+  // así que la entrada del marino vive aquí o el degradado se quedaría
+  // con una punta sin probar.
   //
   // Si alguien cambia el ángulo o los colores del degradado por unos más
-  // claros, esta línea es lo único que lo detecta: la frase se vería
+  // claros, estas líneas son lo único que lo detecta: la frase se vería
   // lavada y ningún otro comprobador mira si un texto se lee.
   {
     texto: 'sobre-marino',
     fondo: 'senal-hondo',
     minimo: NORMAL,
-    donde: 'Titular del panel de acceso (punta turquesa)',
+    donde: 'Titular del panel de acceso (punta teal)',
+  },
+  {
+    texto: 'sobre-marino',
+    fondo: 'marino',
+    minimo: NORMAL,
+    donde: 'Titular del panel de acceso (punta marino)',
   },
 
   // ── Anillos de foco (no son texto: basta con 3:1) ──
   { texto: 'senal', fondo: 'papel', minimo: NO_TEXTO, donde: 'Anillo de foco normal' },
-  { texto: 'turquesa', fondo: 'marino', minimo: NO_TEXTO, donde: 'Anillo de foco en la barra' },
+  {
+    texto: 'turquesa',
+    fondo: 'senal-hondo',
+    minimo: NO_TEXTO,
+    donde: 'Anillo de foco en la barra teal',
+  },
   { texto: 'senal', fondo: 'papel-alto', minimo: NO_TEXTO, donde: 'Anillo de foco en tarjeta' },
 ];
 

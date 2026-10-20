@@ -22,7 +22,7 @@
 // lado. La mitad de la regla —"la ficha es pública"— estaba cumplida; la otra
 // mitad, la razón por la que se dejó pública, no.
 //
-// La guía visual lo pedía desde el principio (`design/desing.md`): *Server
+// La guía visual lo pedía desde el principio (`design/nuevo/desing.md`): *Server
 // Components para el SEO de las fichas públicas*. Aquí está.
 //
 // Lo interactivo —los botones del dueño y el formulario de contacto— vive en

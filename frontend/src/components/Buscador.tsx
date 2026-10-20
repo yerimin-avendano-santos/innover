@@ -33,7 +33,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Mapa } from '@/components/Mapa';
 import { FichaPropiedad } from '@/components/FichaPropiedad';
-import { BarraFiltros, FILTROS_VACIOS, type Filtros } from '@/components/BarraFiltros';
+import {
+  BarraFiltros,
+  FILTROS_VACIOS,
+  construirDescripcion,
+  tieneFiltrosActivos,
+  type Filtros,
+} from '@/components/BarraFiltros';
 import { api, conQuery, ErrorPeticion } from '@/lib/api';
 import type { Distrito, RespuestaMapa, RespuestaPropiedades } from '@/lib/tipos';
 
@@ -216,14 +222,19 @@ export function Buscador() {
   const claveVista = useMemo(() => JSON.stringify(filtros), [filtros]);
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col">
-      <BarraFiltros
-        filtros={filtros}
-        alCambiar={setFiltros}
-        distritos={distritos}
-        total={datos?.paginacion.total ?? 0}
-        cargando={cargando}
-      />
+    /*
+     * La altura descuenta la barra ENTERA, no solo la fila de 56 px.
+     *
+     * En móvil la barra mide 99 px: 56 de la fila principal, 41 de la
+     * segunda fila de enlaces y 2 de la franja de marca. Con
+     * `100vh - 3.5rem` el buscador medía ~38 px más que la ventana, así que
+     * el fondo del mapa —y sus controles— caía por debajo del pliegue. En
+     * escritorio la fila móvil desaparece y solo quedan 58 px. `dvh` y no
+     * `vh` para que el navegador móvil no reserve la barra de direcciones
+     * que ya no se ve.
+     */
+    <div className="flex h-[calc(100dvh-6.1875rem)] flex-col sm:h-[calc(100dvh-3.625rem)]">
+      <BarraFiltros filtros={filtros} alCambiar={setFiltros} distritos={distritos} />
 
       {/* --- Error --- */}
       {error && (
@@ -235,58 +246,96 @@ export function Buscador() {
         </div>
       )}
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(360px,1fr)_1.15fr]">
+      {/*
+        0.85fr / 1.15fr, no 1fr / 1.15fr: el mapa pasa del 53,5 % al
+        57,5 % del ancho. A 1440 son ~58 px más de mapa y a 1024, ~41.
+        La lista sigue teniendo 435 px en el punto más estrecho de `lg`,
+        que es donde la tarjeta horizontal todavía respira.
+      */}
+      <div className="grid min-h-0 flex-1 grid-rows-[360px_minmax(0,1fr)] lg:grid-cols-[minmax(360px,0.85fr)_1.15fr] lg:grid-rows-1">
         {/* ============ LISTA (izquierda en escritorio) ============ */}
         <section
           aria-label="Lista de propiedades"
-          className="order-2 min-h-0 overflow-y-auto border-linea lg:order-1 lg:border-r"
+          className="order-2 flex min-h-0 flex-col border-linea bg-papel lg:order-1 lg:border-r"
         >
-          {sesionCaducada ? (
-            <SesionVencida />
-          ) : propiedades.length > 0 ? (
-            <ul className="divide-y divide-linea">
-              {propiedades.map((propiedad) => (
-                <li key={propiedad.id}>
-                  <FichaPropiedad
-                    propiedad={propiedad}
-                    seleccionada={seleccionada === propiedad.id}
-                    alSeleccionar={(id) =>
-                      setSeleccionada((actual) => (actual === id ? null : id))
-                    }
-                  />
-                </li>
-              ))}
-            </ul>
-          ) : !cargando ? (
-            <EstadoVacio
-              hayFiltros={JSON.stringify(filtros) !== JSON.stringify(FILTROS_VACIOS)}
-              alLimpiar={() => setFiltros(FILTROS_VACIOS)}
+          {/* La cabecera vive fuera del scroll: el contador de lo que
+              hay y "Limpiar filtros" no desaparecen al bajar por la
+              lista. En móvil queda debajo del mapa, que va primero. */}
+          {/* Con la sesión vencida no se cuenta nada: el contador diría
+              "no encontramos propiedades" y la lista diría "tu sesión
+              caducó", dos mensajes que se contradicen. */}
+          {!sesionCaducada && (
+            <CabeceraLista
+              filtros={filtros}
+              distritos={distritos}
+              total={datos?.paginacion.total ?? 0}
+              cargando={cargando}
+              alLimpiar={() => setFiltros({ ...FILTROS_VACIOS })}
             />
-          ) : (
-            <div className="p-6">
-              {/* Esqueletos de carga. Miden lo mismo que una ficha real
-                  para que la página no salte al llegar los datos. */}
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="mb-4 animate-pulse">
-                  <div className="mb-2 h-5 w-3/4 rounded-chico bg-papel-hundido" />
-                  <div className="mb-3 h-4 w-1/3 rounded-chico bg-papel-hundido" />
-                  <div className="h-3 w-full rounded-chico bg-papel-hundido" />
-                </div>
-              ))}
-            </div>
           )}
+
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {sesionCaducada ? (
+              <SesionVencida />
+            ) : propiedades.length > 0 ? (
+              <ul className="space-y-3 p-3 sm:p-4">
+                {propiedades.map((propiedad) => (
+                  <li key={propiedad.id}>
+                    <FichaPropiedad
+                      propiedad={propiedad}
+                      seleccionada={seleccionada === propiedad.id}
+                      alSeleccionar={(id) =>
+                        setSeleccionada((actual) => (actual === id ? null : id))
+                      }
+                    />
+                  </li>
+                ))}
+              </ul>
+            ) : !cargando ? (
+              <EstadoVacio
+                hayFiltros={tieneFiltrosActivos(filtros)}
+                alLimpiar={() => setFiltros({ ...FILTROS_VACIOS })}
+              />
+            ) : (
+              <div className="space-y-3 p-3 sm:p-4">
+                {/* Esqueletos de carga con la forma de la tarjeta nueva:
+                    foto a la izquierda y líneas a la derecha. Así la
+                    página no salta cuando llegan los datos. */}
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex animate-pulse overflow-hidden rounded-grande border border-linea bg-papel-alto"
+                  >
+                    <div className="h-40 w-[44%] shrink-0 bg-papel-hundido" />
+                    <div className="flex-1 space-y-2 p-3.5">
+                      <div className="h-3 w-1/3 rounded-chico bg-papel-hundido" />
+                      <div className="h-4 w-full rounded-chico bg-papel-hundido" />
+                      <div className="h-4 w-2/3 rounded-chico bg-papel-hundido" />
+                      <div className="h-5 w-1/2 rounded-chico bg-papel-hundido" />
+                      <div className="h-6 w-full rounded-chico bg-papel-hundido" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </section>
 
         {/* ============ MAPA (derecha en escritorio) ============ */}
         <section
           aria-label="Mapa de propiedades"
-          className="order-1 min-h-[320px] border-linea lg:order-2 lg:min-h-0"
+          className="order-1 min-h-[360px] border-linea lg:order-2 lg:min-h-0"
         >
           {/*
             En escritorio el mapa llena la altura disponible. `h-full`
             solo funciona si todos los ancestros del flex tienen
             `min-h-0`; sin eso el mapa empuja la página y aparecen
             barras de desplazamiento fantasma.
+
+            `conUbicacion` solo en el buscador: la ficha y la vista previa
+            de /publicar no necesitan "dónde estoy", y el control de
+            Mapbox cuesta una petición de permiso que ahí no viene a
+            cuento.
           */}
           <Mapa
             puntos={puntos?.datos ?? []}
@@ -296,10 +345,62 @@ export function Buscador() {
             seleccionada={seleccionada}
             alSeleccionar={(id) => setSeleccionada(id)}
             claveVista={claveVista}
+            conUbicacion
             className="h-full w-full"
           />
         </section>
       </div>
+    </div>
+  );
+}
+
+/**
+ * La cabecera de la lista: cuántas propiedades hay y cómo limpiar.
+ *
+ * 📌 VIVE AQUÍ Y NO EN `BarraFiltros` PORQUE CUENTA LA LISTA, NO EL
+ * FILTRO. Antes estaba en una segunda franja de la barra, y eso tenía dos
+ * problemas: le robaba altura al mapa y el contador quedaba lejos de las
+ * tarjetas que cuenta. Aquí está pegado a ellas y no se va al hacer
+ * scroll, porque el scroll es del div de abajo.
+ *
+ * `aria-live="polite"` es deliberado: al cambiar un filtro, quien usa un
+ * lector de pantalla necesita saber que el número cambió sin que se le
+ * robe el foco.
+ */
+function CabeceraLista({
+  filtros,
+  distritos,
+  total,
+  cargando,
+  alLimpiar,
+}: {
+  filtros: Filtros;
+  distritos: Distrito[];
+  total: number;
+  cargando: boolean;
+  alLimpiar: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+      <p aria-live="polite" className="min-w-0 text-menor text-tinta-70">
+        {cargando ? 'Buscando…' : construirDescripcion(filtros, distritos, total)}
+      </p>
+
+      {/*
+        Con cero resultados no se pinta aquí: el estado vacío tiene su
+        propio "Limpiar filtros" y dos botones iguales en la misma
+        pantalla se estorban. Mientras carga tampoco: el número aún no
+        es el definitivo.
+      */}
+      {!cargando && total > 0 && tieneFiltrosActivos(filtros) && (
+        <button
+          type="button"
+          onClick={alLimpiar}
+          className="btn btn-fantasma shrink-0 px-2 py-1 text-menor"
+        >
+          Limpiar filtros
+        </button>
+      )}
     </div>
   );
 }

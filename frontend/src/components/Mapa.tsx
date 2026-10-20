@@ -37,7 +37,7 @@
 // raros y su prueba, y vive en `lib/clustering.ts`—. Aquí solo se pinta lo que
 // dice el índice y se traduce un clic en movimiento del mapa.
 
-import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import {
@@ -98,8 +98,19 @@ interface Props {
    * clave, así que la vista del usuario se respeta.
    */
   claveVista?: string;
+  /**
+   * Muestra el botón "Mi ubicación" dentro del mapa.
+   *
+   * Solo lo enciende el buscador. La ficha y la vista previa de /publicar
+   * no lo necesitan, y pedir el permiso de ubicación en una pantalla que
+   * solo enseña una casa sería una interrupción sin propósito.
+   */
+  conUbicacion?: boolean;
   className?: string;
 }
+
+/** Los estados del botón de ubicación. */
+type EstadoUbicacion = 'inactivo' | 'buscando' | 'activo' | 'error';
 
 export function Mapa({
   puntos,
@@ -109,6 +120,7 @@ export function Mapa({
   seleccionada,
   alSeleccionar,
   claveVista = '',
+  conUbicacion = false,
   className = '',
 }: Props) {
   const contenedor = useRef<HTMLDivElement>(null);
@@ -166,6 +178,32 @@ export function Mapa({
 
   /** Con qué búsqueda se encuadró la vista, para no repetirlo. */
   const vistaAjustada = useRef<string | null>(null);
+
+  /**
+   * El control de Mapbox que pide la ubicación.
+   *
+   * Se guarda en un ref porque el botón visible es NUESTRO: el control
+   * real va con `showButton: false` y solo existe para que Mapbox pinte
+   * el punto, el círculo de precisión y mueva la cámara con su lógica.
+   * Guardarlo en estado obligaría a un render extra que no cambia nada
+   * de lo que se ve.
+   */
+  const geolocalizador = useRef<mapboxgl.GeolocateControl | null>(null);
+
+  /**
+   * Si ya obtuvimos una ubicación.
+   *
+   * El aviso de "lejos" escucha `moveend` y no debe aparecer cuando el
+   * mapa se encuadra a los resultados ni cuando el usuario arrastra sin
+   * haber usado "Mi ubicación". Un ref evita que el listener se vuelva a
+   * suscribir en cada render.
+   */
+  const ubicacionActiva = useRef(false);
+
+  const [estadoUbicacion, setEstadoUbicacion] = useState<EstadoUbicacion>('inactivo');
+  const [precisionUbicacion, setPrecisionUbicacion] = useState<number | null>(null);
+  const [errorUbicacion, setErrorUbicacion] = useState<string | null>(null);
+  const [lejosDeResultados, setLejosDeResultados] = useState(false);
 
   useEffect(() => {
     refSeleccionar.current = alSeleccionar;
@@ -321,11 +359,11 @@ export function Mapa({
         container: contenedor.current,
         style: 'mapbox://styles/mapbox/light-v11',
         center: CENTRO_POR_DEFECTO,
-        // 12 y no 11: Lima es una mancha urbana de 50 km y necesitaba alejarse;
-        // la conurbación de Huánuco mide unos 5 km. Con el zoom de Lima, las
-        // propiedades de Huánuco, Amarilis y Pillco Marca caerían amontonadas
-        // en el mismo píxel.
-        zoom: 12,
+        // 13 y no 12: el arranque tiene que enseñar la conurbación
+        // Huánuco–Amarilis–Pillco Marca con las manzanas legibles, no un
+        // punto. Si luego llegan resultados, `ajustarVista()` manda: el
+        // zoom inicial solo se ve en el primer instante o si no hay nada.
+        zoom: 13,
         attributionControl: true,
       });
     } catch (fallo) {
@@ -349,12 +387,99 @@ export function Mapa({
     // cambiado, y estaríamos limpiando el mapa equivocado.
     const registro = pintados.current;
 
+    /**
+     * El aviso de "lejos" se decide por lo que se VE, no por kilómetros.
+     *
+     * Después de centrar el mapa en la persona, ¿queda alguna propiedad
+     * dentro del encuadre? Si no, la lista sigue ahí abajo pero el mapa no
+     * la respalda, y el botón "Ver resultados" devuelve la vista de la
+     * búsqueda. Se comprueba al terminar cualquier movimiento porque si la
+     * persona vuelve a los resultados a mano, el aviso debe desaparecer.
+     *
+     * El ref `ubicacionActiva` evita que el aviso aparezca al encuadrar
+     * los resultados o al arrastrar el mapa sin haber usado la ubicación.
+     */
+    const alTerminarMovimiento = () => {
+      if (!conUbicacion) return;
+
+      if (!ubicacionActiva.current) {
+        setLejosDeResultados(false);
+        return;
+      }
+
+      const caja = instancia.getBounds();
+      if (!caja) return;
+
+      const hayResultados = refPuntos.current.some((punto) =>
+        caja.contains([punto.longitud, punto.latitud])
+      );
+
+      setLejosDeResultados(refPuntos.current.length > 0 && !hayResultados);
+    };
+
+    let quitarEscuchasUbicacion: (() => void) | null = null;
+
+    if (conUbicacion) {
+      instancia.on('moveend', alTerminarMovimiento);
+
+      /*
+       * `showButton: false` + nuestro botón: Mapbox sigue haciendo el
+       * trabajo difícil —pedir el permiso, pintar el punto, dibujar el
+       * círculo de precisión y ajustar el zoom a la exactitud—, pero la
+       * interfaz es la de Innover y no un control con el estilo de Mapbox.
+       *
+       * `enableHighAccuracy` es lo que hace que en el móvil use el GPS y
+       * no solo la celda; el `maxZoom` de 16 evita que una precisión de
+       * 10 m acerque tanto que se pierda el barrio.
+       */
+      const control = new mapboxgl.GeolocateControl({
+        positionOptions: {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000,
+        },
+        fitBoundsOptions: { maxZoom: 16, padding: 40 },
+        trackUserLocation: false,
+        showUserLocation: true,
+        showAccuracyCircle: true,
+        showButton: false,
+      });
+
+      const alUbicarse = (posicion: GeolocationPosition) => {
+        ubicacionActiva.current = true;
+        setEstadoUbicacion('activo');
+        setPrecisionUbicacion(posicion.coords.accuracy);
+        setErrorUbicacion(null);
+      };
+
+      const alFallar = (error: GeolocationPositionError) => {
+        ubicacionActiva.current = false;
+        setEstadoUbicacion('error');
+        setPrecisionUbicacion(null);
+        setErrorUbicacion(mensajeDeUbicacion(error));
+        setLejosDeResultados(false);
+      };
+
+      control.on('geolocate', alUbicarse);
+      control.on('error', alFallar);
+      instancia.addControl(control, 'bottom-right');
+      geolocalizador.current = control;
+
+      quitarEscuchasUbicacion = () => {
+        control.off('geolocate', alUbicarse);
+        control.off('error', alFallar);
+      };
+    }
+
     return () => {
+      instancia.off('moveend', alTerminarMovimiento);
+      quitarEscuchasUbicacion?.();
       registro.clear();
       instancia.remove();
       mapa.current = null;
+      geolocalizador.current = null;
     };
-  }, [token]);
+  }, [token, conUbicacion]);
 
   // ========================================
   // 2. Preparar el índice y encuadrar la búsqueda
@@ -465,6 +590,91 @@ export function Mapa({
   }, [seleccionada]);
 
   // ========================================
+  // 5. El botón visible de ubicación
+  // ========================================
+  /**
+   * Pide la ubicación y centra el mapa.
+   *
+   * 📌 POR QUÉ SE COMPRUEBA `isSecureContext` ANTES DE TOCAR MAPBOX
+   *
+   * La geolocalización del navegador solo funciona en HTTPS o en localhost.
+   * En el móvil, si se abre la aplicación con `http://192.168.x.x:3000`, el
+   * navegador no pregunta siquiera: falla. Sin esta comprobación el usuario
+   * vería un error genérico y pensaría que la aplicación está rota; con ella,
+   * se le dice exactamente qué pasa y qué hacer.
+   *
+   * No se desactiva el botón de antemano para no cambiar el HTML entre el
+   * servidor y el navegador: la comprobación ocurre al pulsar.
+   */
+  const usarMiUbicacion = () => {
+    setErrorUbicacion(null);
+    setLejosDeResultados(false);
+    ubicacionActiva.current = false;
+
+    if (!window.isSecureContext) {
+      setEstadoUbicacion('error');
+      setPrecisionUbicacion(null);
+      setErrorUbicacion(
+        'El navegador solo comparte tu ubicación en HTTPS o en localhost. Si estás en el móvil, abre la versión publicada o un túnel HTTPS.'
+      );
+      return;
+    }
+
+    if (!('geolocation' in navigator)) {
+      setEstadoUbicacion('error');
+      setPrecisionUbicacion(null);
+      setErrorUbicacion(
+        'Este navegador no ofrece ubicación. Puedes seguir buscando moviendo el mapa o usando los filtros.'
+      );
+      return;
+    }
+
+    const control = geolocalizador.current;
+    if (!control) {
+      setEstadoUbicacion('error');
+      setPrecisionUbicacion(null);
+      setErrorUbicacion(
+        'El mapa todavía no está listo. Espera un momento e inténtalo otra vez.'
+      );
+      return;
+    }
+
+    setEstadoUbicacion('buscando');
+    setPrecisionUbicacion(null);
+
+    // `trigger()` devuelve false si el control no llegó a añadirse al mapa.
+    // En ese caso no habrá evento `error`, así que el mensaje se pone aquí.
+    if (!control.trigger()) {
+      setEstadoUbicacion('error');
+      setErrorUbicacion(
+        'El navegador no pudo iniciar la ubicación. Espera un momento e inténtalo otra vez.'
+      );
+      return;
+    }
+
+    /*
+     * ⚠️ La ubicación se marca activa AQUÍ, no en el evento `geolocate`.
+     *
+     * Mapbox mueve la cámara antes de avisar que ya tiene la posición:
+     * `_onSuccess()` llama a `fitBounds()` y solo después emite `geolocate`.
+     * El `moveend` de ese encuadre llega primero, así que si el ref se
+     * encendiera en `geolocate`, el aviso de "lejos" se evaluaría con la
+     * ubicación todavía apagada y no aparecería nunca. Si el permiso falla,
+     * `alFallar` lo vuelve a apagar.
+     */
+    ubicacionActiva.current = true;
+  };
+
+  /** Vuelve al encuadre de los resultados sin apagar el punto de ubicación. */
+  const volverAResultados = () => {
+    const instancia = mapa.current;
+    if (!instancia || refPuntos.current.length === 0) return;
+
+    ajustarVista(instancia, refPuntos.current);
+    setLejosDeResultados(false);
+  };
+
+  // ========================================
   // Estados sin datos
   // ========================================
   if (tokenFalta) {
@@ -509,9 +719,37 @@ export function Mapa({
 
   return (
     <div className={`flex h-full flex-col ${className}`}>
-      {/* `min-h-0` + `flex-1`: sin esto el div del mapa no cede altura
-          al aviso de abajo y el mapa se sale del contenedor. */}
-      <div ref={contenedor} className="mapa-aparece min-h-0 w-full flex-1" />
+      {/* El mapa y sus controles propios viven en un contenedor relativo:
+          así la pastilla de ubicación y el aviso de lejos se colocan
+          encima del mapa sin entrar en el flujo ni empujar la altura. */}
+      <div className="relative min-h-0 flex-1">
+        <div ref={contenedor} className="mapa-aparece h-full w-full" />
+
+        {conUbicacion && (
+          <>
+            <BotonUbicacion
+              estado={estadoUbicacion}
+              precision={precisionUbicacion}
+              alPulsar={usarMiUbicacion}
+            />
+
+            {lejosDeResultados && (
+              <div className="absolute left-1/2 top-3 z-10 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-2 rounded-full border border-linea bg-papel-alto py-1.5 pl-3 pr-1.5 shadow-md">
+                <p role="status" className="truncate text-menor text-tinta">
+                  Estás lejos de los resultados
+                </p>
+                <button
+                  type="button"
+                  onClick={volverAResultados}
+                  className="btn btn-fantasma shrink-0 px-2 py-1 text-menor"
+                >
+                  Ver resultados
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/*
         Los avisos van FUERA del mapa, no encima.
@@ -535,8 +773,118 @@ export function Mapa({
             : 'propiedades no aparecen en el mapa por no tener coordenadas.'}
         </p>
       )}
+
+      {conUbicacion && errorUbicacion && (
+        <p
+          role="status"
+          className="border-t border-linea bg-papel-alto px-4 py-2 text-micro text-tinta-70"
+        >
+          {errorUbicacion}
+        </p>
+      )}
     </div>
   );
+}
+
+// ========================================
+// El botón "Mi ubicación"
+// ========================================
+/**
+ * La pastilla que el usuario ve y pulsa.
+ *
+ * Se separa del control de Mapbox a propósito: Mapbox sabe pedir el permiso
+ * y pintar el punto, pero su botón es un icono cuadrado con un tooltip en
+ * inglés. Aquí el estado se lee de un vistazo —inactivo, buscando, activo o
+ * con error— y la precisión se muestra en la segunda línea, porque saber que
+ * la ubicación es "± 2 km" cambia por completo cuánto se puede confiar en
+ * ella.
+ */
+function BotonUbicacion({
+  estado,
+  precision,
+  alPulsar,
+}: {
+  estado: EstadoUbicacion;
+  precision: number | null;
+  alPulsar: () => void;
+}) {
+  const segunda =
+    estado === 'activo'
+      ? textoPrecision(precision)
+      : estado === 'buscando'
+        ? 'Buscando…'
+        : estado === 'error'
+          ? 'Revisa el permiso'
+          : 'Ubicación actual';
+
+  const etiqueta =
+    estado === 'buscando'
+      ? 'Buscando tu ubicación'
+      : estado === 'activo'
+        ? `Mi ubicación, ${textoPrecision(precision).toLowerCase()}. Pulsa para volver a centrar.`
+        : estado === 'error'
+          ? 'Volver a intentar usar mi ubicación'
+          : 'Usar mi ubicación para centrar el mapa';
+
+  return (
+    <button
+      type="button"
+      onClick={alPulsar}
+      disabled={estado === 'buscando'}
+      aria-label={etiqueta}
+      aria-busy={estado === 'buscando'}
+      className="absolute bottom-[76px] right-3 z-10 flex max-w-[200px] items-center gap-2 rounded-full border border-linea bg-papel-alto py-2 pl-2 pr-3 text-left shadow-md transition-colors hover:bg-papel disabled:cursor-wait disabled:opacity-80"
+    >
+      <span
+        aria-hidden="true"
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+          estado === 'activo' ? 'bg-senal text-sobre-marino' : 'bg-senal-suave text-senal'
+        }`}
+      >
+        <svg
+          viewBox="0 0 20 20"
+          className="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+        >
+          <path d="M10 2.5 15.5 17 10 14 4.5 17 10 2.5Z" strokeLinejoin="round" />
+        </svg>
+      </span>
+
+      <span className="min-w-0">
+        <span className="block text-menor font-semibold text-tinta">Mi ubicación</span>
+        <span className="block truncate text-micro text-tinta-50">{segunda}</span>
+      </span>
+    </button>
+  );
+}
+
+/** "± 35 m" o "± 1,2 km", que es lo que la precisión significa para el usuario. */
+function textoPrecision(metros: number | null): string {
+  if (metros === null) return 'Ubicación actual';
+  if (metros < 1000) return `Precisión ±${Math.round(metros)} m`;
+  return `Precisión ±${(metros / 1000).toFixed(1)} km`;
+}
+
+/**
+ * Traduce el error del navegador a algo que se pueda accionar.
+ *
+ * El código 1 —permiso denegado— es el más importante: el navegador no
+ * vuelve a preguntar por su cuenta, así que hay que decir dónde se cambia.
+ * El 2 y el 3 suelen ser intentos que se pueden repetir.
+ */
+function mensajeDeUbicacion(error: GeolocationPositionError): string {
+  switch (error.code) {
+    case 1:
+      return 'El permiso de ubicación está denegado. Actívalo en el candado de la dirección y vuelve a intentarlo.';
+    case 2:
+      return 'No pudimos obtener tu ubicación. Comprueba que la ubicación del dispositivo esté activa e inténtalo otra vez.';
+    case 3:
+      return 'La ubicación tardó demasiado. Inténtalo otra vez.';
+    default:
+      return 'No pudimos usar tu ubicación. Inténtalo otra vez.';
+  }
 }
 
 // ========================================
@@ -656,9 +1004,9 @@ function crearMarcador(
   const boton = document.createElement('button');
   boton.type = 'button';
 
-  // Los grupos se anclan por el centro y las chinchetas por abajo: una
-  // chincheta con forma de caja "se clava" en el punto; un círculo se apoya en
-  // él.
+  // Los grupos se anclan por el centro y las píldoras de precio por abajo:
+  // el borde inferior de la píldora queda sobre el punto, sin una cola que
+  // desplace el ancla. Un círculo —el grupo— se apoya en el centro.
   let ancla: 'center' | 'bottom' = 'center';
 
   if (elemento.tipo === 'grupo') {
@@ -763,9 +1111,12 @@ function ajustarVista(instancia: mapboxgl.Map, puntos: PuntoMapa[]): void {
   if (puntos.length === 0) return;
 
   if (puntos.length === 1) {
+    // 15 y no 14: una sola propiedad merece verse con su manzana, no como
+    // un punto perdido en el distrito. El tope de 16 de la ubicación es más
+    // alto porque ahí la precisión manda; aquí el interés es el entorno.
     instancia.easeTo({
       center: [puntos[0].longitud, puntos[0].latitud],
-      zoom: 14,
+      zoom: 15,
       duration: 600,
     });
     return;
@@ -777,8 +1128,9 @@ function ajustarVista(instancia: mapboxgl.Map, puntos: PuntoMapa[]): void {
     limites.extend([p.longitud, p.latitud]);
   }
 
-  // `maxZoom: 15`: con dos puntos casi pegados, encuadrar "perfecto" daría un
-  // zoom de calle que esconde todo lo demás. Y `padding` para que las
-  // chinchetas del borde no queden medio fuera.
-  instancia.fitBounds(limites, { padding: 60, maxZoom: 15, duration: 600 });
+  // `maxZoom: 15.5`: con dos puntos casi pegados, encuadrar "perfecto" daría
+  // un zoom de calle que esconde todo lo demás. `padding: 40` —antes 60— deja
+  // más mapa útil y evita que las píldoras del borde se corten; las píldoras
+  // se anclan por abajo y no necesitan tanto margen como una chincheta.
+  instancia.fitBounds(limites, { padding: 40, maxZoom: 15.5, duration: 600 });
 }

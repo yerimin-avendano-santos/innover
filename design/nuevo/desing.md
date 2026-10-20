@@ -23,7 +23,7 @@ Cuando dos fuentes se contradicen, el orden es este:
 | `design/nuevo/formatoencelular.png` | Boceto de móvil de la misma pantalla | Solo la composición |
 | `design/nuevo/mapasinfondore.png`, `design/nuevo/filtrosinfondo re.png` | Renders del buscador con fondo transparente | Sí: son el origen de `frontend/public/acceso/mapa.png` y `filtros.png` |
 | `design/logosvg.svg`, `design/logo.png` | El logo **anterior** | No. Se conservan por historia |
-| `design/desing.md` | Este documento | — |
+| `design/nuevo/desing.md` | Este documento | — |
 
 ⚠️ **Lo que ya NO es cierto de la versión anterior de este documento** (se anota aquí porque lo proponía con seguridad): un turquesa `#00CED1`/`#008B8B`, un archivo `tailwind.config.js`, las librerías Shadcn UI y Material UI, Roboto, y unos colores de «éxito» e «información». Nada de eso se usa, y en §1.2, §1.3 y §5 está el motivo.
 
@@ -70,11 +70,11 @@ Los valores están en `@theme` (`globals.css`) y se usan por nombre (`text-tinta
 | `tinta-50` | `#5B6B7D` | Texto de apoyo (4,9:1) |
 | `tinta-30` | `#7D8B9C` | Solo placeholders y pistas. **3,1:1: no se usa para texto que haya que leer** |
 
-**Marca oscura** — `marino` `#0F295A` (la barra de navegación, el marcador seleccionado y los grupos de chinchetas del mapa) y `marino-alto` `#16406B` (lo que se aclara al pasar el ratón encima). Encima de ellos, el texto va en `sobre-marino` `#FFFFFF` o `sobre-marino-tenue` `#A9BCD4`.
+**Marca oscura** — `marino` `#0F295A` (el marcador seleccionado y los grupos de chinchetas del mapa). Encima, el texto va en `sobre-marino` `#FFFFFF`. `marino-alto` y `sobre-marino-tenue` se retiraron: la barra dejó de ser marino y esos dos tokens se quedaron sin usuario.
 
-**Acción** — `senal` `#00707E` con `senal-hondo` `#005A66` (estado al pasar) y `senal-suave` `#E2F1F3` (fondos suaves).
+**Barra y acción** — `senal-hondo` `#005A66` es la barra de navegación, el chip activo del segmentado y los controles del mapa; `senal` `#00707E` es la acción (`.btn-principal`, enlaces, foco) y el hover de la barra; `senal-suave` `#E2F1F3` son los fondos suaves. Sobre la barra, la marca va en `sobre-marino` y los enlaces inactivos en `sobre-senal-tenue` `#C2D6DA` (5,25:1), para que no compitan con la marca.
 
-**Turquesa de marca** — `turquesa` `#00D2B8`, `turquesa-claro` `#00E5C9`, `turquesa-hondo` `#008B9B`. Es el color del logo para donde **no** lleva texto blanco encima: franjas, rellenos, el punto activo de la barra, el borde de una tarjeta destacada.
+**Turquesa de marca** — `turquesa` `#00D2B8`, `turquesa-claro` `#00E5C9`, `turquesa-hondo` `#008B9B`. Es el color del logo para donde **no** lleva texto blanco encima: franjas, rellenos, el botón de marca sobre superficies oscuras, el degradado de la propiedad destacada.
 
 **Estados** — `menta-suave`/`menta-hondo` (confianza: «Verificado», «Dueño directo»), `destacado`/`destacado-suave` (anuncio **pagado**), `aviso`/`aviso-suave` (tarea **pendiente**), `alerta`/`alerta-suave` (error).
 
@@ -82,7 +82,7 @@ Los valores están en `@theme` (`globals.css`) y se usan por nombre (`text-tinta
 
 Parece una contradicción y no lo es. El turquesa claro (`#00D2B8`) da **1,9:1** con texto blanco encima: legible no es. El turquesa hondo (`#008B9B`) tampoco llega — **4,1:1**, por debajo del 4,5:1 que pide WCAG AA para texto normal.
 
-Así que el turquesa de marca se reserva para lo que sí lo soporta, y la acción usa ese mismo turquesa **oscurecido hasta pasar el umbral** (`#00707E`, 5,8:1 con blanco). El ojo lo lee como el mismo color porque lo es, dos pasos más abajo. No es una concesión estética: es la diferencia entre un botón que se lee y uno que no. Y cuando el botón va sobre marino, el par se gira: fondo turquesa y texto marino (`.btn-turquesa`, 7,4:1).
+Así que el turquesa de marca se reserva para lo que sí lo soporta, y la acción usa ese mismo turquesa **oscurecido hasta pasar el umbral** (`#00707E`, 5,8:1 con blanco). El ojo lo lee como el mismo color porque lo es, dos pasos más abajo. No es una concesión estética: es la diferencia entre un botón que se lee y uno que no. Y cuando el botón va sobre la barra teal o sobre otra superficie oscura, el par se gira: fondo turquesa y texto marino (`.btn-turquesa`, 7,4:1).
 
 ⚠️ **No hay tokens de «éxito» ni de «información», y es a propósito.** La guía anterior proponía `#4CAF50` y `#03A9F4`; ninguno tiene usuario en el producto. Un token sin usuario es peso muerto que hace el archivo más largo y esconde cuáles importan. Cuando exista la primera pantalla que confirme algo, se añaden las dos líneas.
 
@@ -114,9 +114,9 @@ La escala sigue *Elements of Typographic Style* (ratio 1,25) y los nombres son s
 
 - **Espaciado:** escala de 4 px (`--spacing`). Un solo número raro que aparezca en el sistema hace que dos personas discrepen.
 - **Radios:** tres, con tres trabajos — `radius-chico` 3 px (campos pequeños, chips, distintivos), `radius-medio` 6 px (botones y tarjetas del producto), `radius-grande` 12 px (paneles grandes y la tarjeta de acceso).
-- **Pastilla (`rounded-full`):** la forma del acceso —campos y botón—. Es la única pantalla que la usa. El resto del producto va a 6 px. **Qué gana en las demás pantallas es una decisión abierta**: no se copia la pastilla a una pantalla sin decidirlo.
+- **Pastilla (`rounded-full`):** nació en el acceso —campos y botón— y el buscador la extendió a los controles que se pulsan en una franja (buscador, segmentado, filtros, CTA), a las píldoras de precio del mapa y a la pastilla de ubicación. Las **tarjetas** no son pastilla: van a `radius-grande` (12 px). La forma sigue el trabajo: una pastilla es un control suelto; una tarjeta es una superficie.
 - **Sombras:** siempre el marino con alfa, nunca negro. Una ficha levanta poco al pasar por encima (`rgb(15 41 90 / 0,07)`). Y la pantalla de acceso **no lleva ninguna**: antes era una tarjeta que flotaba y tenía la suya (`0 18px 48px`), y se fue con el flotado cuando el acceso pasó a ocupar la pantalla entera (§2.1).
-- **Foco por teclado:** se hereda de `--foco`. Un anillo de un solo color no sirve para fondos claros y oscuros a la vez —el turquesa oscuro se pierde sobre marino (1,8:1) y el claro sobre blanco (1,9:1)—, así que cada superficie declara `--foco` (`.sobre-marino`, `.superficie-clara`) y los hijos lo recogen.
+- **Foco por teclado:** se hereda de `--foco`. Un anillo de un solo color no sirve para fondos claros y oscuros a la vez —el turquesa oscuro se pierde sobre marino (1,8:1) y el claro sobre blanco (1,9:1)—, así que cada superficie declara `--foco` (`.sobre-senal`, `.superficie-clara`) y los hijos lo recogen.
 
 ---
 
@@ -126,7 +126,7 @@ Reglas que valen para cualquier pantalla nueva:
 
 - **El fondo es `papel`; el contenido que importa va sobre `papel-alto`.** Nada de cajas dentro de cajas: una tarjeta sobre el papel, y dentro de la tarjeta se separa con líneas (`linea`), no con más sombras.
 - **Un solo color de acción por pantalla.** Si dos elementos compiten por la mirada, ninguno la tiene.
-- **El turquesa brillante está reservado**: es de la propiedad destacada (un anuncio pagado) y del punto activo de la barra. Un racimo de chinchetas, por ejemplo, va en marino: un grupo es un *resumen*, no un anuncio.
+- **El turquesa brillante está reservado**: es de la propiedad destacada (un anuncio pagado), del dibujo del logo y de las franjas; el chip activo de la barra es blanco con texto teal. Un racimo de chinchetas, por ejemplo, va en marino: un grupo es un *resumen*, no un anuncio.
 - **Los precios y las cifras van en `tabular-nums`** (clase `.cifra`): una columna de precios se lee como columna, no como un temblor de dígitos.
 - **Los textos que importan van escritos en el HTML**, no pintados por JavaScript: es lo que hace que una ficha se comparta y se indexe.
 - **Nada de cargar Mapbox en una pantalla pública.** Se cobra por carga de mapa, y una pantalla que se ve antes de tener cuenta (o la ve un rastreador) no puede pagarlo. El panel del acceso es la prueba de que se puede decir «aquí se busca viendo el mapa» sin un mapa de verdad.
@@ -157,11 +157,19 @@ En móvil no cambia nada: siempre fue a sangre, con la marca apilada y centrada.
 2. **La forma pastilla es del acceso, no del sistema** (ver §1.4).
 3. **Lo que no se pone también es diseño.** No hay botones de Google o Apple (sin OAuth en el backend, solo pueden fallar en la pantalla de entrada), ni «¿olvidaste tu contraseña?» (no hay endpoint de recuperación, ni correo saliente, ni forma de que un administrador te ponga una contraseña). Un enlace que lleva a una pantalla que no existe es peor que su ausencia.
 
-### 2.2 El buscador (por rediseñar)
+### 2.2 El buscador (hecha: la referencia es `design/nuevo/principal/image.png`)
 
-La intención, que ya está construida y no cambia: **map-first**. Lista de tarjetas y mapa a la vez —el mapa ocupa la mayor parte—, filtros por tipo, distrito, habitaciones, precio y orden en una franja superior, y el mapa enseñando **el resultado filtrado entero** (hasta un tope de 1.000, y confesando cuándo recorta). Las chinchetas se agrupan al alejar el zoom y el grupo dice cuántas hay dentro.
+La intención no cambia: **map-first**. Lista de tarjetas y mapa a la vez —el mapa ocupa la mayor parte—, filtros en una franja superior, y el mapa enseñando **el resultado filtrado entero** (hasta un tope de 1.000, y confesando cuándo recorta). Las chinchetas se agrupan al alejar el zoom y el grupo dice cuántas hay dentro.
 
-Lo que falta es la **composición visual** según el boceto que venga: jerarquía de la franja de filtros, forma de las tarjetas, peso del mapa. Lo que no se toca: que la lista y el mapa compartan los mismos filtros, que el mapa no mienta por recorte, y los colores de los marcadores (viven en `globals.css` como clases, porque Mapbox los construye desde JavaScript).
+**La franja de filtros es una sola fila.** Lupa dentro del campo, segmentado Venta/Alquiler con el activo en `senal-hondo`, pastillas para tipo, distrito, habitaciones y precio, orden y CTA «Publicar propiedad». Sin separadores verticales ni segunda franja: el contador y «Limpiar filtros» se mudaron a la **cabecera de la lista**, fuera del scroll, porque cuentan lo que hay debajo. La frase se construye con el sustantivo del tipo («8 departamentos en venta en Amarilis»), no concatenando campos: la versión anterior producía «9 propiedades en venta departamentos en Amarilis».
+
+**La tarjeta es horizontal.** La foto ocupa el 44 % del ancho, con tope de 260 px desde `xl` para que en un monitor ancho no se coma el texto. Con dos o más fotos hay carrusel (flechas y bolitas, todas botones); con una, no se prometen flechas. El título va a dos líneas con altura mínima, el precio en `tinta`, y debajo tipo, distrito y precio/m². Los datos van en chips con icono; el sello «Propietario verificado» en menta; el tiempo en `tinta-50` (no en `tinta-30`, que no pasa AA). «Destacado» es sólido (`destacado`, texto blanco) y la operación va al otro lado en neutro. El título y la foto enlazan a la ficha con `prefetch={false}`; el clic en la superficie selecciona en el mapa. La tarjeta **no** es `role="button"`: el título tiene que ser un enlace de verdad.
+
+**El mapa pesa más.** La rejilla pasa de `1fr / 1.15fr` a `0.85fr / 1.15fr`: el mapa ocupa el 57,5 % en escritorio, unos 58 px más a 1440 y 41 más a 1024. En móvil va primero con 360 px de alto y la lista ocupa el resto con su propio scroll, para que la pantalla no sea una tira de tarjetas. El zoom inicial es 13; un solo resultado se encuadra a 15; varios, con `padding: 40` y `maxZoom: 15.5` (antes 60 y 15). Los marcadores son píldoras de precio ancladas por abajo, sin cola; el grupo sigue en marino.
+
+**La ubicación es una acción del mapa, no un dato del anuncio.** El buscador monta `GeolocateControl` con `showButton: false`; la pastilla visible es de Innover y muestra el estado y la precisión («± 35 m»). Mapbox sigue pintando el punto y el círculo (con los tokens en `globals.css`), y no se pide nada al backend: es solo cámara. Funciona en `localhost` y en HTTPS; en `http://192.168.x.x` el navegador la bloquea, y la interfaz lo dice en vez de fingir un error. Si al centrar en la persona no queda ninguna propiedad en la vista, aparece «Estás lejos de los resultados» con «Ver resultados»; el criterio es lo que se ve, no una distancia inventada. La pastilla solo se enciende en el buscador: la ficha y `/publicar` no piden permiso.
+
+Lo que no se toca: que la lista y el mapa compartan los mismos filtros, que el mapa no mienta por recorte, que los popups se construyan con `textContent`, que las fotos sigan siendo `<img>` y que los colores de Mapbox vivan en `globals.css` como clases. **El corazón de favorito sigue fuera de la tarjeta**: `es_favorito` no viaja en los listados, y un corazón que devuelve 401 al primer clic es peor que no tenerlo.
 
 ### 2.3 El resto de las pantallas (por rediseñar)
 
@@ -178,7 +186,7 @@ Del panel B2B, lo que la guía pedía sigue en pie como horizonte: métricas arr
 Los que ya existen en `globals.css` (`.btn`, `.campo`, `.etiqueta`, `.ficha`, `.distintivo`, `.marcador*`, `.globo-*`, `.franja-marca`, `.superficie-acceso`, `.panel-acceso`, `.contornos`) y los que la guía proponía y siguen pendientes:
 
 1. **`Tour3DViewer`** — el recorrido 3D se abre hoy en un contenedor incrustado; falta el aislamiento a pantalla completa del que hablaba la guía.
-2. **Tarjeta de propiedad con carrusel** — hoy la tarjeta del buscador enseña la portada y la galería vive en la ficha.
+2. **Corazón de favorito en la tarjeta** — la tarjeta ya tiene carrusel y enlaces, pero el corazón no se puede resolver bien hasta que `es_favorito` viaje en los listados. Hoy se guarda desde la ficha.
 3. **Asistente de IA** — no empezado (Fase 7 del roadmap).
 
 ---
@@ -206,9 +214,13 @@ Los que ya existen en `globals.css` (`.btn`, `.campo`, `.etiqueta`, `.ficha`, `.
 
 ## 6. Pendientes de decisión
 
-Cosas que el rediseño del resto del frontend tendrá que cerrar, y que hoy están a propósito sin cerrar:
+Cosas que el rediseño del resto del frontend tendrá que cerrar. El buscador ya tomó algunas decisiones; están aquí para revisarlas, no porque estén sin implementar:
 
-- [ ] El **turquesa de la interfaz** frente al de la entrega nueva (§1.2).
-- [ ] Si la forma **pastilla** del acceso se queda solo ahí o pasa a las demás pantallas (§1.4).
+- [ ] El **turquesa de la interfaz** frente al de la entrega nueva (§1.2). El buscador no lo movió: sigue usando `senal`/`senal-hondo`.
 - [ ] Si la **serif** sigue siendo exclusiva del panel de acceso (§1.3).
-- [ ] Los **bocetos** de las pantallas que faltan: hoy solo hay diseño terminado de la pantalla de acceso.
+- [ ] El **ancho del mapa**: se implementó el 57,5 % (0.85/1.15). ¿Se queda, o sube al 60 %?
+- [ ] El **aviso de lejos**: hoy es «Estás lejos de los resultados» y se decide por lo que se ve (ninguna propiedad en el encuadre), no por kilómetros. Revisar copy y criterio.
+- [ ] La **pastilla de ubicación** de dos líneas con precisión. ¿Se queda solo en el buscador o también en la ficha? Hoy solo en el buscador.
+- [ ] El **tope de 260 px** de la foto de la tarjeta en `xl`. ¿Es el punto correcto para un monitor de 1920?
+- [ ] «Publicar» aparece en la barra y en el CTA de la franja de filtros. Es lo que pide el boceto, pero es una duplicación: decidir si se retira de uno de los dos.
+- [ ] Los **bocetos** de las pantallas que faltan. Ya hay diseño terminado del acceso y del buscador; faltan ficha, publicación, perfil, contactos, administración y favoritos.

@@ -14,7 +14,16 @@
 //
 // En móvil la barra se desplaza horizontalmente: cabe el Triple, pero
 // un menú desplegable por cada filtro sería 5 toques antes de buscar.
+//
+// 📌 UNA SOLA FILA, Y EL CONTADOR EN LA LISTA
+//
+// Antes el contador y "Limpiar filtros" ocupaban una segunda franja
+// debajo de los controles. Eso le robaba ~40 px de alto al mapa y
+// duplicaba el borde con la lista. El contador se mudó a la cabecera de
+// la lista (ver `Buscador.tsx`), donde pertenece: cuenta lo que hay
+// debajo, no lo que hay en el filtro.
 
+import Link from 'next/link';
 import type { Distrito, TipoInmueble } from '@/lib/tipos';
 
 export interface Filtros {
@@ -41,8 +50,6 @@ interface Props {
   filtros: Filtros;
   alCambiar: (filtros: Filtros) => void;
   distritos: Distrito[];
-  total: number;
-  cargando: boolean;
 }
 
 const TIPOS_INMUEBLE: { valor: TipoInmueble; etiqueta: string }[] = [
@@ -53,41 +60,75 @@ const TIPOS_INMUEBLE: { valor: TipoInmueble; etiqueta: string }[] = [
   { valor: 'LOCAL_COMERCIAL', etiqueta: 'Locales' },
 ];
 
-export function BarraFiltros({ filtros, alCambiar, distritos, total, cargando }: Props) {
+/**
+ * Cómo se nombra cada tipo en la frase del contador.
+ *
+ * No se reutiliza `TIPOS_INMUEBLE` porque sus etiquetas están en plural
+ * ("Departamentos") y el contador tiene que decir "1 departamento". Con
+ * un `if` por tipo, "Local comercial" se pluraliza como "locales
+ * comerciales"; añadir una "s" al final daría "local comercials".
+ */
+const NOMBRES_INMUEBLE: Record<TipoInmueble, { singular: string; plural: string }> = {
+  DEPARTAMENTO: { singular: 'departamento', plural: 'departamentos' },
+  CASA: { singular: 'casa', plural: 'casas' },
+  TERRENO: { singular: 'terreno', plural: 'terrenos' },
+  OFICINA: { singular: 'oficina', plural: 'oficinas' },
+  LOCAL_COMERCIAL: { singular: 'local comercial', plural: 'locales comerciales' },
+  OTRO: { singular: 'propiedad', plural: 'propiedades' },
+};
+
+export function BarraFiltros({ filtros, alCambiar, distritos }: Props) {
   const cambiar = <K extends keyof Filtros>(campo: K, valor: Filtros[K]) => {
     alCambiar({ ...filtros, [campo]: valor });
   };
 
-  // El texto de la cabecera cambia con el resultado: "9 Departamentos en
-  // venta en Amarilis" es información; "Resultados" es un rótulo vacío.
-  const descripcion = construirDescripcion(filtros, distritos, total);
-
   return (
     <div className="border-b border-linea bg-papel-alto">
-      <div className="sin-barra overflow-x-auto">
-        <div className="mx-auto flex max-w-[1600px] items-center gap-2 px-4 py-3 sm:px-6">
-          {/* --- Buscador --- */}
-          <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
+      <div className="mx-auto flex max-w-[1600px] items-center gap-2 px-4 py-2.5 sm:px-6">
+        {/*
+          Los filtros se desplazan dentro de su propio carril y el CTA se
+          queda fuera. Antes el CTA viajaba dentro del scroll: a 1024 la
+          fila ya no cabía y «Publicar propiedad» se iba fuera de la
+          pantalla justo cuando el usuario no encuentra lo que busca, que
+          es cuando más lo necesita. Así los filtros pueden seguir
+          desplazándose sin esconder la acción.
+        */}
+        <div className="sin-barra flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+          {/* --- Buscador ---
+              La lupa va dentro del campo y no al lado: es una pista de
+              qué hace el control, no un botón. El `pl-9` le deja sitio
+              al icono sin que el texto empiece debajo de él. */}
+          <div className="relative min-w-[200px] flex-1 sm:max-w-[240px]">
             <label htmlFor="busqueda" className="solo-lector">
               Buscar por nombre del distrito o tipo de inmueble
             </label>
+            <svg
+              viewBox="0 0 20 20"
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-tinta-50"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
+              <circle cx="8.5" cy="8.5" r="5.5" />
+              <path d="m13 13 4 4" strokeLinecap="round" />
+            </svg>
             <input
               id="busqueda"
               type="search"
               value={filtros.busqueda}
               onChange={(e) => cambiar('busqueda', e.target.value)}
               placeholder="Buscar propiedad"
-              className="campo py-2 text-cuerpo"
+              className="campo rounded-full py-2 pl-9 pr-3 text-cuerpo"
             />
           </div>
 
-          <Separador />
-
           {/* --- Venta / Alquiler ---
               Segmentado, no un <select>. Son dos opciones y se eligen
-              seguido; un desplegable para eso es un clic de más. */}
+              seguido; un desplegable para eso es un clic de más.
+              El activo usa `senal-hondo`, el mismo teal de la barra. */}
           <div
-            className="flex shrink-0 rounded-medio border border-linea-fuerte bg-papel-alto p-0.5"
+            className="flex shrink-0 rounded-full border border-linea-fuerte bg-papel-alto p-0.5"
             role="group"
             aria-label="Tipo de operación"
           >
@@ -97,9 +138,9 @@ export function BarraFiltros({ filtros, alCambiar, distritos, total, cargando }:
                 type="button"
                 onClick={() => cambiar('tipo', filtros.tipo === valor ? '' : valor)}
                 aria-pressed={filtros.tipo === valor}
-                className={`rounded-chico px-3 py-1.5 text-menor font-medium transition-colors ${
+                className={`rounded-full px-3 py-1.5 text-menor font-medium transition-colors ${
                   filtros.tipo === valor
-                    ? 'bg-senal text-white'
+                    ? 'bg-senal-hondo text-sobre-marino'
                     : 'text-tinta-70 hover:text-tinta'
                 }`}
               >
@@ -107,8 +148,6 @@ export function BarraFiltros({ filtros, alCambiar, distritos, total, cargando }:
               </button>
             ))}
           </div>
-
-          <Separador />
 
           {/* --- Tipo de inmueble --- */}
           <Selector
@@ -158,57 +197,56 @@ export function BarraFiltros({ filtros, alCambiar, distritos, total, cargando }:
             todosLabel="Sin tope"
           />
 
-          <Separador />
-
           {/* --- Orden --- */}
-          <label className="sr-only" htmlFor="orden">
-            Ordenar resultados
-          </label>
-          <select
-            id="orden"
-            value={filtros.orden}
-            onChange={(e) => cambiar('orden', e.target.value as Filtros['orden'])}
-            className="campo w-auto shrink-0 py-2 text-cuerpo"
-          >
-            <option value="recientes">Más recientes</option>
-            <option value="precio_asc">Menor precio</option>
-            <option value="precio_desc">Mayor precio</option>
-            <option value="populares">Más vistas</option>
-          </select>
+          <div className="relative shrink-0">
+            <label className="solo-lector" htmlFor="orden">
+              Ordenar resultados
+            </label>
+            <select
+              id="orden"
+              value={filtros.orden}
+              onChange={(e) => cambiar('orden', e.target.value as Filtros['orden'])}
+              className="campo w-auto appearance-none rounded-full py-2 pl-3 pr-8 text-cuerpo"
+            >
+              <option value="recientes">Más recientes</option>
+              <option value="precio_asc">Menor precio</option>
+              <option value="precio_desc">Mayor precio</option>
+              <option value="populares">Más vistas</option>
+            </select>
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 12 12"
+              className="pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-tinta-50"
+            >
+              <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            </svg>
+          </div>
         </div>
-      </div>
 
-      {/* --- Resultado y limpieza --- */}
-      <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 border-t border-linea px-4 py-2 sm:px-6">
-        <p aria-live="polite" className="text-menor text-tinta-70">
-          {cargando ? (
-            'Buscando…'
-          ) : (
-            descripcion
-          )}
-        </p>
-
-        {tieneFiltrosActivos(filtros) && (
-          <button
-            type="button"
-            onClick={() => alCambiar({ ...FILTROS_VACIOS })}
-            className="btn btn-fantasma text-menor"
+        {/* --- Publicar ---
+            El CTA vive aquí, junto a los filtros, porque es la acción
+            que completa la pantalla: si no encuentras lo que buscas,
+            publica lo tuyo. Va FUERA del carril que se desplaza: así
+            sigue visible a 1024, donde los filtros ya no caben. En móvil
+            se oculta porque la navegación ya tiene el enlace. */}
+        <Link
+          href="/publicar"
+          className="btn btn-principal hidden shrink-0 px-3 text-menor sm:inline-flex"
+        >
+          <svg
+            viewBox="0 0 16 16"
+            className="h-3.5 w-3.5"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
           >
-            Limpiar filtros
-          </button>
-        )}
+            <path d="M8 3.5v9M3.5 8h9" strokeLinecap="round" />
+          </svg>
+          Publicar propiedad
+        </Link>
       </div>
     </div>
-  );
-}
-
-/** Una línea vertical que separa visualmente grupos de filtros. */
-function Separador() {
-  return (
-    <span
-      aria-hidden="true"
-      className="hidden h-6 w-px shrink-0 bg-linea sm:block"
-    />
   );
 }
 
@@ -243,7 +281,7 @@ function Selector({
         id={`filtro-${etiqueta}`}
         value={valor}
         onChange={(e) => onChange(e.target.value)}
-        className={`campo w-auto appearance-none py-2 pr-8 text-cuerpo ${
+        className={`campo w-auto appearance-none rounded-full py-2 pl-3 pr-8 text-cuerpo ${
           hayValor ? 'border-senal text-senal' : ''
         }`}
       >
@@ -269,7 +307,7 @@ function Selector({
 }
 
 /** ¿Hay algo que limpiar? */
-function tieneFiltrosActivos(filtros: Filtros): boolean {
+export function tieneFiltrosActivos(filtros: Filtros): boolean {
   return Boolean(
     filtros.tipo ||
       filtros.tipo_inmueble ||
@@ -283,31 +321,57 @@ function tieneFiltrosActivos(filtros: Filtros): boolean {
 /**
  * Describe el resultado en una frase.
  *
- * "9 propiedades en venta en Amarilis" comunica mucho más que
+ * "9 propiedades encontradas en Huánuco" comunica mucho más que
  * "Resultados: 9". Es la diferencia entre un rótulo y una respuesta.
+ *
+ * ⚠️ EL ORDEN DE LAS PALABRAS NO ES LIBRE. La versión anterior metía el
+ * tipo después de la operación y producía "9 propiedades en venta
+ * departamentos en Amarilis": el sustantivo tiene que ir primero, y si
+ * hay tipo, él ES el sustantivo. "8 departamentos en venta en Amarilis".
  */
-function construirDescripcion(
+export function construirDescripcion(
   filtros: Filtros,
   distritos: Distrito[],
   total: number
 ): string {
   if (total === 0) {
-    return 'No encontramos propiedades con esos filtros.';
+    // Sin filtros, "no encontramos propiedades con esos filtros" se
+    // contradice con el estado vacío, que dice que todavía no hay ninguna
+    // publicada. El contador tiene que contar la misma historia que la
+    // lista que tiene debajo.
+    return tieneFiltrosActivos(filtros)
+      ? 'No encontramos propiedades con esos filtros.'
+      : 'Aún no hay propiedades publicadas.';
   }
 
-  const partes: string[] = [`${total} ${total === 1 ? 'propiedad' : 'propiedades'}`];
+  const tipo = filtros.tipo_inmueble ? NOMBRES_INMUEBLE[filtros.tipo_inmueble] : null;
+  const sustantivo = tipo
+    ? total === 1
+      ? tipo.singular
+      : tipo.plural
+    : total === 1
+      ? 'propiedad'
+      : 'propiedades';
 
-  if (filtros.tipo) partes.push(filtros.tipo === 'VENTA' ? 'en venta' : 'en alquiler');
+  const partes: string[] = [`${total} ${sustantivo}`];
 
-  if (filtros.tipo_inmueble) {
-    const tipo = TIPOS_INMUEBLE.find((t) => t.valor === filtros.tipo_inmueble);
-    if (tipo) partes.push(tipo.etiqueta.toLowerCase());
+  if (filtros.tipo) {
+    partes.push(filtros.tipo === 'VENTA' ? 'en venta' : 'en alquiler');
   }
 
-  if (filtros.distrito_id) {
-    const distrito = distritos.find((d) => d.id === filtros.distrito_id);
-    if (distrito) partes.push(`en ${distrito.nombre}`);
+  // "encontradas" solo cuando el sustantivo es "propiedades": con un tipo
+  // ("8 departamentos encontrados") la frase se alarga sin aportar nada.
+  if (!tipo) {
+    partes.push(total === 1 ? 'encontrada' : 'encontradas');
   }
+
+  const distrito = filtros.distrito_id
+    ? distritos.find((d) => d.id === filtros.distrito_id)
+    : null;
+
+  // Sin distrito se dice la región, no un "en todas partes" que no
+  // informa de nada: Innover opera en Huánuco.
+  partes.push(`en ${distrito?.nombre ?? 'Huánuco'}`);
 
   if (filtros.habitaciones) {
     partes.push(`con ${filtros.habitaciones}+ habitaciones`);

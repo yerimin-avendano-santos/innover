@@ -48,19 +48,23 @@ export function Navbar() {
 
   return (
     /*
-     * La barra va en azul marino, no en blanco.
+     * La barra va en el turquesa hondo de la marca (`senal-hondo`).
      *
-     * Es lo que pide la guía visual, y tiene una consecuencia práctica
-     * más allá de la estética: la barra es lo único que se ve en TODAS
-     * las pantallas, así que es donde la marca se reconoce. En blanco se
-     * confundía con el fondo de la página y el logo flotaba sin
-     * pertenecer a nada.
+     * Es el color del boceto del panel y, sobre todo, el que hace que la
+     * barra se lea como parte de Innover: es lo único que se ve en TODAS
+     * las pantallas. En blanco se confundía con el papel; en marino
+     * pesaba más que el contenido y competía con los marcadores.
      *
-     * La clase `sobre-marino` no pinta nada: le dice al sistema de
-     * diseño que aquí el foco por teclado tiene que ser turquesa claro,
-     * porque el turquesa oscuro se pierde contra este fondo.
+     * El chip activo es el inverso —blanco, texto teal— y los enlaces
+     * inactivos usan `sobre-senal-tenue`, no blanco: así la marca y el
+     * nombre de la sesión mandan, y los enlaces siguen pasando AA
+     * (5,25:1) sin gritar.
+     *
+     * La clase `sobre-senal` no pinta nada: le dice al sistema de diseño
+     * que aquí el foco por teclado tiene que ser turquesa claro, porque
+     * el turquesa oscuro se perdería contra este fondo.
      */
-    <header className="sobre-marino sticky top-0 z-40 bg-marino">
+    <header className="sobre-senal sticky top-0 z-40 bg-senal-hondo">
       {/* `min-w-0` en la marca + `gap-3` en el contenedor:
           sin el primero, el logotipo empuja el bloque de sesión fuera
           de la pantalla en móviles estrechos. */}
@@ -96,8 +100,8 @@ export function Navbar() {
                 aria-current={activo ? 'page' : undefined}
                 className={`rounded-medio px-3 py-1.5 text-cuerpo transition-colors ${
                   activo
-                    ? 'bg-marino-alto font-medium text-turquesa'
-                    : 'text-sobre-marino-tenue hover:bg-marino-alto hover:text-sobre-marino'
+                    ? 'bg-papel-alto font-medium text-senal-hondo'
+                    : 'text-sobre-senal-tenue hover:bg-senal hover:text-sobre-marino'
                 }`}
               >
                 {enlace.etiqueta}
@@ -109,7 +113,7 @@ export function Navbar() {
         {/* --- Sesión --- */}
         <div className="relative" ref={menuRef}>
           {cargando ? (
-            <div className="h-8 w-24 animate-pulse rounded-medio bg-marino-alto" />
+            <div className="h-8 w-24 animate-pulse rounded-medio bg-senal" />
           ) : estaConectado ? (
             <>
               <button
@@ -117,24 +121,27 @@ export function Navbar() {
                 onClick={() => setMenuAbierto((abierto) => !abierto)}
                 aria-expanded={menuAbierto}
                 aria-haspopup="menu"
-                className="flex items-center gap-2 rounded-medio px-2 py-1.5 text-cuerpo transition-colors hover:bg-marino-alto"
+                aria-label={`${usuario!.nombre}: ${
+                  menuAbierto ? 'cerrar' : 'abrir'
+                } menú de la cuenta`}
+                className="flex items-center gap-2 rounded-medio px-2 py-1.5 text-cuerpo transition-colors hover:bg-senal"
               >
                 {/* Inicial en lugar de avatar: no todos suben foto, y
                     un círculo vacío se ve como una imagen rota.
-                    Turquesa sobre marino, con el texto en marino: al
-                    revés —blanco sobre turquesa— daría 1,9:1. */}
+                    Turquesa sobre el teal hondo, con el texto en marino:
+                    al revés —blanco sobre turquesa— daría 1,9:1. */}
                 <span
                   aria-hidden="true"
                   className="flex h-7 w-7 items-center justify-center rounded-full bg-turquesa text-micro font-semibold text-marino"
                 >
                   {usuario!.nombre.charAt(0).toUpperCase()}
                 </span>
-                <span className="hidden max-w-[120px] truncate text-sobre-marino-tenue md:inline">
+                <span className="hidden max-w-[120px] truncate text-sobre-marino md:inline">
                   {usuario!.nombre.split(' ')[0]}
                 </span>
                 <svg
                   viewBox="0 0 12 12"
-                  className="h-3 w-3 text-sobre-marino-tenue"
+                  className="h-3 w-3 text-sobre-senal-tenue"
                   aria-hidden="true"
                 >
                   <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
@@ -232,8 +239,8 @@ export function Navbar() {
              * JavaScript para detectar el ancho.
              *
              * "Crear cuenta" usa `.btn-turquesa` y no `.btn-principal`
-             * porque está encima del azul marino: el color de acción se
-             * queda a 2,4:1 contra este fondo y el botón no se leería
+             * porque está encima del teal hondo: el color de acción se
+             * queda a 1,4:1 contra este fondo y el botón no se leería
              * como un botón.
              */
             <div className="flex shrink-0 items-center gap-1 sm:gap-2">
@@ -261,10 +268,11 @@ export function Navbar() {
             <Link
               key={enlace.href}
               href={enlace.href}
+              aria-current={activo ? 'page' : undefined}
               className={`shrink-0 rounded-chico px-3 py-1 text-menor transition-colors ${
                 activo
-                  ? 'bg-marino-alto font-medium text-turquesa'
-                  : 'text-sobre-marino-tenue hover:text-sobre-marino'
+                  ? 'bg-papel-alto font-medium text-senal-hondo'
+                  : 'text-sobre-senal-tenue hover:bg-senal hover:text-sobre-marino'
               }`}
             >
               {enlace.etiqueta}

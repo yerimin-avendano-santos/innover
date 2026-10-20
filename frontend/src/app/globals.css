@@ -19,7 +19,7 @@
 
    ── De dónde salen estos colores ──
    De la identidad de INNOVER: el azul marino y el turquesa del logo,
-   sobre las superficies frías de la guía visual (`design/desing.md`).
+   sobre las superficies frías de la guía visual (`design/nuevo/desing.md`).
 
    ⚠️ Donde la guía y el logo no coinciden, MANDA EL LOGO. La guía
    propone un turquesa `#00CED1`/`#008B8B` y el logo trae
@@ -70,17 +70,17 @@
                                 para texto que haya que leer. */
 
   /* --- Azul marino de marca ---
-     La superficie oscura: la barra de navegación y las cabeceras de
-     máximo peso. Es el color de la palabra "Innover" en el logo. */
+     La superficie de máximo peso fuera de la barra: cabeceras, marcadores
+     seleccionados y grupos del mapa. Es el color de la palabra "Innover"
+     en el logo. */
   --color-marino: #0f295a;
-  --color-marino-alto: #16406b; /* Superficie elevada sobre el marino:
-                                   hover de los enlaces de la barra. */
 
-  /* --- Texto sobre el marino ---
-     Sin estos dos, cada componente inventaría su propio blanco
-     translúcido y el menú tendría cuatro grises distintos. */
+  /* --- Texto sobre superficies oscuras ---
+     El blanco de la marca. En la barra teal se usa para "Innover" y para
+     el nombre de la sesión; los enlaces llevan `sobre-senal-tenue`, el
+     mismo blanco bajado hasta 5,25:1 para que no compitan con la marca. */
   --color-sobre-marino: #ffffff;
-  --color-sobre-marino-tenue: #a9bcd4; /* 5,5:1 sobre marino. */
+  --color-sobre-senal-tenue: #c2d6da; /* 5,25:1 sobre senal-hondo. */
 
   /* --- Líneas ---
      Finas y frías. El borde separa sin dibujar una caja. */
@@ -243,7 +243,7 @@
      oscuros a la vez: el turquesa oscuro se pierde sobre el azul marino
      (1,8:1) y el turquesa claro se pierde sobre blanco (1,9:1).
 
-     La solución no es un selector de descendencia (`.sobre-marino
+     La solución no es un selector de descendencia (`.sobre-senal
      :focus-visible`), porque entonces todo lo que cuelgue de la barra de
      navegación hereda el foco de la barra — y el menú desplegable del
      usuario cuelga de ahí, pero tiene fondo blanco. Acabaría con un
@@ -259,8 +259,10 @@
     border-radius: var(--radius-chico);
   }
 
-  /* Superficie oscura: fondo azul marino. */
-  .sobre-marino {
+  /* Superficie oscura de la barra: el teal hondo. El foco va en el turquesa
+     claro de marca, que sobre este fondo se ve (4,1:1) y sobre blanco se
+     perdería (1,9:1); por eso el menú blanco recupera `.superficie-clara`. */
+  .sobre-senal {
     --foco: var(--color-turquesa);
   }
 
@@ -336,8 +338,8 @@
      Girar el par —fondo claro, texto oscuro— resuelve las dos cosas:
      7,4:1 de contraste y el color sin tocar.
 
-     Se usa sobre el azul marino, donde el `.btn-principal` se quedaría
-     a 2,4:1 contra el fondo y no se vería como un botón. */
+     Se usa sobre la barra teal, donde el `.btn-principal` se quedaría a
+     1,4:1 contra el fondo y no se vería como un botón. */
   .btn-turquesa {
     background-color: var(--color-turquesa);
     color: var(--color-marino);
@@ -369,7 +371,7 @@
 
   /* Variante de `.btn-fantasma` para superficies oscuras.
      El fantasma normal pinta el texto con el color de acción, que sobre
-     el azul marino queda invisible. */
+     el teal hondo de la barra queda invisible. */
   .btn-fantasma-claro {
     background-color: transparent;
     color: var(--color-sobre-marino);
@@ -377,7 +379,7 @@
   }
 
   .btn-fantasma-claro:hover:not(:disabled) {
-    background-color: var(--color-marino-alto);
+    background-color: var(--color-senal);
   }
 
   /* --- Campo de formulario ---
@@ -469,6 +471,15 @@
     color: var(--color-destacado);
   }
 
+  /* Destaque sólido de la tarjeta del buscador.
+     El boceto lo pinta en ámbar brillante, pero ese ámbar no pasa AA con
+     texto blanco. Se usa el ámbar hondo del sistema: blanco sobre
+     `destacado` da 5,5:1, y el distintivo sigue leyéndose como pagado. */
+  .distintivo-destacado-solido {
+    background-color: var(--color-destacado);
+    color: var(--color-sobre-marino);
+  }
+
   /* Pendiente. Anaranjado. Un lead sin atender, un documento sin
      verificar. Parecido al anterior a propósito —los dos piden que el
      usuario mire—, pero con su propio token, porque significan cosas
@@ -514,15 +525,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--radius-chico);
-    border: 1.5px solid white;
+    border-radius: 9999px;
+    border: 2px solid white;
     background-color: var(--color-senal);
     color: white;
     font-size: 11px;
     font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
     font-variant-numeric: tabular-nums;
     cursor: pointer;
-    box-shadow: 0 1px 3px rgb(15 41 90 / 0.35);
+    box-shadow: 0 2px 8px rgb(15 41 90 / 0.35);
     transition: transform 120ms ease;
   }
 
@@ -669,6 +682,57 @@
 
   .mapboxgl-ctrl-attrib {
     font-size: 10px;
+  }
+
+  /* --- Controles del mapa ---
+     Mapbox pinta el zoom con su propio blanco y su propio azul. Aquí se
+     viste con los tokens para que no parezca un control de otra aplicación:
+     el mismo teal de la barra, el icono en blanco y el hover en `senal`.
+
+     El icono de Mapbox es una imagen de fondo negra; `invert(1)` la vuelve
+     blanca sin tocar el color del botón. El `background-color` va en el
+     grupo y no en cada botón para que el redondeo no deje costuras. */
+  .mapa-aparece .mapboxgl-ctrl-group {
+    background-color: var(--color-senal-hondo);
+    border-radius: var(--radius-medio);
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgb(15 41 90 / 0.25);
+  }
+
+  .mapa-aparece .mapboxgl-ctrl-group button {
+    background-color: transparent;
+    border-bottom: 0;
+  }
+
+  .mapa-aparece .mapboxgl-ctrl-group button + button {
+    border-top: 1px solid var(--color-senal);
+  }
+
+  .mapa-aparece .mapboxgl-ctrl-group button:hover {
+    background-color: var(--color-senal);
+  }
+
+  .mapa-aparece .mapboxgl-ctrl-group button .mapboxgl-ctrl-icon {
+    filter: invert(1);
+  }
+
+  /* --- Ubicación del usuario ---
+     El punto y el círculo de precisión también los dibuja Mapbox. El
+     selector lleva `.mapa-aparece` para ganarle a la hoja de Mapbox, que
+     llega en un chunk aparte y no siempre se carga antes que esta.
+
+     El punto va en `senal`, el mismo color de acción, y no en un azul de
+     sistema: la ubicación es una acción del usuario sobre el mapa, no un
+     dato del anuncio. El círculo usa el mismo color con poca opacidad para
+     que no tape las calles. */
+  .mapa-aparece .mapboxgl-user-location-dot,
+  .mapa-aparece .mapboxgl-user-location-dot::before {
+    background-color: var(--color-senal);
+  }
+
+  .mapa-aparece .mapboxgl-user-location-accuracy-circle {
+    background-color: var(--color-senal);
+    opacity: 0.18;
   }
 
   /* --- Superficie del acceso ---
