@@ -21,7 +21,7 @@
 // pasa con el hueco —¿desaparece la tarjeta?, ¿se puede deshacer?—: es una
 // decisión de diseño, no una línea de código, y merece su propio rato.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
@@ -61,6 +61,8 @@ export default function Favoritos() {
   const [favoritos, setFavoritos] = useState<Favorito[] | null>(null);
   const [hayMas, setHayMas] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filtroTipo, setFiltroTipo] = useState<string>('TODOS');
+  const [busqueda, setBusqueda] = useState('');
 
   // Sin sesión no hay lista que pedir: se manda a entrar y se vuelve aquí.
   useEffect(() => {
@@ -72,9 +74,6 @@ export default function Favoritos() {
   useEffect(() => {
     if (!estaConectado) return;
 
-    // `vivo` evita el clásico "setState en un componente que ya no está": si
-    // alguien sale de la página mientras la petición viaja, al volver el
-    // `setFavoritos` ya no tiene a quién pintar.
     let vivo = true;
 
     api<{ datos: Favorito[]; paginacion: Paginacion }>(
@@ -93,6 +92,23 @@ export default function Favoritos() {
       vivo = false;
     };
   }, [estaConectado]);
+
+  // Filtrado en memoria entre los favoritos cargados
+  const favoritosFiltrados = useMemo(() => {
+    if (!favoritos) return [];
+    return favoritos.filter((fav) => {
+      const coincideTipo =
+        filtroTipo === 'TODOS' ||
+        fav.tipo === filtroTipo ||
+        fav.tipo_inmueble === filtroTipo;
+      const coincideTexto =
+        !busqueda.trim() ||
+        fav.titulo.toLowerCase().includes(busqueda.toLowerCase()) ||
+        (fav.distrito?.nombre && fav.distrito.nombre.toLowerCase().includes(busqueda.toLowerCase())) ||
+        (fav.direccion && fav.direccion.toLowerCase().includes(busqueda.toLowerCase()));
+      return coincideTipo && coincideTexto;
+    });
+  }, [favoritos, filtroTipo, busqueda]);
 
   if (!estaConectado) {
     // Mientras el contexto resuelve si hay sesión, y en el instante en que el
@@ -143,19 +159,79 @@ export default function Favoritos() {
 
       {!error && favoritos !== null && favoritos.length > 0 && (
         <>
-          <ul className="grid gap-4 lg:grid-cols-2">
-            {favoritos.map((favorito) => (
-              <li key={favorito.id}>
-                <p className="mb-1 text-micro text-tinta-50">
-                  Guardado el {FECHA.format(new Date(favorito.guardado_en))}
-                </p>
-                <FichaPropiedad
-                  propiedad={favorito}
-                  alSeleccionar={() => router.push(`/propiedad/${favorito.slug}`)}
-                />
-              </li>
-            ))}
-          </ul>
+          {/* Controles de búsqueda y filtros de guardados */}
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <div className="sin-barra flex gap-1 overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setFiltroTipo('TODOS')}
+                className={`rounded-medio px-3 py-1.5 text-menor font-medium transition ${
+                  filtroTipo === 'TODOS'
+                    ? 'bg-tinta text-white'
+                    : 'bg-papel-alto text-tinta-70 hover:bg-papel-hundido'
+                }`}
+              >
+                Todos ({favoritos.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFiltroTipo('VENTA')}
+                className={`rounded-medio px-3 py-1.5 text-menor font-medium transition ${
+                  filtroTipo === 'VENTA'
+                    ? 'bg-tinta text-white'
+                    : 'bg-papel-alto text-tinta-70 hover:bg-papel-hundido'
+                }`}
+              >
+                En Venta
+              </button>
+              <button
+                type="button"
+                onClick={() => setFiltroTipo('ALQUILER')}
+                className={`rounded-medio px-3 py-1.5 text-menor font-medium transition ${
+                  filtroTipo === 'ALQUILER'
+                    ? 'bg-tinta text-white'
+                    : 'bg-papel-alto text-tinta-70 hover:bg-papel-hundido'
+                }`}
+              >
+                En Alquiler
+              </button>
+            </div>
+
+            <div className="w-full sm:w-64">
+              <input
+                type="search"
+                placeholder="Buscar entre guardados..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="campo py-1.5 text-menor text-tinta"
+              />
+            </div>
+          </div>
+
+          {favoritosFiltrados.length === 0 ? (
+            <div className="rounded-grande border border-dashed border-linea-fuerte px-6 py-12 text-center">
+              <p className="text-cuerpo font-medium text-tinta">
+                No hay guardados que coincidan con tu búsqueda
+              </p>
+              <p className="mx-auto mt-1 max-w-xs text-menor text-tinta-50">
+                Prueba borrando el texto de búsqueda o cambiando el filtro.
+              </p>
+            </div>
+          ) : (
+            <ul className="grid gap-4 lg:grid-cols-2">
+              {favoritosFiltrados.map((favorito) => (
+                <li key={favorito.id}>
+                  <p className="mb-1 text-micro text-tinta-50">
+                    Guardado el {FECHA.format(new Date(favorito.guardado_en))}
+                  </p>
+                  <FichaPropiedad
+                    propiedad={favorito}
+                    alSeleccionar={() => router.push(`/propiedad/${favorito.slug}`)}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
 
           {hayMas && (
             <p className="mt-6 text-menor text-tinta-50">

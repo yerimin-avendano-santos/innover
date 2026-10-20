@@ -19,6 +19,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Mapa } from '@/components/Mapa';
+import { FichaPropiedad } from '@/components/FichaPropiedad';
 import CampoImagenes from '@/components/CampoImagenes';
 import { api, ErrorPeticion } from '@/lib/api';
 import { useAuth } from '@/contextos/Auth';
@@ -77,6 +78,7 @@ export default function PaginaPublicar() {
   const [errorCampo, setErrorCampo] = useState<Record<string, string>>({});
   const [enviando, setEnviando] = useState(false);
   const [cargando, setCargando] = useState(editando);
+  const [mostrarPreview, setMostrarPreview] = useState(false);
 
   /**
    * El recorrido 3D que la propiedad YA tenía al abrir el formulario.
@@ -517,6 +519,69 @@ export default function PaginaPublicar() {
             </div>
           )}
         </Seccion>
+
+        {/* ---------- Vista Previa en Vivo ---------- */}
+        <section className="rounded-grande border border-linea bg-papel-alto p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <span className="distintivo distintivo-neutro">En tiempo real</span>
+              <h2 className="mt-1 text-grande font-semibold text-tinta">
+                Vista previa de la tarjeta
+              </h2>
+              <p className="text-menor text-tinta-50">
+                Así verán los interesados tu anuncio en los resultados de búsqueda.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setMostrarPreview((prev) => !prev)}
+              className="btn btn-secundario text-menor"
+            >
+              {mostrarPreview ? 'Ocultar tarjeta' : 'Mostrar tarjeta previa'}
+            </button>
+          </div>
+
+          {mostrarPreview && (
+            <div className="mt-4 pt-4 border-t border-linea">
+              <div className="max-w-xl">
+                <FichaPropiedad
+                  propiedad={{
+                    id: 999999,
+                    slug: 'vista-previa',
+                    titulo: formulario.titulo || 'Título de tu publicación',
+                    descripcion: formulario.descripcion || 'Descripción del inmueble...',
+                    precio: Number(formulario.precio) || 0,
+                    moneda: formulario.moneda,
+                    tipo: formulario.tipo,
+                    tipo_inmueble: formulario.tipo_inmueble as TipoInmueble,
+                    estado: formulario.estado,
+                    area_m2: formulario.area_m2 ? Number(formulario.area_m2) : null,
+                    habitaciones: formulario.habitaciones ? Number(formulario.habitaciones) : 0,
+                    banos: formulario.banos ? Number(formulario.banos) : 0,
+                    parkederos: formulario.parkederos ? Number(formulario.parkederos) : 0,
+                    direccion: formulario.direccion || null,
+                    latitud: formulario.latitud ? Number(formulario.latitud) : null,
+                    longitud: formulario.longitud ? Number(formulario.longitud) : null,
+                    destacado: formulario.destacado,
+                    tour_3d_url: formulario.tour_3d_url || null,
+                    imagenes: formulario.imagenes.filter(Boolean),
+                    distrito_id: null,
+                    distrito: null,
+                    propietario: {
+                      id: usuario?.id ?? 0,
+                      nombre: usuario?.nombre ?? 'Tú',
+                      identidad_verificada: usuario?.identidad_verificada ?? false,
+                    },
+                    fecha_creacion: new Date().toISOString(),
+                    fecha_actualizacion: new Date().toISOString(),
+                    vistas: 0,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </section>
 
         {/* ---------- Publicar ---------- */}
         <div className="flex flex-col gap-3 border-t border-linea pt-6 sm:flex-row sm:items-center sm:justify-between">

@@ -44,9 +44,12 @@ import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { AccionesDuenio, PanelContacto } from '@/components/AccionesPropiedad';
+import AccionesCompartir from '@/components/AccionesCompartir';
 import BotonFavorito from '@/components/BotonFavorito';
+import CalculadoraHipotecaria from '@/components/CalculadoraHipotecaria';
 import Galeria from '@/components/Galeria';
 import { Mapa } from '@/components/Mapa';
+import Tour3DViewer from '@/components/Tour3DViewer';
 import { formatearPrecio, precioPorM2, etiquetaTipo } from '@/lib/api';
 import { aPuntosDeMapa } from '@/lib/mapa';
 import type { Propiedad } from '@/lib/tipos';
@@ -272,12 +275,19 @@ export default async function PaginaPropiedad({
           </div>
         </div>
 
-        {propiedad.distrito && (
-          <p className="mt-1 text-cuerpo text-tinta-50">
-            {propiedad.distrito.nombre}
-            {propiedad.direccion && ` · ${propiedad.direccion}`}
-          </p>
-        )}
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+          {propiedad.distrito && (
+            <p className="text-cuerpo text-tinta-50">
+              {propiedad.distrito.nombre}
+              {propiedad.direccion && ` · ${propiedad.direccion}`}
+            </p>
+          )}
+
+          <AccionesCompartir
+            titulo={propiedad.titulo}
+            precioFormateado={formatearPrecio(propiedad.precio, propiedad.moneda)}
+          />
+        </div>
       </header>
 
       {/* --- Fotos ---
@@ -332,21 +342,18 @@ export default async function PaginaPropiedad({
 
           {/* --- Tour 3D --- */}
           {propiedad.tour_3d_url && (
-            <section className="mb-8">
-              <h2 className="mb-2 text-grande font-semibold text-tinta">
-                Recorrido 3D
-              </h2>
-              {/* sandbox + allowfullscreen: sin esto, un iframe externo
-                  podría navegar la página o leer su DOM. */}
-              <iframe
-                src={propiedad.tour_3d_url}
-                title={`Recorrido 3D de ${propiedad.titulo}`}
-                className="h-96 w-full rounded-grande border border-linea"
-                allowFullScreen
-                sandbox="allow-scripts allow-same-origin allow-popups"
-                loading="lazy"
-              />
-            </section>
+            <Tour3DViewer
+              url={propiedad.tour_3d_url}
+              titulo={propiedad.titulo}
+            />
+          )}
+
+          {/* --- Simulador Hipotecario (solo Venta) --- */}
+          {propiedad.tipo === 'VENTA' && (
+            <CalculadoraHipotecaria
+              precio={propiedad.precio}
+              moneda={propiedad.moneda}
+            />
           )}
         </div>
 

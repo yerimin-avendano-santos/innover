@@ -55,6 +55,20 @@ export default function CampoImagenes({
     onChange(copia);
   };
 
+  const bajar = (i: number) => {
+    if (i === valor.length - 1) return;
+    const copia = [...valor];
+    [copia[i + 1], copia[i]] = [copia[i], copia[i + 1]];
+    onChange(copia);
+  };
+
+  const hacerPortada = (i: number) => {
+    if (i === 0) return;
+    const elemento = valor[i];
+    const resto = valor.filter((_, idx) => idx !== i);
+    onChange([elemento, ...resto]);
+  };
+
   /**
    * Al salir del campo: quitar espacios y poner el `https://` que falta.
    *
@@ -108,30 +122,53 @@ export default function CampoImagenes({
                 />
               </div>
 
-              {i === 0 && <span className="distintivo distintivo-neutro shrink-0">Portada</span>}
+              {i === 0 ? (
+                <span className="distintivo distintivo-senal shrink-0">Portada</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => hacerPortada(i)}
+                  className="distintivo distintivo-neutro shrink-0 cursor-pointer hover:border-linea-fuerte"
+                  title="Mover esta foto como la portada principal"
+                >
+                  Hacer portada
+                </button>
+              )}
 
-              {/* Un botón en vez de arrastrar: reordenar arrastrando necesita
-                  puntero fino y no funciona con teclado. Con flechas, sí. */}
-              <button
-                type="button"
-                onClick={() => subir(i)}
-                disabled={i === 0}
-                aria-label={`Subir la foto ${i + 1}`}
-                title="Subir"
-                className="btn btn-fantasma shrink-0 px-2 text-cuerpo"
-              >
-                ↑
-              </button>
+              {/* Botones de orden y eliminación con teclado accesible */}
+              <div className="flex shrink-0 items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => subir(i)}
+                  disabled={i === 0}
+                  aria-label={`Subir la foto ${i + 1}`}
+                  title="Subir posición"
+                  className="btn btn-fantasma px-1.5 py-1 text-cuerpo disabled:opacity-30"
+                >
+                  ↑
+                </button>
 
-              <button
-                type="button"
-                onClick={() => quitar(i)}
-                aria-label={`Quitar la foto ${i + 1}`}
-                title="Quitar"
-                className="btn btn-fantasma shrink-0 px-2 text-cuerpo"
-              >
-                ✕
-              </button>
+                <button
+                  type="button"
+                  onClick={() => bajar(i)}
+                  disabled={i === valor.length - 1}
+                  aria-label={`Bajar la foto ${i + 1}`}
+                  title="Bajar posición"
+                  className="btn btn-fantasma px-1.5 py-1 text-cuerpo disabled:opacity-30"
+                >
+                  ↓
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => quitar(i)}
+                  aria-label={`Quitar la foto ${i + 1}`}
+                  title="Quitar"
+                  className="btn btn-fantasma px-1.5 py-1 text-cuerpo text-alerta hover:bg-alerta-suave"
+                >
+                  ✕
+                </button>
+              </div>
             </li>
           ))}
         </ul>
