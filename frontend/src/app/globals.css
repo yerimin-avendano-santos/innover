@@ -578,6 +578,87 @@
     transform: scale(1.12);
   }
 
+  /* --- Marcador Pin con Logo de Innover --- */
+  .marcador-pin {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    padding: 0;
+    transition: transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    filter: drop-shadow(0 4px 10px rgb(15 41 90 / 0.28));
+  }
+
+  .marcador-pin:hover {
+    transform: translateY(-4px) scale(1.12);
+    z-index: 20;
+  }
+
+  .marcador-pin-cuerpo {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    background-color: var(--color-papel-alto);
+    border: 2px solid var(--color-linea-fuerte);
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.8);
+    transition: border-color 150ms ease, background-color 150ms ease;
+  }
+
+  .marcador-pin-cuerpo svg {
+    transform: rotate(45deg);
+    width: 22px;
+    height: 22px;
+  }
+
+  .marcador-pin-precio {
+    margin-top: 2px;
+    padding: 2px 6px;
+    border-radius: 9999px;
+    background-color: var(--color-papel-alto);
+    border: 1px solid var(--color-linea);
+    color: var(--color-tinta);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 2px 6px rgb(15 41 90 / 0.15);
+  }
+
+  .marcador-pin-destacado .marcador-pin-cuerpo {
+    border-color: var(--color-turquesa);
+    box-shadow: 0 0 0 3px var(--color-turquesa-claro), 0 4px 12px rgb(0 210 184 / 0.35);
+  }
+
+  .marcador-pin-destacado .marcador-pin-precio {
+    background-color: var(--color-destacado);
+    color: var(--color-sobre-marino);
+    border-color: var(--color-destacado);
+  }
+
+  .marcador-pin-seleccionado {
+    transform: translateY(-6px) scale(1.22) !important;
+    z-index: 30;
+  }
+
+  .marcador-pin-seleccionado .marcador-pin-cuerpo {
+    border-color: var(--color-marino);
+    background-color: var(--color-marino);
+  }
+
+  .marcador-pin-seleccionado .marcador-pin-precio {
+    background-color: var(--color-marino);
+    color: var(--color-sobre-marino);
+    border-color: var(--color-marino);
+  }
+
   /* --- Grupo de chinchetas ---
      Sustituye a las chinchetas sueltas cuando hay muchas juntas: a la
      distancia a la que dos precios se pisan, un número dice más que veinte
@@ -638,7 +719,86 @@
      los colores sigan teniendo un solo dueño y el globo no se quede con
      la paleta vieja el día que cambie el sistema. */
   .globo {
-    width: 260px;
+    width: 270px;
+  }
+
+  .globo-tarjeta {
+    width: 270px;
+    background-color: var(--color-papel-alto);
+    border-radius: var(--radius-medio);
+    overflow: hidden;
+  }
+
+  .globo-tarjeta-imagen {
+    position: relative;
+    width: 100%;
+    height: 125px;
+    background-color: var(--color-papel-hundido);
+    overflow: hidden;
+  }
+
+  .globo-tarjeta-imagen img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .globo-tarjeta-cuerpo {
+    padding: 10px 12px 12px;
+  }
+
+  .globo-tarjeta-tags {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  .globo-tarjeta-precio {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--color-senal);
+    font-variant-numeric: tabular-nums;
+    margin: 0 0 4px;
+    line-height: 1.2;
+  }
+
+  .globo-tarjeta-titulo {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-tinta);
+    margin: 0 0 6px;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .globo-tarjeta-meta {
+    font-size: 11px;
+    color: var(--color-tinta-50);
+    margin: 0 0 10px;
+  }
+
+  .globo-tarjeta-boton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    padding: 6px 10px;
+    border-radius: var(--radius-chico);
+    background-color: var(--color-senal);
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color 120ms ease;
+  }
+
+  .globo-tarjeta-boton:hover {
+    background-color: var(--color-senal-hondo);
   }
 
   .globo-titulo {

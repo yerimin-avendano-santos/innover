@@ -49,22 +49,18 @@ import {
   type IndiceMapa,
   type Limites,
 } from '@/lib/clustering';
-import type { PuntoMapa } from '@/lib/tipos';
+import type { PuntoMapa, Propiedad } from '@/lib/tipos';
 import { formatearPrecio, etiquetaTipo } from '@/lib/api';
 
 /**
  * Centro por defecto del mapa.
  *
- * Es la Plaza de Armas de Huánuco, donde Innover arranca. Está aquí y no
- * dentro del componente por el mismo motivo que los colores viven en
- * `globals.css`: el día que se abra una segunda región, se cambia en un sitio.
- *
- * ⚠️ Mapbox usa [longitud, latitud] — al revés que todo el resto del proyecto
- * (PostGIS, el backend y el seed trabajan con latitud primero). Equivocarse
- * aquí no da error: el mapa se centra en otro continente y el marcador
- * aparece a 3.000 km.
+ * Es la Plaza de Armas de Huánuco, donde Innover arranca.
  */
 const CENTRO_POR_DEFECTO: [number, number] = [-76.2395, -9.9293];
+
+/** SVG estático del logo de Innover para el marcador pin en Mapbox. */
+const SVG_LOGO_PIN = `<svg viewBox="253 105 518 610" class="pointer-events-none" aria-hidden="true" focusable="false"><defs><linearGradient id="pinAzul" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#006DE6" /><stop offset="100%" stop-color="#0356C4" /></linearGradient><linearGradient id="pinTurquesa" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#0DD1D3" /><stop offset="100%" stop-color="#089596" /></linearGradient><linearGradient id="pinBase" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#11284A" /><stop offset="50%" stop-color="#183863" /><stop offset="100%" stop-color="#0E2342" /></linearGradient></defs><path d="M 263 566 L 512 684 L 512 705 L 263 587 Z" fill="url(#pinBase)" /><path d="M 512 684 L 761 566 L 761 587 L 512 705 Z" fill="url(#pinBase)" /><path d="M 263 556 L 512 674 L 512 684 L 263 566 Z" fill="#E2E8F0" /><path d="M 512 674 L 761 556 L 761 566 L 512 684 Z" fill="#CBD5E1" /><path d="M 512 438 L 761 556 L 512 674 L 263 556 Z" fill="#F8FAFC" /><path d="M 313 556 L 412 509 L 487 544 L 388 591 Z" fill="#4A90E2" /><path d="M 425 621 L 437 615 L 487 639 L 475 645 Z" fill="#71B4F8" /><path d="M 612 509 L 711 556 L 637 591 L 537 544 Z" fill="#78C697" /><path d="M 562 603 L 599 621 L 549 645 L 512 627 Z" fill="#5EAD9E" /><ellipse cx="512" cy="595" rx="45" ry="15" fill="#000000" opacity="0.1" /><ellipse cx="512" cy="590" rx="20" ry="6" fill="#000000" opacity="0.15" /><path d="M 512 115 L 320 225 L 320 425 L 512 590 L 512 525 L 390 420 L 390 265 L 512 195 Z" fill="url(#pinAzul)" /><path d="M 512 245 L 420 295 L 420 445 L 512 525 L 512 515 L 460 470 L 460 330 L 512 300 Z" fill="url(#pinAzul)" /><path d="M 512 115 L 704 225 L 704 425 L 512 590 L 512 525 L 634 420 L 634 265 L 512 195 Z" fill="url(#pinTurquesa)" /><path d="M 512 245 L 604 295 L 604 445 L 512 525 L 512 515 L 564 470 L 564 330 L 512 300 Z" fill="url(#pinTurquesa)" /><g fill="#006DE6"><rect x="486" y="375" width="16" height="16" rx="2" /><rect x="522" y="375" width="16" height="16" rx="2" /><rect x="486" y="410" width="16" height="16" rx="2" /><rect x="522" y="410" width="16" height="16" rx="2" /></g></svg>`;
 
 interface Props {
   /**
@@ -107,6 +103,8 @@ interface Props {
    */
   conUbicacion?: boolean;
   className?: string;
+  /** Propiedades completas para alimentar las tarjetas emergentes del mapa */
+  propiedades?: Propiedad[];
 }
 
 /** Los estados del botón de ubicación. */
@@ -122,6 +120,7 @@ export function Mapa({
   claveVista = '',
   conUbicacion = false,
   className = '',
+  propiedades = [],
 }: Props) {
   const contenedor = useRef<HTMLDivElement>(null);
   const mapa = useRef<mapboxgl.Map | null>(null);
@@ -147,6 +146,15 @@ export function Mapa({
    * recentraría el mapa solo. Un ref le da el dato sin crear la dependencia.
    */
   const refPuntos = useRef(puntos);
+  const refDetalles = useRef<Map<number, Propiedad>>(new Map());
+
+  useEffect(() => {
+    const mapaProp = new Map<number, Propiedad>();
+    for (const p of propiedades) {
+      mapaProp.set(p.id, p);
+    }
+    refDetalles.current = mapaProp;
+  }, [propiedades]);
 
   /**
    * 📌 POR QUÉ EL CALLBACK VA EN UN REF Y SE ASIGNA EN UN EFECTO
@@ -304,12 +312,14 @@ export function Mapa({
 
       if (pintados.current.has(clave)) continue;
 
+      const detalle = elemento.tipo === 'propiedad' ? refDetalles.current.get(elemento.punto.id) : undefined;
+
       pintados.current.set(
         clave,
         crearMarcador(instancia, elemento, {
           alSeleccionar: (id) => refSeleccionar.current?.(id),
           alAbrirGrupo: abrirGrupo,
-        })
+        }, detalle)
       );
     }
 
@@ -359,11 +369,9 @@ export function Mapa({
         container: contenedor.current,
         style: 'mapbox://styles/mapbox/light-v11',
         center: CENTRO_POR_DEFECTO,
-        // 13 y no 12: el arranque tiene que enseñar la conurbación
-        // Huánuco–Amarilis–Pillco Marca con las manzanas legibles, no un
-        // punto. Si luego llegan resultados, `ajustarVista()` manda: el
-        // zoom inicial solo se ve en el primer instante o si no hay nada.
-        zoom: 13,
+        // Zoom 14: enseña la conurbación Huánuco–Amarilis–Pillco Marca
+        // con las calles y manzanas legibles.
+        zoom: 14,
         attributionControl: true,
       });
     } catch (fallo) {
@@ -543,9 +551,10 @@ export function Mapa({
     // sin ningún error. Con clases, cuál gana lo decide el CSS.
     for (const [clave, marcador] of pintados.current) {
       if (!clave.startsWith('p:')) continue; // los grupos no se seleccionan
-      marcador
-        .getElement()
-        .classList.toggle('marcador-seleccionado', Number(clave.slice(2)) === seleccionada);
+      const esSel = Number(clave.slice(2)) === seleccionada;
+      const el = marcador.getElement();
+      el.classList.toggle('marcador-pin-seleccionado', esSel);
+      el.classList.toggle('marcador-seleccionado', esSel);
     }
 
     globoPendiente.current = seleccionada;
@@ -999,22 +1008,18 @@ function crearMarcador(
   acciones: {
     alSeleccionar: (id: number) => void;
     alAbrirGrupo: (grupo: GrupoMapa) => void;
-  }
+  },
+  detalle?: Propiedad
 ): mapboxgl.Marker {
   const boton = document.createElement('button');
   boton.type = 'button';
 
-  // Los grupos se anclan por el centro y las píldoras de precio por abajo:
-  // el borde inferior de la píldora queda sobre el punto, sin una cola que
-  // desplace el ancla. Un círculo —el grupo— se apoya en el centro.
   let ancla: 'center' | 'bottom' = 'center';
 
   if (elemento.tipo === 'grupo') {
     const { cantidad } = elemento;
     boton.className = `marcador-grupo ${claseDeGrupo(cantidad)}`;
     boton.textContent = String(cantidad);
-    // El "acércate" no es adorno: un número sin instrucción se lee como un
-    // dato, y lo que hay que entender es que se puede abrir.
     boton.setAttribute(
       'aria-label',
       `${cantidad} propiedades en esta zona. Acércate para verlas.`
@@ -1028,23 +1033,22 @@ function crearMarcador(
     const { punto } = elemento;
     ancla = 'bottom';
 
-    boton.className = punto.destacado ? 'marcador marcador-destacado' : 'marcador';
+    // Marcador con silueta de pin e isotipo del Logo de Innover
+    boton.className = punto.destacado ? 'marcador-pin marcador-pin-destacado' : 'marcador-pin';
+    boton.setAttribute(
+      'aria-label',
+      `${punto.titulo}, ${formatearPrecio(punto.precio, punto.moneda)}`
+    );
 
-    const texto = formatearPrecio(punto.precio, punto.moneda);
-    boton.setAttribute('aria-label', `${punto.titulo}, ${texto}`);
+    const cuerpo = document.createElement('div');
+    cuerpo.className = 'marcador-pin-cuerpo';
+    cuerpo.innerHTML = SVG_LOGO_PIN;
+    boton.appendChild(cuerpo);
 
-    // El ancho crece con el número de dígitos del precio, para que
-    // "S/ 1,680" y "S/ 385,000" no se desborden.
-    //
-    // Esta medida SÍ se queda en JavaScript, y es la excepción que
-    // confirma la regla de "los colores viven en globals.css": no es una
-    // decisión de diseño, es un cálculo sobre el dato. Con un ancho fijo
-    // en CSS, un precio de seis cifras se saldría de la caja, y no hay
-    // forma de conocer los dígitos sin mirar el precio.
-    boton.style.width = `${Math.max(48, texto.length * 7 + 16)}px`;
-    boton.style.height = '28px';
-    boton.style.padding = '0 8px';
-    boton.textContent = texto;
+    const etiquetaPrecio = document.createElement('span');
+    etiquetaPrecio.className = 'marcador-pin-precio';
+    etiquetaPrecio.textContent = formatearPrecio(punto.precio, punto.moneda);
+    boton.appendChild(etiquetaPrecio);
 
     boton.addEventListener('click', (evento) => {
       evento.stopPropagation();
@@ -1055,12 +1059,10 @@ function crearMarcador(
   const marcador = new mapboxgl.Marker({ element: boton, anchor: ancla })
     .setLngLat([elemento.longitud, elemento.latitud]);
 
-  // El globo es de las propiedades, no de los grupos: un grupo no tiene nada
-  // que contar (ni título, ni precio) y su clic ya significa "acércate".
   if (elemento.tipo === 'propiedad') {
     marcador.setPopup(
-      new mapboxgl.Popup({ offset: 20, closeButton: true }).setDOMContent(
-        crearGlobo(elemento.punto)
+      new mapboxgl.Popup({ offset: 28, closeButton: true, maxWidth: '290px' }).setDOMContent(
+        crearGlobo(elemento.punto, detalle)
       )
     );
   }
@@ -1069,40 +1071,99 @@ function crearMarcador(
 }
 
 /**
- * Construye el globo del popup con NODOS, no con HTML.
+ * Construye la tarjeta emergente del popup en el mapa.
  *
- * Esta es la función que cierra el XSS. Todo lo que venga de la base de
- * datos se inserta con textContent, que siempre trata el dato como texto
- * plano. Es imposible que se interprete como marcado.
+ * Utiliza nodos DOM seguros y textContent para evitar cualquier riesgo de XSS.
  */
-function crearGlobo(punto: PuntoMapa): HTMLElement {
+function crearGlobo(punto: PuntoMapa, detalle?: Propiedad): HTMLElement {
   const contenedor = document.createElement('div');
-  contenedor.className = 'globo';
+  contenedor.className = 'globo-tarjeta';
 
-  // --- Título ---
-  const titulo = document.createElement('p');
-  titulo.textContent = punto.titulo;
-  titulo.className = 'globo-titulo';
-  contenedor.appendChild(titulo);
+  // --- Imagen superior ---
+  const contenedorImagen = document.createElement('div');
+  contenedorImagen.className = 'globo-tarjeta-imagen';
 
-  // --- Precio ---
+  const fotoUrl = detalle?.imagenes?.[0];
+  if (fotoUrl) {
+    const img = document.createElement('img');
+    img.src = fotoUrl;
+    img.alt = punto.titulo;
+    img.loading = 'lazy';
+    contenedorImagen.appendChild(img);
+  } else {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'flex h-full w-full items-center justify-center bg-senal-suave text-senal';
+    placeholder.innerHTML = `
+      <svg class="h-8 w-8 opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      </svg>
+    `;
+    contenedorImagen.appendChild(placeholder);
+  }
+  contenedor.appendChild(contenedorImagen);
+
+  // --- Cuerpo de la tarjeta ---
+  const cuerpo = document.createElement('div');
+  cuerpo.className = 'globo-tarjeta-cuerpo';
+
+  // Tags
+  const tags = document.createElement('div');
+  tags.className = 'globo-tarjeta-tags';
+
+  const tagTipo = document.createElement('span');
+  tagTipo.className = 'distintivo distintivo-neutro';
+  tagTipo.textContent = etiquetaTipo(punto.tipo_inmueble);
+  tags.appendChild(tagTipo);
+
+  if (detalle?.tipo) {
+    const tagOp = document.createElement('span');
+    tagOp.className = 'distintivo distintivo-neutro';
+    tagOp.textContent = detalle.tipo === 'VENTA' ? 'Venta' : 'Alquiler';
+    tags.appendChild(tagOp);
+  }
+
+  if (punto.destacado) {
+    const tagDestacado = document.createElement('span');
+    tagDestacado.className = 'distintivo distintivo-destacado-solido';
+    tagDestacado.textContent = 'Destacado';
+    tags.appendChild(tagDestacado);
+  }
+  cuerpo.appendChild(tags);
+
+  // Precio
   const precio = document.createElement('p');
+  precio.className = 'globo-tarjeta-precio';
   precio.textContent = formatearPrecio(punto.precio, punto.moneda);
-  precio.className = 'globo-precio';
-  contenedor.appendChild(precio);
+  cuerpo.appendChild(precio);
 
-  // --- Metadatos ---
-  const detalles: string[] = [etiquetaTipo(punto.tipo_inmueble)];
+  // Título
+  const titulo = document.createElement('p');
+  titulo.className = 'globo-tarjeta-titulo';
+  titulo.textContent = punto.titulo;
+  cuerpo.appendChild(titulo);
 
+  // Metadatos
+  const detalles: string[] = [];
   if (punto.habitaciones > 0) detalles.push(`${punto.habitaciones} hab.`);
   if (punto.area_m2) detalles.push(`${punto.area_m2} m²`);
   if (punto.distrito) detalles.push(punto.distrito.nombre);
 
-  const meta = document.createElement('p');
-  meta.textContent = detalles.join(' · ');
-  meta.className = 'globo-meta';
-  contenedor.appendChild(meta);
+  if (detalles.length > 0) {
+    const meta = document.createElement('p');
+    meta.className = 'globo-tarjeta-meta';
+    meta.textContent = detalles.join(' · ');
+    cuerpo.appendChild(meta);
+  }
 
+  // Enlace a la ficha completa
+  const slugDestino = detalle?.slug ?? String(punto.id);
+  const botonVer = document.createElement('a');
+  botonVer.href = `/propiedad/${slugDestino}`;
+  botonVer.className = 'globo-tarjeta-boton';
+  botonVer.textContent = 'Ver propiedad completa →';
+  cuerpo.appendChild(botonVer);
+
+  contenedor.appendChild(cuerpo);
   return contenedor;
 }
 

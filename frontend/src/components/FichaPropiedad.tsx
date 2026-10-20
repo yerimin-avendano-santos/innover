@@ -51,28 +51,29 @@ export function FichaPropiedad({ propiedad, seleccionada, alSeleccionar }: Props
 
   return (
     <article
-      className={`ficha grid grid-cols-[minmax(150px,44%)_1fr] overflow-hidden rounded-grande xl:grid-cols-[260px_1fr] ${
+      className={`ficha grid grid-cols-[minmax(140px,42%)_1fr] overflow-hidden rounded-grande shadow-xs transition-all duration-200 hover:shadow-md xl:grid-cols-[210px_1fr] ${
         alSeleccionar ? 'cursor-pointer' : 'cursor-default'
-      } ${seleccionada ? 'border-tinta' : ''}`}
+      } ${seleccionada ? 'border-senal ring-2 ring-senal/20' : ''}`}
       onClick={() => alSeleccionar?.(propiedad.id)}
     >
       {/* --- Foto ---
-          El 44 % del ancho es el del boceto. El tope de 260 px evita que
-          en un monitor ancho la foto se coma la tarjeta y el título quede
-          en una columna de 200 px. El `xl` empieza en 1280, donde la lista
-          ya mide 544 px. */}
+          El 42 % del ancho mantiene el equilibrio y permite a las tarjetas
+          compactas respirar en la columna lateral del buscador. */}
       <FotoCarrusel propiedad={propiedad} />
 
       <div className="flex min-w-0 flex-col p-3.5">
-        {/* --- Distintivos ---
-            "Destacado" va primero porque es lo que la persona pagó; la
-            operación se va a la derecha con `ml-auto` aunque no haya
-            destacado, para que "Venta" no baile de sitio. */}
+        {/* --- Distintivos --- */}
         <div className="mb-1.5 flex items-center gap-2">
           {propiedad.destacado && (
             <span className="distintivo distintivo-destacado-solido">Destacado</span>
           )}
-          <span className="distintivo distintivo-neutro ml-auto">{operacion}</span>
+          <span
+            className={`distintivo ml-auto ${
+              propiedad.tipo === 'ALQUILER' ? 'distintivo-senal' : 'distintivo-neutro'
+            }`}
+          >
+            {operacion}
+          </span>
         </div>
 
         {/* --- Título ---
@@ -206,6 +207,10 @@ function FotoCarrusel({ propiedad }: { propiedad: Propiedad }) {
 
       {imagenes.length > 1 && (
         <>
+          <span className="pointer-events-none absolute left-2 top-2 z-10 rounded-full bg-marino/75 px-2 py-0.5 text-micro font-medium text-sobre-marino backdrop-blur-xs">
+            {indice + 1}/{imagenes.length}
+          </span>
+
           <button
             type="button"
             aria-label="Foto anterior"

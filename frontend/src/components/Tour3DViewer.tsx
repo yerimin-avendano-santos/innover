@@ -141,3 +141,4 @@ export default function Tour3DViewer({ url, titulo }: Props) {
     </section>
   );
 }
+

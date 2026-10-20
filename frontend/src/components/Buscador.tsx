@@ -247,12 +247,11 @@ export function Buscador() {
       )}
 
       {/*
-        0.85fr / 1.15fr, no 1fr / 1.15fr: el mapa pasa del 53,5 % al
-        57,5 % del ancho. A 1440 son ~58 px más de mapa y a 1024, ~41.
-        La lista sigue teniendo 435 px en el punto más estrecho de `lg`,
-        que es donde la tarjeta horizontal todavía respira.
+        El mapa domina la pantalla:
+        En escritorio la lista se acomoda en un carril lateral de 390px
+        y el mapa se expande para ocupar todo el espacio restante (~65%-72% del ancho).
       */}
-      <div className="grid min-h-0 flex-1 grid-rows-[360px_minmax(0,1fr)] lg:grid-cols-[minmax(360px,0.85fr)_1.15fr] lg:grid-rows-1">
+      <div className="grid min-h-0 flex-1 grid-rows-[380px_minmax(0,1fr)] lg:grid-cols-[minmax(350px,390px)_1fr] lg:grid-rows-1">
         {/* ============ LISTA (izquierda en escritorio) ============ */}
         <section
           aria-label="Lista de propiedades"
@@ -346,6 +345,7 @@ export function Buscador() {
             alSeleccionar={(id) => setSeleccionada(id)}
             claveVista={claveVista}
             conUbicacion
+            propiedades={propiedades}
             className="h-full w-full"
           />
         </section>

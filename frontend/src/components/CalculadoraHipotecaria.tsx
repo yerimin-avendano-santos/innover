@@ -130,3 +130,4 @@ export default function CalculadoraHipotecaria({ precio, moneda }: Props) {
     </div>
   );
 }
+
