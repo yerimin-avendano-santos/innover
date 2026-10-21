@@ -40,6 +40,7 @@
 // pantalla anterior hasta que llega la nueva.
 
 import { cache } from 'react';
+import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
@@ -222,6 +223,25 @@ export default async function PaginaPropiedad({
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <div className="mb-4">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 rounded-full border border-linea bg-papel-alto px-3.5 py-1.5 text-menor font-medium text-tinta-70 shadow-2xs transition-colors hover:border-linea-fuerte hover:text-tinta"
+        >
+          <svg
+            viewBox="0 0 16 16"
+            className="h-4 w-4 text-tinta-50"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            aria-hidden="true"
+          >
+            <path d="M10 13l-5-5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Volver al buscador
+        </Link>
+      </div>
+
       {/* ---------- Encabezado ---------- */}
       <header className="mb-6">
         <div className="mb-2 flex flex-wrap items-center gap-2">

@@ -10,12 +10,6 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contextos/Auth';
 import { Logo } from '@/components/Logo';
 
-const ENLACES = [
-  { href: '/', etiqueta: 'Buscar' },
-  { href: '/publicar', etiqueta: 'Publicar' },
-  { href: '/leads', etiqueta: 'Mis contactos' },
-];
-
 export function Navbar() {
   const { usuario, estaConectado, esAgente, esAdmin, cerrarSesion, cargando } = useAuth();
   const router = useRouter();
@@ -86,29 +80,28 @@ export function Navbar() {
           </span>
         </Link>
 
-        {/* --- Navegación principal --- */}
-        <nav className="hidden items-center gap-1 sm:flex" aria-label="Principal">
-          {ENLACES.map((enlace) => {
-            // "Mis contactos" es de quienes publican o son agentes.
-            if (enlace.href === '/leads' && !esAgente) return null;
-
-            const activo = ruta === enlace.href;
-            return (
-              <Link
-                key={enlace.href}
-                href={enlace.href}
-                aria-current={activo ? 'page' : undefined}
-                className={`rounded-medio px-3 py-1.5 text-cuerpo transition-colors ${
-                  activo
-                    ? 'bg-papel-alto font-medium text-senal-hondo'
-                    : 'text-sobre-senal-tenue hover:bg-senal hover:text-sobre-marino'
-                }`}
-              >
-                {enlace.etiqueta}
-              </Link>
-            );
-          })}
-        </nav>
+        {/* --- Regresar al buscador (cuando se está en otra pantalla) --- */}
+        {ruta !== '/' ? (
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-menor font-medium text-sobre-marino transition-colors hover:bg-senal hover:text-sobre-marino"
+            title="Volver al buscador principal"
+          >
+            <svg
+              viewBox="0 0 16 16"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <path d="M10 13l-5-5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span>Volver al buscador</span>
+          </Link>
+        ) : (
+          <div className="flex-1" />
+        )}
 
         {/* --- Sesión --- */}
         <div className="relative" ref={menuRef}>
@@ -168,6 +161,15 @@ export function Navbar() {
                       {etiquetaRol(usuario!.rol)}
                     </span>
                   </div>
+
+                  <Link
+                    href="/publicar"
+                    role="menuitem"
+                    onClick={() => setMenuAbierto(false)}
+                    className="block px-3 py-2 text-cuerpo text-tinta-70 transition-colors hover:bg-papel-hundido hover:text-tinta"
+                  >
+                    Publicar propiedad
+                  </Link>
 
                   <Link
                     href="/perfil"
@@ -254,32 +256,6 @@ export function Navbar() {
           )}
         </div>
       </div>
-
-      {/* --- Navegación en móvil --- */}
-      <nav
-        className="sin-barra flex gap-1 overflow-x-auto px-4 py-1.5 sm:hidden"
-        aria-label="Principal (móvil)"
-      >
-        {ENLACES.map((enlace) => {
-          if (enlace.href === '/leads' && !esAgente) return null;
-
-          const activo = ruta === enlace.href;
-          return (
-            <Link
-              key={enlace.href}
-              href={enlace.href}
-              aria-current={activo ? 'page' : undefined}
-              className={`shrink-0 rounded-chico px-3 py-1 text-menor transition-colors ${
-                activo
-                  ? 'bg-papel-alto font-medium text-senal-hondo'
-                  : 'text-sobre-senal-tenue hover:bg-senal hover:text-sobre-marino'
-              }`}
-            >
-              {enlace.etiqueta}
-            </Link>
-          );
-        })}
-      </nav>
 
       {/* El degradado de marca cierra la barra. Va aquí y no como
           `border-b` porque un borde solo admite un color por lado, y
