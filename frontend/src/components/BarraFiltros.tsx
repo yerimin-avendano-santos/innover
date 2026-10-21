@@ -3,27 +3,15 @@
 // ========================================
 // 🎛️ BARRA DE FILTROS
 // ========================================
-// El instrumento de búsqueda.
+// El instrumento de búsqueda limpio y ergonómico.
 //
-// 📌 POR QUÉ ES UNA BARRA HORIZONTAL Y NO UN MENÚ LATERAL
-//
-// En una página con mapa, el mapa ya ocupa el lateral. Si además el
-// filtro se lleva el otro lado, la pantalla se parte en dos columnas
-// estrechas y el mapa queda en un hueco diminuto. La barra horizontal
-// deja el mapa a pantalla completa.
-//
-// En móvil la barra se desplaza horizontalmente: cabe el Triple, pero
-// un menú desplegable por cada filtro sería 5 toques antes de buscar.
-//
-// 📌 UNA SOLA FILA, Y EL CONTADOR EN LA LISTA
-//
-// Antes el contador y "Limpiar filtros" ocupaban una segunda franja
-// debajo de los controles. Eso le robaba ~40 px de alto al mapa y
-// duplicaba el borde con la lista. El contador se mudó a la cabecera de
-// la lista (ver `Buscador.tsx`), donde pertenece: cuenta lo que hay
-// debajo, no lo que hay en el filtro.
+// 📌 ORGANIZACIÓN DE CONTROLES
+// - Buscador ensanchado con placeholder conciso
+// - Segmentado Venta/Alquiler con contraste nítido (#0F5C63 activo)
+// - Desplegables esenciales directos: Tipo de inmueble y Distrito
+// - Panel desplegable "Filtros" para Habitaciones, Precio y Orden, con contador de activos
 
-import Link from 'next/link';
+import { useState, useRef, useEffect } from 'react';
 import type { Distrito, TipoInmueble } from '@/lib/tipos';
 
 export interface Filtros {
@@ -60,14 +48,6 @@ const TIPOS_INMUEBLE: { valor: TipoInmueble; etiqueta: string }[] = [
   { valor: 'LOCAL_COMERCIAL', etiqueta: 'Locales' },
 ];
 
-/**
- * Cómo se nombra cada tipo en la frase del contador.
- *
- * No se reutiliza `TIPOS_INMUEBLE` porque sus etiquetas están en plural
- * ("Departamentos") y el contador tiene que decir "1 departamento". Con
- * un `if` por tipo, "Local comercial" se pluraliza como "locales
- * comerciales"; añadir una "s" al final daría "local comercials".
- */
 const NOMBRES_INMUEBLE: Record<TipoInmueble, { singular: string; plural: string }> = {
   DEPARTAMENTO: { singular: 'departamento', plural: 'departamentos' },
   CASA: { singular: 'casa', plural: 'casas' },
@@ -78,37 +58,50 @@ const NOMBRES_INMUEBLE: Record<TipoInmueble, { singular: string; plural: string 
 };
 
 export function BarraFiltros({ filtros, alCambiar, distritos }: Props) {
+  const [panelFiltrosAbierto, setPanelFiltrosAbierto] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+
   const cambiar = <K extends keyof Filtros>(campo: K, valor: Filtros[K]) => {
     alCambiar({ ...filtros, [campo]: valor });
   };
 
+  // Cantidad de filtros secundarios aplicados dentro del panel
+  const secundariosActivos =
+    (filtros.habitaciones ? 1 : 0) +
+    (filtros.precioMax ? 1 : 0) +
+    (filtros.orden !== 'recientes' ? 1 : 0);
+
+  // Cerrar panel al hacer clic afuera
+  useEffect(() => {
+    function clickAfuera(e: MouseEvent) {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        setPanelFiltrosAbierto(false);
+      }
+    }
+    if (panelFiltrosAbierto) {
+      document.addEventListener('mousedown', clickAfuera);
+    }
+    return () => {
+      document.removeEventListener('mousedown', clickAfuera);
+    };
+  }, [panelFiltrosAbierto]);
+
   return (
     <div className="border-b border-linea bg-papel-alto">
       <div className="mx-auto flex max-w-[1600px] items-center gap-2 px-4 py-2.5 sm:px-6">
-        {/*
-          Los filtros se desplazan dentro de su propio carril y el CTA se
-          queda fuera. Antes el CTA viajaba dentro del scroll: a 1024 la
-          fila ya no cabía y «Publicar propiedad» se iba fuera de la
-          pantalla justo cuando el usuario no encuentra lo que busca, que
-          es cuando más lo necesita. Así los filtros pueden seguir
-          desplazándose sin esconder la acción.
-        */}
-        <div className="sin-barra touch-pan-x flex min-w-0 flex-1 items-center gap-2 overflow-x-auto py-0.5">
-          {/* --- Buscador ---
-              La lupa va dentro del campo y no al lado: es una pista de
-              qué hace el control, no un botón. El `pl-9` le deja sitio
-              al icono sin que el texto empiece debajo de él. */}
-          <div className="relative min-w-[180px] flex-1 sm:max-w-[240px]">
+        <div className="sin-barra touch-pan-x flex min-w-0 flex-1 items-center gap-2.5 overflow-x-auto py-0.5">
+          {/* --- Buscador con mayor amplitud y placeholder conciso --- */}
+          <div className="relative min-w-[200px] flex-1 sm:max-w-[280px]">
             <label htmlFor="busqueda" className="solo-lector">
-              Buscar por nombre del distrito o tipo de inmueble
+              Buscar por distrito o tipo
             </label>
             <svg
               viewBox="0 0 20 20"
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-tinta-50"
+              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-tinta-50"
               aria-hidden="true"
               fill="none"
               stroke="currentColor"
-              strokeWidth="1.5"
+              strokeWidth="1.8"
             >
               <circle cx="8.5" cy="8.5" r="5.5" />
               <path d="m13 13 4 4" strokeLinecap="round" />
@@ -118,35 +111,35 @@ export function BarraFiltros({ filtros, alCambiar, distritos }: Props) {
               type="search"
               value={filtros.busqueda}
               onChange={(e) => cambiar('busqueda', e.target.value)}
-              placeholder="Buscar por distrito o tipo…"
+              placeholder="Buscar distrito o tipo…"
               className="campo rounded-full py-2 pl-9 pr-3 text-menor transition-colors focus:border-senal"
             />
           </div>
 
-          {/* --- Venta / Alquiler ---
-              Segmentado, no un <select>. Son dos opciones y se eligen
-              seguido; un desplegable para eso es un clic de más.
-              El activo usa `senal-hondo`, el mismo teal de la barra. */}
+          {/* --- Segmentado Venta / Alquiler --- */}
           <div
-            className="flex shrink-0 rounded-full border border-linea-fuerte bg-papel-alto p-0.5"
+            className="flex shrink-0 rounded-full border border-linea-fuerte bg-papel p-0.5 shadow-2xs"
             role="group"
             aria-label="Tipo de operación"
           >
-            {(['VENTA', 'ALQUILER'] as const).map((valor) => (
-              <button
-                key={valor}
-                type="button"
-                onClick={() => cambiar('tipo', filtros.tipo === valor ? '' : valor)}
-                aria-pressed={filtros.tipo === valor}
-                className={`rounded-full px-3 py-1.5 text-menor font-medium transition-colors ${
-                  filtros.tipo === valor
-                    ? 'bg-senal-hondo text-sobre-marino'
-                    : 'text-tinta-70 hover:text-tinta'
-                }`}
-              >
-                {valor === 'VENTA' ? 'Venta' : 'Alquiler'}
-              </button>
-            ))}
+            {(['VENTA', 'ALQUILER'] as const).map((valor) => {
+              const activo = filtros.tipo === valor;
+              return (
+                <button
+                  key={valor}
+                  type="button"
+                  onClick={() => cambiar('tipo', activo ? '' : valor)}
+                  aria-pressed={activo}
+                  className={`rounded-full px-3.5 py-1.5 text-menor font-semibold transition-all ${
+                    activo
+                      ? 'bg-senal text-sobre-marino shadow-xs'
+                      : 'text-tinta-70 hover:text-tinta'
+                  }`}
+                >
+                  {valor === 'VENTA' ? 'Venta' : 'Alquiler'}
+                </button>
+              );
+            })}
           </div>
 
           {/* --- Tipo de inmueble --- */}
@@ -167,95 +160,158 @@ export function BarraFiltros({ filtros, alCambiar, distritos }: Props) {
             todosLabel="Todos los distritos"
           />
 
-          {/* --- Habitaciones --- */}
-          <Selector
-            etiqueta="Hab."
-            valor={filtros.habitaciones ?? ''}
-            onChange={(v) => cambiar('habitaciones', v ? Number(v) : null)}
-            opciones={[1, 2, 3, 4, 5].map((n) => ({
-              valor: n,
-              etiqueta: n === 5 ? '5+' : String(n),
-            }))}
-            todosLabel="Cualquiera"
-          />
-
-          {/* --- Precio máximo ---
-              Solo el máximo, no el rango completo. El usuario que busca
-              "hasta 300 mil" es el caso común; el que busca "entre 200 y
-              300" puede ajustar el slider después. Un rango doble aquí
-              ocuparía media pantalla. */}
-          <Selector
-            etiqueta="Precio"
-            valor={filtros.precioMax ?? ''}
-            onChange={(v) => cambiar('precioMax', v ? Number(v) : null)}
-            opciones={[
-              { valor: 50000, etiqueta: 'Hasta S/ 50 mil' },
-              { valor: 150000, etiqueta: 'Hasta S/ 150 mil' },
-              { valor: 300000, etiqueta: 'Hasta S/ 300 mil' },
-              { valor: 1000000, etiqueta: 'Hasta S/ 1 millón' },
-            ]}
-            todosLabel="Sin tope"
-          />
-
-          {/* --- Orden --- */}
-          <div className="relative shrink-0">
-            <label className="solo-lector" htmlFor="orden">
-              Ordenar resultados
-            </label>
-            <select
-              id="orden"
-              value={filtros.orden}
-              onChange={(e) => cambiar('orden', e.target.value as Filtros['orden'])}
-              className="campo w-auto appearance-none rounded-full py-2 pl-3 pr-8 text-menor text-tinta-70 transition-colors hover:border-linea-fuerte"
+          {/* --- Botón agrupador "Filtros" con popover --- */}
+          <div className="relative shrink-0" ref={panelRef}>
+            <button
+              type="button"
+              onClick={() => setPanelFiltrosAbierto((prev) => !prev)}
+              aria-expanded={panelFiltrosAbierto}
+              aria-haspopup="dialog"
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-menor font-medium transition-all ${
+                secundariosActivos > 0 || panelFiltrosAbierto
+                  ? 'border-senal bg-teal-50 text-senal-hondo font-semibold'
+                  : 'border-linea bg-papel-alto text-tinta-70 hover:border-linea-fuerte hover:text-tinta'
+              }`}
             >
-              <option value="recientes">Más recientes</option>
-              <option value="precio_asc">Menor precio</option>
-              <option value="precio_desc">Mayor precio</option>
-              <option value="populares">Más vistas</option>
-            </select>
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 12 12"
-              className="pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-tinta-50"
-            >
-              <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
-            </svg>
+              <svg
+                viewBox="0 0 16 16"
+                className="h-3.5 w-3.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                aria-hidden="true"
+              >
+                <path d="M2 4h12M4 8h8M6 12h4" strokeLinecap="round" />
+              </svg>
+              <span>Filtros</span>
+              {secundariosActivos > 0 && (
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-senal px-1 text-micro font-bold text-white">
+                  {secundariosActivos}
+                </span>
+              )}
+              <svg
+                viewBox="0 0 12 12"
+                className={`h-2.5 w-2.5 transition-transform duration-150 ${
+                  panelFiltrosAbierto ? 'rotate-180' : ''
+                }`}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                aria-hidden="true"
+              >
+                <path d="M2.5 4.5L6 8l3.5-3.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            {/* Panel flotante de filtros */}
+            {panelFiltrosAbierto && (
+              <div className="absolute right-0 top-full z-40 mt-2 w-80 rounded-2xl border border-linea bg-papel-alto p-4 shadow-xl">
+                <div className="mb-3 flex items-center justify-between border-b border-linea pb-2.5">
+                  <span className="text-menor font-semibold text-tinta">Filtros adicionales</span>
+                  {secundariosActivos > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        alCambiar({
+                          ...filtros,
+                          habitaciones: null,
+                          precioMax: null,
+                          orden: 'recientes',
+                        });
+                      }}
+                      className="text-micro font-medium text-alerta hover:underline"
+                    >
+                      Restablecer
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-3.5">
+                  {/* Habitaciones */}
+                  <div>
+                    <label className="mb-1 block text-micro font-medium text-tinta-70">
+                      Habitaciones
+                    </label>
+                    <div className="flex gap-1.5">
+                      {[null, 1, 2, 3, 4, 5].map((n) => {
+                        const activo = filtros.habitaciones === n;
+                        return (
+                          <button
+                            key={n ?? 'todos'}
+                            type="button"
+                            onClick={() => cambiar('habitaciones', n)}
+                            className={`flex-1 rounded-lg border py-1.5 text-micro font-medium transition-colors ${
+                              activo
+                                ? 'border-senal bg-teal-50 text-senal font-semibold'
+                                : 'border-linea bg-papel hover:border-linea-fuerte text-tinta-70'
+                            }`}
+                          >
+                            {n === null ? 'Todas' : n === 5 ? '5+' : n}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Precio máximo */}
+                  <div>
+                    <label htmlFor="precio-panel" className="mb-1 block text-micro font-medium text-tinta-70">
+                      Precio máximo
+                    </label>
+                    <select
+                      id="precio-panel"
+                      value={filtros.precioMax ?? ''}
+                      onChange={(e) => cambiar('precioMax', e.target.value ? Number(e.target.value) : null)}
+                      className="campo w-full rounded-xl py-1.5 text-menor"
+                    >
+                      <option value="">Sin límite de precio</option>
+                      <option value="50000">Hasta S/ 50,000</option>
+                      <option value="150000">Hasta S/ 150,000</option>
+                      <option value="300000">Hasta S/ 300,000</option>
+                      <option value="500000">Hasta S/ 500,000</option>
+                      <option value="1000000">Hasta S/ 1,000,000</option>
+                    </select>
+                  </div>
+
+                  {/* Orden */}
+                  <div>
+                    <label htmlFor="orden-panel" className="mb-1 block text-micro font-medium text-tinta-70">
+                      Ordenar publicaciones
+                    </label>
+                    <select
+                      id="orden-panel"
+                      value={filtros.orden}
+                      onChange={(e) => cambiar('orden', e.target.value as Filtros['orden'])}
+                      className="campo w-full rounded-xl py-1.5 text-menor"
+                    >
+                      <option value="recientes">Más recientes</option>
+                      <option value="precio_asc">Menor precio</option>
+                      <option value="precio_desc">Mayor precio</option>
+                      <option value="populares">Más vistas</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-linea flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setPanelFiltrosAbierto(false)}
+                    className="btn btn-principal w-full py-1.5 text-menor font-semibold"
+                  >
+                    Ver resultados
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-
-        {/* --- Publicar ---
-            El CTA vive aquí, junto a los filtros, porque es la acción
-            que completa la pantalla: si no encuentras lo que buscas,
-            publica lo tuyo. Va FUERA del carril que se desplaza: así
-            sigue visible a 1024, donde los filtros ya no caben. En móvil
-            se oculta porque la navegación ya tiene el enlace. */}
-        <Link
-          href="/publicar"
-          className="btn btn-principal hidden shrink-0 px-3 text-menor sm:inline-flex"
-        >
-          <svg
-            viewBox="0 0 16 16"
-            className="h-3.5 w-3.5"
-            aria-hidden="true"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-          >
-            <path d="M8 3.5v9M3.5 8h9" strokeLinecap="round" />
-          </svg>
-          Publicar propiedad
-        </Link>
       </div>
     </div>
   );
 }
 
 /**
- * Menú desplegable con etiqueta.
- *
- * La etiqueta ("Tipo", "Distrito") va DENTRO del control, a la izquierda
- * y en gris. Es el patrón de los instrumentos: el nombre del ajuste y su
- * valor conviven, así no hay que recordar qué columna era cada uno.
+ * Menú desplegable con etiqueta integrada.
  */
 function Selector({
   etiqueta,
@@ -283,7 +339,7 @@ function Selector({
         onChange={(e) => onChange(e.target.value)}
         className={`campo w-auto appearance-none rounded-full py-2 pl-3 pr-8 text-menor transition-colors ${
           hayValor
-            ? 'border-senal bg-senal-suave font-medium text-senal-hondo'
+            ? 'border-senal bg-teal-50 font-semibold text-senal-hondo'
             : 'text-tinta-70 hover:border-linea-fuerte'
         }`}
       >
@@ -295,8 +351,6 @@ function Selector({
         ))}
       </select>
 
-      {/* La flecha dibujada a mano en vez de usar un icono de librerías
-          o el del sistema, que cambia entre navegadores. */}
       <svg
         aria-hidden="true"
         viewBox="0 0 12 12"
@@ -323,15 +377,7 @@ export function tieneFiltrosActivos(filtros: Filtros): boolean {
 }
 
 /**
- * Describe el resultado en una frase.
- *
- * "9 propiedades encontradas en Huánuco" comunica mucho más que
- * "Resultados: 9". Es la diferencia entre un rótulo y una respuesta.
- *
- * ⚠️ EL ORDEN DE LAS PALABRAS NO ES LIBRE. La versión anterior metía el
- * tipo después de la operación y producía "9 propiedades en venta
- * departamentos en Amarilis": el sustantivo tiene que ir primero, y si
- * hay tipo, él ES el sustantivo. "8 departamentos en venta en Amarilis".
+ * Describe el resultado en una frase informativa.
  */
 export function construirDescripcion(
   filtros: Filtros,
@@ -339,10 +385,6 @@ export function construirDescripcion(
   total: number
 ): string {
   if (total === 0) {
-    // Sin filtros, "no encontramos propiedades con esos filtros" se
-    // contradice con el estado vacío, que dice que todavía no hay ninguna
-    // publicada. El contador tiene que contar la misma historia que la
-    // lista que tiene debajo.
     return tieneFiltrosActivos(filtros)
       ? 'No encontramos propiedades con esos filtros.'
       : 'Aún no hay propiedades publicadas.';
@@ -363,8 +405,6 @@ export function construirDescripcion(
     partes.push(filtros.tipo === 'VENTA' ? 'en venta' : 'en alquiler');
   }
 
-  // "encontradas" solo cuando el sustantivo es "propiedades": con un tipo
-  // ("8 departamentos encontrados") la frase se alarga sin aportar nada.
   if (!tipo) {
     partes.push(total === 1 ? 'encontrada' : 'encontradas');
   }
@@ -373,8 +413,6 @@ export function construirDescripcion(
     ? distritos.find((d) => d.id === filtros.distrito_id)
     : null;
 
-  // Sin distrito se dice la región, no un "en todas partes" que no
-  // informa de nada: Innover opera en Huánuco.
   partes.push(`en ${distrito?.nombre ?? 'Huánuco'}`);
 
   if (filtros.habitaciones) {

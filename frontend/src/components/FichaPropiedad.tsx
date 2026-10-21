@@ -5,33 +5,13 @@
 // ========================================
 // 📋 FICHA DE PROPIEDAD
 // ========================================
-// La tarjeta de una propiedad.
+// La tarjeta de una propiedad en la lista de búsqueda.
 //
-// 📌 AHORA ES HORIZONTAL, COMO UN ANUNCIO, NO COMO UNA FICHA TÉCNICA
-//
-// La versión anterior ponía la foto de 64 px a la izquierda y el resto en
-// filas con divisores. Se leía como una tabla: correcta para comparar, pero
-// no se parecía a la cosa que se está comprando. La tarjeta nueva da a la
-// foto el 44 % del ancho (con tope de 260 px en pantallas anchas), pone el
-// precio en tinta y deja los datos en chips. La foto deja de ser un icono y
-// pasa a ser la razón por la que alguien abre la ficha.
-//
-// 📌 DOS ENLACES, NO UN `role="button"` EN TODA LA TARJETA
-//
-// Antes la tarjeta entera era un botón (`role="button"`) que seleccionaba en
-// el mapa. Eso hacía que el título no fuera un enlace: no se podía abrir la
-// propiedad con el teclado, ni copiar su dirección, ni abrirla en otra
-// pestaña. Ahora el título y la foto llevan a `/propiedad/[slug]`, y el clic
-// en la superficie (precio, chips, meta) sigue seleccionando en el mapa.
-// Los enlaces y los controles del carrusel hacen `stopPropagation` para no
-// hacer las dos cosas a la vez.
-//
-// 📌 EL CORAZÓN NO ESTÁ AQUÍ TODAVÍA
-//
-// `es_favorito` solo viaja en la ficha, no en los listados, así que desde la
-// tarjeta no se puede saber si el anuncio está guardado sin una petición por
-// tarjeta. Se resolverá cuando ese campo viaje en la lista; poner un corazón
-// que devuelve 401 al primer clic sería peor que no ponerlo.
+// 📌 MEJORAS UX
+// - Título en 2 líneas completas para lectura fluida
+// - Sincronización bidireccional de hover con el marcador en el mapa
+// - Chips de datos simplificados con diseño limpio y ligero
+// - Precios y distintivos con alta legibilidad y jerarquía
 
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
@@ -47,28 +27,44 @@ import type { Propiedad } from '@/lib/tipos';
 interface Props {
   propiedad: Propiedad;
   seleccionada?: boolean;
+  resaltada?: boolean;
   alSeleccionar?: (id: number) => void;
+  alResaltar?: (id: number | null) => void;
 }
 
-export function FichaPropiedad({ propiedad, seleccionada, alSeleccionar }: Props) {
+export function FichaPropiedad({
+  propiedad,
+  seleccionada,
+  resaltada,
+  alSeleccionar,
+  alResaltar,
+}: Props) {
   const porM2 = precioPorM2(propiedad.precio, propiedad.area_m2, propiedad.moneda);
   const verificado = propiedad.propietario?.identidad_verificada === true;
   const operacion = propiedad.tipo === 'VENTA' ? 'Venta' : 'Alquiler';
 
   return (
     <article
-      className={`ficha grid grid-cols-[130px_1fr] sm:grid-cols-[160px_1fr] overflow-hidden rounded-grande shadow-xs transition-all duration-200 hover:shadow-md ${
+      className={`ficha grid grid-cols-[135px_1fr] sm:grid-cols-[165px_1fr] overflow-hidden rounded-2xl bg-white border border-linea shadow-2xs transition-all duration-200 hover:shadow-md ${
         alSeleccionar ? 'cursor-pointer' : 'cursor-default'
-      } ${seleccionada ? 'border-senal ring-2 ring-senal/20' : ''}`}
+      } ${
+        seleccionada
+          ? 'border-senal ring-2 ring-teal-500/30 shadow-md'
+          : resaltada
+            ? 'border-senal/80 ring-2 ring-teal-500/20 shadow-sm'
+            : 'hover:border-linea-fuerte'
+      }`}
       onClick={() => alSeleccionar?.(propiedad.id)}
+      onMouseEnter={() => alResaltar?.(propiedad.id)}
+      onMouseLeave={() => alResaltar?.(null)}
     >
-      {/* --- Foto --- */}
+      {/* --- Foto con carrusel --- */}
       <FotoCarrusel propiedad={propiedad} />
 
-      <div className="flex min-w-0 flex-col justify-between p-2.5 sm:p-3">
+      <div className="flex min-w-0 flex-col justify-between p-3 sm:p-3.5">
         {/* Encabezado: Precio + Distintivos */}
         <div>
-          <div className="flex flex-wrap items-center justify-between gap-1">
+          <div className="flex flex-wrap items-center justify-between gap-1.5">
             <p className="cifra whitespace-nowrap text-normal sm:text-grande font-bold text-tinta">
               {formatearPrecio(propiedad.precio, propiedad.moneda)}
             </p>
@@ -86,55 +82,51 @@ export function FichaPropiedad({ propiedad, seleccionada, alSeleccionar }: Props
             </div>
           </div>
 
-          {/* Título compacto */}
-          <h3 className="mt-1 text-menor font-semibold leading-tight text-tinta">
+          {/* Título en 2 líneas para evitar recortes bruscos */}
+          <h3 className="mt-1.5 text-menor font-semibold leading-snug text-tinta">
             <Link
               href={`/propiedad/${propiedad.slug}`}
               prefetch={false}
               onClick={(evento) => evento.stopPropagation()}
               title={propiedad.titulo}
-              className="line-clamp-1 transition-colors hover:text-senal"
+              className="line-clamp-2 transition-colors hover:text-senal"
             >
               {propiedad.titulo}
             </Link>
           </h3>
 
-          {/* Metadatos */}
-          <p className="mt-0.5 truncate text-micro leading-snug text-tinta-50">
+          {/* Metadatos secundarios */}
+          <p className="mt-1 truncate text-micro leading-snug text-tinta-50">
             {etiquetaTipo(propiedad.tipo_inmueble)}
             {propiedad.distrito && ` · ${propiedad.distrito.nombre}`}
             {porM2 && ` · ${porM2}`}
           </p>
         </div>
 
-        {/* Chips en micro-formato */}
-        <div className="my-2 flex flex-wrap items-center gap-1">
+        {/* Chips de características simplificados */}
+        <div className="my-2.5 flex flex-wrap items-center gap-1.5">
           <Dato
             icono={<IconoArea />}
             texto={propiedad.area_m2 ? `${propiedad.area_m2} m²` : '—'}
-            variante="senal"
           />
           <Dato
             icono={<IconoHabitacion />}
-            texto={propiedad.habitaciones ? `${propiedad.habitaciones} Hab.` : '—'}
-            variante="neutro"
+            texto={propiedad.habitaciones ? `${propiedad.habitaciones} hab.` : '—'}
           />
           <Dato
             icono={<IconoBano />}
-            texto={propiedad.banos ? `${propiedad.banos} Baños` : '—'}
-            variante="neutro"
+            texto={propiedad.banos ? `${propiedad.banos} baños` : '—'}
           />
           {Boolean(propiedad.parkederos) && (
             <Dato
               icono={<IconoAuto />}
-              texto={`${propiedad.parkederos} Auto`}
-              variante="neutro"
+              texto={`${propiedad.parkederos} auto`}
             />
           )}
         </div>
 
-        {/* Pie compacto */}
-        <footer className="flex items-center justify-between gap-1 border-t border-linea/60 pt-1.5 text-micro text-tinta-50">
+        {/* Pie de tarjeta */}
+        <footer className="flex items-center justify-between gap-1 border-t border-linea/60 pt-2 text-micro text-tinta-50">
           <span className="truncate">{tiempoRelativo(propiedad.fecha_creacion)}</span>
 
           {verificado && (
@@ -151,106 +143,83 @@ export function FichaPropiedad({ propiedad, seleccionada, alSeleccionar }: Props
 
 /**
  * La foto con carrusel, o su hueco.
- *
- * 📌 EL CARRUSEL SOLO APARECE CON DOS O MÁS FOTOS. Con una, unas flechas
- * que no llevan a ninguna parte son una promesa falsa. Los controles son
- * botones de verdad —se pueden tocar con el teclado— y las bolitas
- * también: una bolita que no cambia la foto es un adorno que engaña.
- *
- * El enlace de la foto y el del título son dos entradas al mismo sitio, y
- * eso se acepta a propósito: en un listado la foto es el blanco natural
- * del clic y el título es el que entiende un lector de pantalla.
  */
 function FotoCarrusel({ propiedad }: { propiedad: Propiedad }) {
-  const imagenes = propiedad.imagenes ?? [];
   const [indice, setIndice] = useState(0);
+  const fotos = propiedad.imagenes ?? [];
+  const total = fotos.length;
+  const tieneFotos = total > 0;
+  const tieneVarias = total > 1;
 
-  if (imagenes.length === 0) {
-    return (
-      <div
-        aria-hidden="true"
-        className="flex h-full min-h-[130px] items-center justify-center bg-papel-hundido"
-      >
-        <IconoFoto />
-      </div>
-    );
-  }
+  const anterior = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIndice((actual) => (actual === 0 ? total - 1 : actual - 1));
+  };
 
-  const actual = imagenes[indice] ?? imagenes[0];
-
-  const irA = (destino: number) => {
-    setIndice((destino + imagenes.length) % imagenes.length);
+  const siguiente = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIndice((actual) => (actual === total - 1 ? 0 : actual + 1));
   };
 
   return (
-    <div className="relative h-full min-h-[130px] overflow-hidden bg-papel-hundido">
+    <div className="group/foto relative h-full min-h-[140px] bg-papel-hundido">
       <Link
         href={`/propiedad/${propiedad.slug}`}
         prefetch={false}
         onClick={(evento) => evento.stopPropagation()}
-        aria-label={`Ver ${propiedad.titulo}`}
+        tabIndex={-1}
+        aria-hidden="true"
         className="block h-full w-full"
       >
-        <img
-          src={actual}
-          alt=""
-          width={520}
-          height={400}
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.02]"
-        />
+        {tieneFotos ? (
+          <img
+            src={fotos[indice]}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover/foto:scale-[1.02]"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-tinta-30">
+            <IconoFoto />
+          </div>
+        )}
       </Link>
 
-      {imagenes.length > 1 && (
+      {/* Flechas de cambio de foto */}
+      {tieneVarias && (
         <>
-          <span className="pointer-events-none absolute left-2 top-2 z-10 rounded-full bg-marino/75 px-2 py-0.5 text-micro font-medium text-sobre-marino backdrop-blur-xs">
-            {indice + 1}/{imagenes.length}
-          </span>
-
           <button
             type="button"
+            onClick={anterior}
             aria-label="Foto anterior"
-            onClick={(evento) => {
-              evento.stopPropagation();
-              irA(indice - 1);
-            }}
-            className="absolute left-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-papel-alto/90 text-tinta shadow-sm transition-colors hover:bg-papel-alto"
+            className="absolute left-1.5 top-1/2 -translate-y-1/2 rounded-full bg-black/55 p-1 text-white opacity-0 backdrop-blur-xs transition hover:bg-black/80 group-hover/foto:opacity-100"
           >
             <IconoFlecha direccion="izquierda" />
           </button>
-
           <button
             type="button"
-            aria-label="Foto siguiente"
-            onClick={(evento) => {
-              evento.stopPropagation();
-              irA(indice + 1);
-            }}
-            className="absolute right-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-papel-alto/90 text-tinta shadow-sm transition-colors hover:bg-papel-alto"
+            onClick={siguiente}
+            aria-label="Siguiente foto"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full bg-black/55 p-1 text-white opacity-0 backdrop-blur-xs transition hover:bg-black/80 group-hover/foto:opacity-100"
           >
             <IconoFlecha direccion="derecha" />
           </button>
 
-          <div className="absolute bottom-1.5 left-1/2 z-10 flex -translate-x-1/2 gap-0.5">
-            {imagenes.map((_, i) => (
+          {/* Indicadores de bolitas */}
+          <div className="pointer-events-none absolute bottom-2 left-0 right-0 flex justify-center gap-1">
+            {fotos.map((_, i) => (
               <button
                 key={i}
                 type="button"
-                aria-label={`Ver foto ${i + 1} de ${imagenes.length}`}
-                aria-current={i === indice ? 'true' : undefined}
-                onClick={(evento) => {
-                  evento.stopPropagation();
-                  irA(i);
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIndice(i);
                 }}
-                className="flex h-4 w-4 items-center justify-center"
-              >
-                <span
-                  aria-hidden="true"
-                  className={`h-1.5 w-1.5 rounded-full ring-1 ring-tinta/20 ${
-                    i === indice ? 'bg-papel-alto' : 'bg-papel-alto/50'
-                  }`}
-                />
-              </button>
+                className={`pointer-events-auto h-1.5 rounded-full transition-all ${
+                  i === indice ? 'w-4 bg-white' : 'w-1.5 bg-white/50'
+                }`}
+                aria-label={`Ver foto ${i + 1}`}
+              />
             ))}
           </div>
         </>
@@ -259,29 +228,20 @@ function FotoCarrusel({ propiedad }: { propiedad: Propiedad }) {
   );
 }
 
-/** Una pastilla de dato con micro-badge de icono. */
+/** Pastilla de dato simplificada y limpia */
 function Dato({
   icono,
   texto,
-  variante = 'neutro',
 }: {
   icono: ReactNode;
   texto: string | number;
-  variante?: 'senal' | 'menta' | 'neutro';
 }) {
-  const fondoIcono =
-    variante === 'senal'
-      ? 'bg-senal-suave text-senal-hondo'
-      : variante === 'menta'
-        ? 'bg-menta-suave text-menta-hondo'
-        : 'bg-papel-hundido text-tinta-70';
-
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-linea bg-papel-alto py-0.5 pl-1 pr-2 text-micro text-tinta-70 shadow-2xs">
-      <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${fondoIcono}`}>
+    <span className="inline-flex items-center gap-1 rounded-md bg-papel-hundido/70 px-2 py-0.5 text-micro text-tinta-70">
+      <span className="h-3.5 w-3.5 shrink-0 opacity-70">
         {icono}
       </span>
-      <span className="cifra font-semibold text-tinta">{texto}</span>
+      <span className="font-medium text-tinta">{texto}</span>
     </span>
   );
 }
@@ -298,7 +258,7 @@ function IconoVerificado() {
       aria-hidden="true"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="2"
     >
       <path d="m3.5 8.5 3 3 6-6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -309,11 +269,11 @@ function IconoFlecha({ direccion }: { direccion: 'izquierda' | 'derecha' }) {
   return (
     <svg
       viewBox="0 0 16 16"
-      className="h-4 w-4"
+      className="h-3.5 w-3.5"
       aria-hidden="true"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="2"
     >
       <path
         d={direccion === 'izquierda' ? 'm10 3-5 5 5 5' : 'm6 3 5 5-5 5'}

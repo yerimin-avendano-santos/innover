@@ -75,6 +75,7 @@ export function Buscador() {
    */
   const [sesionCaducada, setSesionCaducada] = useState(false);
   const [seleccionada, setSeleccionada] = useState<number | null>(null);
+  const [resaltada, setResaltada] = useState<number | null>(null);
   /**
    * Vista activa en móviles (< lg): 'lista' o 'mapa'.
    * En pantallas grandes (lg:) se muestran ambos en paralelo lado a lado.
@@ -296,9 +297,11 @@ export function Buscador() {
                     <FichaPropiedad
                       propiedad={propiedad}
                       seleccionada={seleccionada === propiedad.id}
+                      resaltada={resaltada === propiedad.id}
                       alSeleccionar={(id) =>
                         setSeleccionada((actual) => (actual === id ? null : id))
                       }
+                      alResaltar={(id) => setResaltada(id)}
                     />
                   </li>
                 ))}
@@ -357,7 +360,9 @@ export function Buscador() {
             sinCoordenadas={puntos?.sin_coordenadas ?? 0}
             recortado={puntos?.recortado ?? false}
             seleccionada={seleccionada}
+            resaltada={resaltada}
             alSeleccionar={(id) => setSeleccionada(id)}
+            alResaltar={(id) => setResaltada(id)}
             claveVista={claveVista}
             conUbicacion
             propiedades={propiedades}

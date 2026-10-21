@@ -85,6 +85,10 @@ interface Props {
   seleccionada?: number | null;
   /** Se llama cuando el usuario hace clic en un marcador. */
   alSeleccionar?: (id: number) => void;
+  /** Propiedad resaltada temporalmente por hover en la lista de tarjetas */
+  resaltada?: number | null;
+  /** Se llama cuando el usuario pasa el ratón sobre un marcador */
+  alResaltar?: (id: number | null) => void;
   /**
    * Cambia cuando cambia la BÚSQUEDA, no cuando el usuario mueve el mapa.
    *
@@ -117,6 +121,8 @@ export function Mapa({
   recortado = false,
   seleccionada,
   alSeleccionar,
+  resaltada,
+  alResaltar,
   claveVista = '',
   conUbicacion = false,
   className = '',
@@ -173,6 +179,7 @@ export function Mapa({
    * garantiza que la asignación corresponde a un render confirmado.
    */
   const refSeleccionar = useRef(alSeleccionar);
+  const refResaltar = useRef(alResaltar);
 
   /**
    * La propiedad cuya chincheta tiene que abrir su globo en cuanto exista.
@@ -216,6 +223,20 @@ export function Mapa({
   useEffect(() => {
     refSeleccionar.current = alSeleccionar;
   }, [alSeleccionar]);
+
+  useEffect(() => {
+    refResaltar.current = alResaltar;
+  }, [alResaltar]);
+
+  useEffect(() => {
+    for (const [clave, marcador] of pintados.current) {
+      if (!clave.startsWith('p:')) continue;
+      const id = Number(clave.slice(2));
+      const esRes = id === resaltada;
+      const el = marcador.getElement();
+      el.classList.toggle('marcador-pin-resaltado', esRes);
+    }
+  }, [resaltada]);
 
   useEffect(() => {
     refPuntos.current = puntos;
@@ -318,6 +339,7 @@ export function Mapa({
         clave,
         crearMarcador(instancia, elemento, {
           alSeleccionar: (id) => refSeleccionar.current?.(id),
+          alResaltar: (id) => refResaltar.current?.(id),
           alAbrirGrupo: abrirGrupo,
         }, detalle)
       );
@@ -367,7 +389,7 @@ export function Mapa({
     try {
       instancia = new mapboxgl.Map({
         container: contenedor.current,
-        style: 'mapbox://styles/mapbox/light-v11',
+        style: 'mapbox://styles/mapbox/streets-v12',
         center: CENTRO_POR_DEFECTO,
         // Zoom 14: enseña la conurbación Huánuco–Amarilis–Pillco Marca
         // con las calles y manzanas legibles.
@@ -1004,6 +1026,7 @@ function crearMarcador(
   elemento: ElementoMapa,
   acciones: {
     alSeleccionar: (id: number) => void;
+    alResaltar?: (id: number | null) => void;
     alAbrirGrupo: (grupo: GrupoMapa) => void;
   },
   detalle?: Propiedad
@@ -1050,6 +1073,14 @@ function crearMarcador(
     boton.addEventListener('click', (evento) => {
       evento.stopPropagation();
       acciones.alSeleccionar(punto.id);
+    });
+
+    boton.addEventListener('mouseenter', () => {
+      acciones.alResaltar?.(punto.id);
+    });
+
+    boton.addEventListener('mouseleave', () => {
+      acciones.alResaltar?.(null);
     });
   }
 

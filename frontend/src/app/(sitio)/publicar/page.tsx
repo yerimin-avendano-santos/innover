@@ -3,17 +3,16 @@
 // ========================================
 // 📐 PUBLICAR PROPIEDAD
 // ========================================
-// Formulario de alta y edición.
+// Formulario de alta y edición de inmuebles.
 //
-// 📌 POR QUÉ ES UN FORMULARIO Y NO UN WIZARD DE PASOS
-//
-// Un wizard de 5 pasos esconde el total: el usuario no sabe cuánto
-// falta. Y con la tasa de abandono de los formularios largos, cada
-// paso extra es una fuga. Un formulario largo pero visible retiene más
-// usuarios que uno corto que no se entiende.
-//
-// La sección de ubicación va aparte porque es la única con algo que no
-// es obvio (elegir el punto en el mapa), y ahí conviene dar contexto.
+// 📌 MEJORAS UX
+// - Secciones contenidas en tarjetas blancas con radio de 16px y padding de 24px
+// - Encabezados numerados con jerarquía visual clara
+// - Contadores de caracteres en título y descripción
+// - Placeholders nítidos y focus ring teal (#0F5C63)
+// - Barra sticky inferior de acciones con botón principal en coral (#FF6B4A)
+// - Vista previa lateral reactiva en pantallas grandes (lg:)
+// - Migas de pan y navegación clara ("Volver al mapa")
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -41,9 +40,7 @@ interface Formulario {
   latitud: string;
   longitud: string;
   tour_3d_url: string;
-  /** Solo se manda si el usuario puede usarlo. Ver `puedePlanPro`. */
   destacado: boolean;
-  /** Direcciones de las fotos, en orden. La primera es la portada. */
   imagenes: string[];
 }
 
@@ -78,46 +75,19 @@ export default function PaginaPublicar() {
   const [errorCampo, setErrorCampo] = useState<Record<string, string>>({});
   const [enviando, setEnviando] = useState(false);
   const [cargando, setCargando] = useState(editando);
-  const [mostrarPreview, setMostrarPreview] = useState(false);
 
-  /**
-   * El recorrido 3D que la propiedad YA tenía al abrir el formulario.
-   *
-   * Se guarda aparte del formulario porque sirve para decidir si el campo se
-   * muestra cuando el plan venció, y esa decisión no puede depender de lo que
-   * el usuario esté escribiendo: si dependiera, el campo aparecería al teclear
-   * y desaparecería al borrar.
-   */
   const [tourOriginal, setTourOriginal] = useState<string | null>(null);
 
-  /**
-   * Qué puede usar esta cuenta, según el plan.
-   *
-   * ⛔ SE PREGUNTA POR `plan_pro_activo`, NUNCA POR `plan === 'PRO'`.
-   *
-   * El plan VENCE, y el servidor ya calculó el veredicto mirando la fecha.
-   * Repetir la comparación aquí diría que un PRO vencido sigue vigente: la
-   * interfaz mostraría el formulario del recorrido 3D, el usuario lo
-   * rellenaría, y al guardar recibiría un 403 que no encaja con lo que acaba de
-   * ver en pantalla. Es un fallo que solo aparece al guardar, que es la peor
-   * clase de fallo.
-   *
-   * 📌 El ADMIN entra en la misma condición porque así está en el servidor:
-   * `resolverDestacado` y `resolverTour3D` dejan pasar a un admin sin cobrarle
-   * un plan que administra. Esta condición y aquellas dos tienen que decir lo
-   * mismo: si se separan, la interfaz ofrecerá algo que el servidor rechaza, y
-   * el 403 llegará al guardar, sin relación aparente con lo que se ve.
-   */
   const puedePlanPro = usuario?.rol === 'ADMIN' || usuario?.plan_pro_activo === true;
 
-  // Sin sesión no se publica nada.
+  // Redirigir a login si no hay sesión
   useEffect(() => {
     if (!cargandoAuth && !estaConectado) {
       router.replace(`/login?redirect=/publicar${params.id ? `/${params.id}` : ''}`);
     }
   }, [estaConectado, cargandoAuth, router, params.id]);
 
-  // Cargar la propiedad si estamos editando.
+  // Cargar propiedad en caso de edición
   useEffect(() => {
     if (!editando || !params.id) return;
 
@@ -152,76 +122,35 @@ export default function PaginaPublicar() {
 
   const cambiar = <K extends keyof Formulario>(campo: K, valor: Formulario[K]) => {
     setFormulario((f) => ({ ...f, [campo]: valor }));
+    if (errorCampo[campo]) {
+      setErrorCampo((prev) => {
+        const nuevo = { ...prev };
+        delete nuevo[campo];
+        return nuevo;
+      });
+    }
   };
 
-  /**
-   * Convierte un formulario (todo texto) al objeto que espera la API.
-   *
-   * Los campos numéricos llegan como string desde <input>. Los vacíos se
-   * mandan como `undefined` y no como `""`, porque el backend rechaza
-   * una cadena donde espera un número.
-   */
   const aObjetoApi = () => ({
-    titulo: formulario.titulo,
-    descripcion: formulario.descripcion,
+    titulo: formulario.titulo.trim(),
+    descripcion: formulario.descripcion.trim(),
     precio: Number(formulario.precio),
     moneda: formulario.moneda,
     tipo: formulario.tipo,
     tipo_inmueble: formulario.tipo_inmueble,
     estado: formulario.estado,
     area_m2: formulario.area_m2 ? Number(formulario.area_m2) : undefined,
-    habitaciones: formulario.habitaciones ? Number(formulario.habitaciones) : undefined,
-    banos: formulario.banos ? Number(formulario.banos) : undefined,
-    parkederos: formulario.parkederos ? Number(formulario.parkederos) : undefined,
-    direccion: formulario.direccion || undefined,
+    habitaciones: formulario.habitaciones ? Number(formulario.habitaciones) : 0,
+    banos: formulario.banos ? Number(formulario.banos) : 0,
+    parkederos: formulario.parkederos ? Number(formulario.parkederos) : 0,
+    direccion: formulario.direccion.trim() || undefined,
     latitud: formulario.latitud ? Number(formulario.latitud) : undefined,
     longitud: formulario.longitud ? Number(formulario.longitud) : undefined,
-
-    /*
-     * ⛔ AQUÍ NO VALE `|| undefined`, Y LA DIFERENCIA IMPORTA.
-     *
-     * En los campos numéricos de arriba, `undefined` significa "no lo mandes".
-     * En esta URL significa lo mismo — y eso rompe el borrado:
-     *
-     *   - `JSON.stringify` ELIMINA las claves con valor `undefined`, así que
-     *     `tour_3d_url: undefined` desaparece del cuerpo de la petición.
-     *   - El backend interpreta "la clave no está" como "no toques este
-     *     campo" (que es lo correcto: si no, editar el precio borraría el
-     *     recorrido de paso).
-     *   - Resultado: vaciar el campo en el formulario y guardar no borraba
-     *     nada. El usuario veía su recorrido 3D ahí después de quitarlo, sin
-     *     ningún error que explicara por qué.
-     *
-     * Mandar `''` de forma explícita resuelve la ambigüedad: el schema del
-     * backend lo convierte en `null` y eso SÍ significa "bórralo".
-     *
-     * `trim()` para que un campo con solo espacios cuente como vacío.
-     */
     tour_3d_url: formulario.tour_3d_url.trim(),
-
-    /*
-     * Las filas vacías se descartan AQUÍ. El servidor valida cada elemento con
-     * `z.string().url()`, así que una cadena vacía —una fila que se añadió y no
-     * se llegó a rellenar— devolvería un 400 por un campo que el usuario
-     * probablemente ni miró.
-     */
     imagenes: formulario.imagenes.map((u) => u.trim()).filter(Boolean),
-
-    /*
-     * ⛔ `destacado` SOLO viaja si la cuenta puede usarlo, y no es una
-     * optimización: el servidor rechaza el campo ENTERO —también un `false`—
-     * cuando quien lo manda no tiene plan. Un usuario GRATIS editando el precio
-     * de su casa recibiría un 403 por "el destaque va incluido en PRO" sin
-     * haber tocado el destaque en su vida. Si la clave no aparece en el cuerpo,
-     * el servidor entiende "no toques este campo", que es justo lo que quiere.
-     */
     ...(puedePlanPro ? { destacado: formulario.destacado } : {}),
   });
 
-  /**
-   * @param estadoForzado  "PUBLICADA" | "BORRADOR" para el botón de
-   *                       guardar borrador sin tocar el <select>.
-   */
   const alEnviar = async (
     evento?: React.FormEvent,
     estadoForzado?: 'BORRADOR' | 'PUBLICADA'
@@ -231,8 +160,6 @@ export default function PaginaPublicar() {
     setErrorCampo({});
     setEnviando(true);
 
-    // El borrador es una publicación a medio hacer: se guarda con
-    // estado BORRADOR sin cambiar lo que el usuario eligió en el select.
     const cuerpo = {
       ...aObjetoApi(),
       ...(estadoForzado && { estado: estadoForzado }),
@@ -250,47 +177,27 @@ export default function PaginaPublicar() {
     } catch (e) {
       if (e instanceof ErrorPeticion) {
         setError(e.message);
-        setErrorCampo(Object.fromEntries(
-          e.detalles.map((d) => [
-            /*
-             * Zod identifica el elemento concreto de una lista —`imagenes.0`,
-             * `imagenes.7`—, y el formulario solo tiene un control llamado
-             * `imagenes`. Sin recortar el índice, el error de una foto no se
-             * pegaría a ningún campo: saldría el aviso general y el usuario
-             * tendría que adivinar cuál de las ocho direcciones está mal.
-             */
-            d.campo.split('.')[0],
-            d.mensaje,
-          ])
-        ));
+        setErrorCampo(
+          Object.fromEntries(
+            e.detalles.map((d) => [d.campo.split('.')[0], d.mensaje])
+          )
+        );
       } else {
-        setError('No pudimos guardar la publicación.');
+        setError('No pudimos guardar la publicación. Revisa los datos ingresados.');
       }
     } finally {
       setEnviando(false);
     }
   };
 
-  // Mientras se verifica la sesión o se cargan los datos, no pintamos nada
-  // para evitar un parpadeo con contenido que luego desaparece.
   if (cargandoAuth || cargando || !estaConectado) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-        <div className="h-8 w-1/2 animate-pulse rounded-chico bg-papel-hundido" />
+      <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6">
+        <div className="h-10 w-1/3 animate-pulse rounded-xl bg-papel-hundido" />
       </div>
     );
   }
 
-  /**
-   * El pin de la vista previa: la chincheta con el precio, mientras se escriben
-   * las coordenadas.
-   *
-   * 📌 Antes esto fabricaba una `Propiedad` ENTERA —slug `'preview'`,
-   * descripción vacía, estado `PUBLICADA`, fechas de hoy...— solo para encajar
-   * con las props del mapa. Quince campos inventados para pintar un cuadrado de
-   * 28 px, y con datos que no son verdad. Con el tipo del mapa se escribe lo que
-   * se pinta y nada más: no hay que fingir que existe un anuncio.
-   */
   const pinAproximada: PuntoMapa[] =
     formulario.latitud && formulario.longitud
       ? [
@@ -301,406 +208,568 @@ export default function PaginaPublicar() {
             titulo: formulario.titulo || 'Tu publicación',
             precio: Number(formulario.precio) || 0,
             moneda: formulario.moneda,
-            tipo_inmueble: formulario.tipo_inmueble as TipoInmueble,
-            habitaciones: 0,
+            tipo_inmueble: (formulario.tipo_inmueble || 'DEPARTAMENTO') as TipoInmueble,
+            habitaciones: Number(formulario.habitaciones) || 0,
             area_m2: formulario.area_m2 ? Number(formulario.area_m2) : null,
-            destacado: false,
+            destacado: formulario.destacado,
             distrito: null,
           },
         ]
       : [];
 
+  const faltanObligatorios =
+    !formulario.titulo.trim() ||
+    !formulario.descripcion.trim() ||
+    !formulario.precio.trim();
+
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-      <header className="mb-8">
-        <div className="flex items-center gap-3.5">
-          <Link
-            href="/"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-linea bg-papel-alto text-tinta-70 shadow-2xs transition-colors hover:border-linea-fuerte hover:bg-papel hover:text-tinta"
-            title="Volver al buscador"
-            aria-label="Volver al buscador"
-          >
-            <svg
-              viewBox="0 0 16 16"
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-            >
-              <path d="M10 13l-5-5 5-5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </Link>
-          <div>
-            <h1 className="text-titulo font-bold tracking-tight text-tinta">
+    <div className="min-h-screen bg-papel">
+      {/* Contenedor principal con migas de pan y cabecera */}
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+        {/* Migas de pan / Volver al mapa */}
+        <nav aria-label="Migas de pan" className="mb-4">
+          <ol className="flex items-center gap-2 text-menor text-tinta-50">
+            <li>
+              <Link
+                href="/"
+                className="inline-flex items-center gap-1.5 font-medium text-tinta-70 hover:text-senal transition-colors"
+              >
+                <svg
+                  viewBox="0 0 16 16"
+                  className="h-3.5 w-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                >
+                  <path d="M10 13l-5-5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Volver al mapa
+              </Link>
+            </li>
+            <li>/</li>
+            <li className="font-semibold text-tinta" aria-current="page">
               {editando ? 'Editar publicación' : 'Publicar propiedad'}
-            </h1>
-            <p className="mt-0.5 text-menor text-tinta-50">
-              Los campos marcados con * son obligatorios.
-            </p>
-          </div>
+            </li>
+          </ol>
+        </nav>
+
+        {/* Título de la página */}
+        <div className="mb-8">
+          <h1 className="text-titulo font-bold tracking-tight text-tinta sm:text-3xl">
+            {editando ? 'Editar publicación' : 'Publicar nueva propiedad'}
+          </h1>
+          <p className="mt-1 text-menor text-tinta-70">
+            Completa la información de tu inmueble. Los campos marcados con{' '}
+            <span className="text-alerta font-bold">*</span> son obligatorios.
+          </p>
         </div>
-      </header>
 
-      {error && (
-        <div role="alert" className="mb-6 rounded-medio border border-alerta bg-alerta-suave px-4 py-3 text-cuerpo text-alerta">
-          {error}
-        </div>
-      )}
+        {/* Error global */}
+        {error && (
+          <div
+            role="alert"
+            className="mb-6 rounded-2xl border border-alerta bg-alerta-suave px-4 py-3 text-menor text-alerta shadow-xs"
+          >
+            {error}
+          </div>
+        )}
 
-      <form onSubmit={(e) => alEnviar(e)} noValidate className="space-y-8">
-        {/* ---------- Datos ---------- */}
-        <Seccion titulo="La propiedad">
-          <CampoTexto
-            etiqueta="Título *"
-            value={formulario.titulo}
-            onChange={(v) => cambiar('titulo', v)}
-            placeholder="Departamento a dos cuadras de la Plaza de Armas"
-            error={errorCampo.titulo}
-            minLength={10}
-          />
-
-          <CampoTexto
-            etiqueta="Descripción *"
-            value={formulario.descripcion}
-            onChange={(v) => cambiar('descripcion', v)}
-            placeholder="Describe la propiedad: estado, servicios, qué incluye…"
-            error={errorCampo.descripcion}
-            minLength={30}
-            multiline
-            filas={5}
-          />
-        </Seccion>
-
-        {/* ---------- Fotos ---------- */}
-        <Seccion titulo="Fotos">
-          <CampoImagenes
-            valor={formulario.imagenes}
-            onChange={(urls) => cambiar('imagenes', urls)}
-            error={errorCampo.imagenes}
-          />
-        </Seccion>
-
-        {/* ---------- Condiciones ---------- */}
-        <Seccion titulo="Condiciones">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <CampoTexto
-              etiqueta="Precio *"
-              value={formulario.precio}
-              onChange={(v) => cambiar('precio', v)}
-              placeholder="350000"
-              type="number"
-              error={errorCampo.precio}
-            />
-
-            <div>
-              <label htmlFor="moneda" className="etiqueta">Moneda</label>
-              <select
-                id="moneda"
-                value={formulario.moneda}
-                onChange={(e) => cambiar('moneda', e.target.value as 'PEN' | 'USD')}
-                className="campo"
+        <form onSubmit={(e) => alEnviar(e)} noValidate>
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
+            {/* Columna izquierda: Formulario estructurado en tarjetas blancas */}
+            <div className="space-y-6">
+              {/* 1 · La propiedad */}
+              <TarjetaSeccion
+                numero="1"
+                titulo="La propiedad"
+                descripcion="Información básica y descriptiva del inmueble"
               >
-                <option value="PEN">Soles (S/)</option>
-                <option value="USD">Dólares (US$)</option>
-              </select>
-            </div>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="titulo" className="etiqueta text-menor font-medium text-tinta">
+                      Título <span className="text-alerta font-bold">*</span>
+                    </label>
+                    <span className="text-micro text-tinta-50">
+                      {formulario.titulo.length}/80 caracteres
+                    </span>
+                  </div>
+                  <input
+                    id="titulo"
+                    type="text"
+                    value={formulario.titulo}
+                    maxLength={80}
+                    onChange={(e) => cambiar('titulo', e.target.value)}
+                    placeholder="Ej. Departamento moderno a dos cuadras de la Plaza de Armas"
+                    className={`campo mt-1 text-menor placeholder:text-slate-400 focus:border-senal focus:ring-2 focus:ring-teal-500/20 ${
+                      errorCampo.titulo ? 'border-alerta' : ''
+                    }`}
+                  />
+                  <p className="mt-1 text-micro text-tinta-50">
+                    Incluye el tipo de inmueble, zona y un punto de referencia clave.
+                  </p>
+                  {errorCampo.titulo && (
+                    <p className="mt-1 text-micro text-alerta">{errorCampo.titulo}</p>
+                  )}
+                </div>
 
-            <div>
-              <label htmlFor="tipo" className="etiqueta">¿Venta o alquiler? *</label>
-              <select
-                id="tipo"
-                value={formulario.tipo}
-                onChange={(e) => cambiar('tipo', e.target.value as 'VENTA' | 'ALQUILER')}
-                className="campo"
+                <div>
+                  <div className="flex items-center justify-between">
+                    <label
+                      htmlFor="descripcion"
+                      className="etiqueta text-menor font-medium text-tinta"
+                    >
+                      Descripción detallada <span className="text-alerta font-bold">*</span>
+                    </label>
+                    <span className="text-micro text-tinta-50">
+                      {formulario.descripcion.length}/1000 caracteres
+                    </span>
+                  </div>
+                  <textarea
+                    id="descripcion"
+                    rows={4}
+                    maxLength={1000}
+                    value={formulario.descripcion}
+                    onChange={(e) => cambiar('descripcion', e.target.value)}
+                    placeholder="Describe los ambientes, acabados, servicios disponibles y facilidades de acceso…"
+                    className={`campo mt-1 resize-y text-menor placeholder:text-slate-400 focus:border-senal focus:ring-2 focus:ring-teal-500/20 ${
+                      errorCampo.descripcion ? 'border-alerta' : ''
+                    }`}
+                  />
+                  {errorCampo.descripcion && (
+                    <p className="mt-1 text-micro text-alerta">{errorCampo.descripcion}</p>
+                  )}
+                </div>
+              </TarjetaSeccion>
+
+              {/* 2 · Fotos */}
+              <TarjetaSeccion
+                numero="2"
+                titulo="Fotos del inmueble"
+                descripcion="Sube fotografías atractivas con buena iluminación"
               >
-                <option value="VENTA">Venta</option>
-                <option value="ALQUILER">Alquiler</option>
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="tipo_inmueble" className="etiqueta">Tipo de inmueble</label>
-              <select
-                id="tipo_inmueble"
-                value={formulario.tipo_inmueble}
-                onChange={(e) => cambiar('tipo_inmueble', e.target.value)}
-                className="campo"
-              >
-                <option value="DEPARTAMENTO">Departamento</option>
-                <option value="CASA">Casa</option>
-                <option value="TERRENO">Terreno</option>
-                <option value="OFICINA">Oficina</option>
-                <option value="LOCAL_COMERCIAL">Local comercial</option>
-                <option value="OTRO">Otro</option>
-              </select>
-            </div>
-          </div>
-        </Seccion>
-
-        {/* ---------- Características ---------- */}
-        <Seccion titulo="Características">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <CampoTexto etiqueta="Área (m²)" value={formulario.area_m2} onChange={(v) => cambiar('area_m2', v)} type="number" />
-            <CampoTexto etiqueta="Habitaciones" value={formulario.habitaciones} onChange={(v) => cambiar('habitaciones', v)} type="number" />
-            <CampoTexto etiqueta="Baños" value={formulario.banos} onChange={(v) => cambiar('banos', v)} type="number" />
-            <CampoTexto etiqueta="Estacionamientos" value={formulario.parkederos} onChange={(v) => cambiar('parkederos', v)} type="number" />
-          </div>
-        </Seccion>
-
-        {/* ---------- Ubicación ---------- */}
-        <Seccion titulo="Ubicación">
-          <CampoTexto
-            etiqueta="Dirección"
-            value={formulario.direccion}
-            onChange={(v) => cambiar('direccion', v)}
-            placeholder="Calle, número, distrito"
-          />
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <CampoTexto
-              etiqueta="Latitud"
-              value={formulario.latitud}
-              onChange={(v) => cambiar('latitud', v)}
-              placeholder="-9.9293"
-              type="number"
-              hint="Plaza de Armas de Huánuco: -9.9293"
-              error={errorCampo.latitud}
-            />
-            <CampoTexto
-              etiqueta="Longitud"
-              value={formulario.longitud}
-              onChange={(v) => cambiar('longitud', v)}
-              placeholder="-76.2395"
-              type="number"
-              error={errorCampo.longitud}
-            />
-          </div>
-
-          {/* Vista previa mientras se escriben las coordenadas. */}
-          {pinAproximada.length > 0 && (
-            <div className="h-56 overflow-hidden rounded-medio border border-linea">
-              <Mapa puntos={pinAproximada} className="h-full w-full" />
-            </div>
-          )}
-        </Seccion>
-
-        {/* ---------- Lo que va incluido en el plan PRO ---------- */}
-        <Seccion titulo="Plan PRO: recorrido 3D y destaque">
-          {/* El campo del 3D se le muestra también a quien YA tiene un recorrido
-              guardado aunque su plan haya vencido. El servidor le deja
-              conservarlo o quitarlo (reenviar lo que ya estaba no es usar el
-              plan, y borrar lo propio siempre se puede); esconderle el campo lo
-              dejaría sin forma de limpiarlo. */}
-          {puedePlanPro || tourOriginal ? (
-            <CampoTexto
-              etiqueta="Enlace al recorrido virtual"
-              value={formulario.tour_3d_url}
-              onChange={(v) => cambiar('tour_3d_url', v)}
-              placeholder="https://my.matterport.com/show/?m=…"
-              type="url"
-              hint={
-                puedePlanPro
-                  ? 'Matterport, Sketchfab o similar.'
-                  : 'Tu plan PRO venció: puedes conservar este recorrido o quitarlo, pero no cambiarlo por otro.'
-              }
-              error={errorCampo.tour_3d_url}
-            />
-          ) : null}
-
-          {puedePlanPro ? (
-            <label className="flex items-start gap-2">
-              <input
-                type="checkbox"
-                checked={formulario.destacado}
-                onChange={(e) => cambiar('destacado', e.target.checked)}
-                className="mt-0.5 h-4 w-4 accent-senal"
-              />
-              <span className="text-menor text-tinta-70">
-                Destacar esta publicación
-                <span className="block text-micro text-tinta-50">
-                  Se muestra con el sello «Destacado» y por delante de las demás.
-                  El cupo de tu plan se comprueba al guardar.
-                </span>
-              </span>
-            </label>
-          ) : null}
-
-          {/* La invitación, solo para quien no tiene plan ni nada que conservar.
-              Es la alternativa al 403: aquí se explica ANTES de guardar, que es
-              cuando el usuario todavía puede decidir. */}
-          {!puedePlanPro && !tourOriginal && (
-            <div className="rounded-medio border border-linea bg-papel-hundido px-4 py-3">
-              <p className="text-menor text-tinta-70">
-                El recorrido 3D y el destaque van incluidos en el plan{' '}
-                <strong className="font-semibold text-tinta">PRO</strong>. Sin él
-                puedes publicar, editar y recibir contactos con normalidad; esto
-                es lo único que queda fuera.
-              </p>
-            </div>
-          )}
-        </Seccion>
-
-        {/* ---------- Vista Previa en Vivo ---------- */}
-        <section className="rounded-grande border border-linea bg-papel-alto p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <span className="distintivo distintivo-neutro">En tiempo real</span>
-              <h2 className="mt-1 text-grande font-semibold text-tinta">
-                Vista previa de la tarjeta
-              </h2>
-              <p className="text-menor text-tinta-50">
-                Así verán los interesados tu anuncio en los resultados de búsqueda.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setMostrarPreview((prev) => !prev)}
-              className="btn btn-secundario text-menor"
-            >
-              {mostrarPreview ? 'Ocultar tarjeta' : 'Mostrar tarjeta previa'}
-            </button>
-          </div>
-
-          {mostrarPreview && (
-            <div className="mt-4 pt-4 border-t border-linea">
-              <div className="max-w-xl">
-                <FichaPropiedad
-                  propiedad={{
-                    id: 999999,
-                    slug: 'vista-previa',
-                    titulo: formulario.titulo || 'Título de tu publicación',
-                    descripcion: formulario.descripcion || 'Descripción del inmueble...',
-                    precio: Number(formulario.precio) || 0,
-                    moneda: formulario.moneda,
-                    tipo: formulario.tipo,
-                    tipo_inmueble: formulario.tipo_inmueble as TipoInmueble,
-                    estado: formulario.estado,
-                    area_m2: formulario.area_m2 ? Number(formulario.area_m2) : null,
-                    habitaciones: formulario.habitaciones ? Number(formulario.habitaciones) : 0,
-                    banos: formulario.banos ? Number(formulario.banos) : 0,
-                    parkederos: formulario.parkederos ? Number(formulario.parkederos) : 0,
-                    direccion: formulario.direccion || null,
-                    latitud: formulario.latitud ? Number(formulario.latitud) : null,
-                    longitud: formulario.longitud ? Number(formulario.longitud) : null,
-                    destacado: formulario.destacado,
-                    tour_3d_url: formulario.tour_3d_url || null,
-                    imagenes: formulario.imagenes.filter(Boolean),
-                    distrito_id: null,
-                    distrito: null,
-                    propietario: {
-                      id: usuario?.id ?? 0,
-                      nombre: usuario?.nombre ?? 'Tú',
-                      identidad_verificada: usuario?.identidad_verificada ?? false,
-                    },
-                    fecha_creacion: new Date().toISOString(),
-                    fecha_actualizacion: new Date().toISOString(),
-                    vistas: 0,
-                  }}
+                <CampoImagenes
+                  valor={formulario.imagenes}
+                  onChange={(urls) => cambiar('imagenes', urls)}
+                  error={errorCampo.imagenes}
                 />
+              </TarjetaSeccion>
+
+              {/* 3 · Condiciones y precio */}
+              <TarjetaSeccion
+                numero="3"
+                titulo="Condiciones y precio"
+                descripcion="Modalidad de transacción y valor económico"
+              >
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="precio" className="etiqueta text-menor font-medium text-tinta">
+                      Precio <span className="text-alerta font-bold">*</span>
+                    </label>
+                    <input
+                      id="precio"
+                      type="number"
+                      step="any"
+                      value={formulario.precio}
+                      onChange={(e) => cambiar('precio', e.target.value)}
+                      placeholder="Ej. 250000"
+                      className={`campo mt-1 text-menor placeholder:text-slate-400 focus:border-senal focus:ring-2 focus:ring-teal-500/20 ${
+                        errorCampo.precio ? 'border-alerta' : ''
+                      }`}
+                    />
+                    {errorCampo.precio && (
+                      <p className="mt-1 text-micro text-alerta">{errorCampo.precio}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label htmlFor="moneda" className="etiqueta text-menor font-medium text-tinta">
+                      Moneda
+                    </label>
+                    <select
+                      id="moneda"
+                      value={formulario.moneda}
+                      onChange={(e) => cambiar('moneda', e.target.value as 'PEN' | 'USD')}
+                      className="campo mt-1 text-menor"
+                    >
+                      <option value="PEN">Soles (S/)</option>
+                      <option value="USD">Dólares (US$)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="tipo" className="etiqueta text-menor font-medium text-tinta">
+                      Operación <span className="text-alerta font-bold">*</span>
+                    </label>
+                    <select
+                      id="tipo"
+                      value={formulario.tipo}
+                      onChange={(e) => cambiar('tipo', e.target.value as 'VENTA' | 'ALQUILER')}
+                      className="campo mt-1 text-menor"
+                    >
+                      <option value="VENTA">Venta</option>
+                      <option value="ALQUILER">Alquiler</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="tipo_inmueble"
+                      className="etiqueta text-menor font-medium text-tinta"
+                    >
+                      Tipo de inmueble
+                    </label>
+                    <select
+                      id="tipo_inmueble"
+                      value={formulario.tipo_inmueble}
+                      onChange={(e) => cambiar('tipo_inmueble', e.target.value)}
+                      className="campo mt-1 text-menor"
+                    >
+                      <option value="DEPARTAMENTO">Departamento</option>
+                      <option value="CASA">Casa</option>
+                      <option value="TERRENO">Terreno</option>
+                      <option value="OFICINA">Oficina</option>
+                      <option value="LOCAL_COMERCIAL">Local comercial</option>
+                      <option value="OTRO">Otro inmueble</option>
+                    </select>
+                  </div>
+                </div>
+              </TarjetaSeccion>
+
+              {/* 4 · Características */}
+              <TarjetaSeccion
+                numero="4"
+                titulo="Características"
+                descripcion="Dimensiones y distribución de espacios"
+              >
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  <div>
+                    <label htmlFor="area_m2" className="etiqueta text-micro font-medium text-tinta-70">
+                      Área (m²)
+                    </label>
+                    <input
+                      id="area_m2"
+                      type="number"
+                      step="any"
+                      value={formulario.area_m2}
+                      onChange={(e) => cambiar('area_m2', e.target.value)}
+                      placeholder="Ej. 120"
+                      className="campo mt-1 text-menor placeholder:text-slate-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="habitaciones"
+                      className="etiqueta text-micro font-medium text-tinta-70"
+                    >
+                      Habitaciones
+                    </label>
+                    <input
+                      id="habitaciones"
+                      type="number"
+                      value={formulario.habitaciones}
+                      onChange={(e) => cambiar('habitaciones', e.target.value)}
+                      placeholder="Ej. 3"
+                      className="campo mt-1 text-menor placeholder:text-slate-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="banos" className="etiqueta text-micro font-medium text-tinta-70">
+                      Baños
+                    </label>
+                    <input
+                      id="banos"
+                      type="number"
+                      value={formulario.banos}
+                      onChange={(e) => cambiar('banos', e.target.value)}
+                      placeholder="Ej. 2"
+                      className="campo mt-1 text-menor placeholder:text-slate-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="parkederos"
+                      className="etiqueta text-micro font-medium text-tinta-70"
+                    >
+                      Estacionamiento
+                    </label>
+                    <input
+                      id="parkederos"
+                      type="number"
+                      value={formulario.parkederos}
+                      onChange={(e) => cambiar('parkederos', e.target.value)}
+                      placeholder="Ej. 1"
+                      className="campo mt-1 text-menor placeholder:text-slate-400"
+                    />
+                  </div>
+                </div>
+              </TarjetaSeccion>
+
+              {/* 5 · Ubicación */}
+              <TarjetaSeccion
+                numero="5"
+                titulo="Ubicación en el mapa"
+                descripcion="Dirección y coordenadas para geolocalizar la propiedad en Huánuco"
+              >
+                <div>
+                  <label htmlFor="direccion" className="etiqueta text-menor font-medium text-tinta">
+                    Dirección o referencia
+                  </label>
+                  <input
+                    id="direccion"
+                    type="text"
+                    value={formulario.direccion}
+                    onChange={(e) => cambiar('direccion', e.target.value)}
+                    placeholder="Ej. Jr. Dos de Mayo 450, Huánuco"
+                    className="campo mt-1 text-menor placeholder:text-slate-400"
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="latitud" className="etiqueta text-menor font-medium text-tinta">
+                      Latitud
+                    </label>
+                    <input
+                      id="latitud"
+                      type="number"
+                      step="any"
+                      value={formulario.latitud}
+                      onChange={(e) => cambiar('latitud', e.target.value)}
+                      placeholder="-9.9293"
+                      className="campo mt-1 text-menor placeholder:text-slate-400"
+                    />
+                    <p className="mt-1 text-micro text-tinta-50">
+                      Plaza de Armas de Huánuco: -9.9293
+                    </p>
+                  </div>
+
+                  <div>
+                    <label htmlFor="longitud" className="etiqueta text-menor font-medium text-tinta">
+                      Longitud
+                    </label>
+                    <input
+                      id="longitud"
+                      type="number"
+                      step="any"
+                      value={formulario.longitud}
+                      onChange={(e) => cambiar('longitud', e.target.value)}
+                      placeholder="-76.2395"
+                      className="campo mt-1 text-menor placeholder:text-slate-400"
+                    />
+                    <p className="mt-1 text-micro text-tinta-50">
+                      Plaza de Armas de Huánuco: -76.2395
+                    </p>
+                  </div>
+                </div>
+
+                {pinAproximada.length > 0 && (
+                  <div className="h-56 overflow-hidden rounded-xl border border-linea">
+                    <Mapa puntos={pinAproximada} className="h-full w-full" />
+                  </div>
+                )}
+              </TarjetaSeccion>
+
+              {/* 6 · Plan PRO */}
+              <TarjetaSeccion
+                numero="6"
+                titulo="Plan PRO: recorrido 3D y destaque"
+                descripcion="Funcionalidades exclusivas para suscriptores PRO"
+              >
+                {puedePlanPro || tourOriginal ? (
+                  <div>
+                    <label
+                      htmlFor="tour_3d_url"
+                      className="etiqueta text-menor font-medium text-tinta"
+                    >
+                      Enlace al recorrido virtual 3D
+                    </label>
+                    <input
+                      id="tour_3d_url"
+                      type="url"
+                      value={formulario.tour_3d_url}
+                      onChange={(e) => cambiar('tour_3d_url', e.target.value)}
+                      placeholder="https://my.matterport.com/show/?m=…"
+                      className="campo mt-1 text-menor placeholder:text-slate-400"
+                    />
+                    <p className="mt-1 text-micro text-tinta-50">
+                      Compatible con Matterport, Sketchfab o Kuula.
+                    </p>
+                  </div>
+                ) : null}
+
+                {puedePlanPro ? (
+                  <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-linea bg-papel-alto p-3.5 transition hover:bg-papel">
+                    <input
+                      type="checkbox"
+                      checked={formulario.destacado}
+                      onChange={(e) => cambiar('destacado', e.target.checked)}
+                      className="mt-0.5 h-4 w-4 accent-amber-500"
+                    />
+                    <div>
+                      <span className="text-menor font-semibold text-tinta">
+                        Destacar esta publicación
+                      </span>
+                      <p className="text-micro text-tinta-50">
+                        Aparecerá en los primeros resultados de búsqueda con la insignia ámbar de
+                        destacado.
+                      </p>
+                    </div>
+                  </label>
+                ) : null}
+
+                {!puedePlanPro && !tourOriginal && (
+                  <div className="rounded-xl border border-linea bg-papel-hundido/60 p-4">
+                    <p className="text-menor text-tinta-70">
+                      El recorrido 3D y el destaque prioritario van incluidos en el plan{' '}
+                      <strong className="font-semibold text-tinta">PRO</strong>. Puedes publicar y
+                      recibir contactos normalmente con tu cuenta actual.
+                    </p>
+                  </div>
+                )}
+              </TarjetaSeccion>
+            </div>
+
+            {/* Columna derecha: Vista previa en tiempo real pegajosa */}
+            <div className="hidden lg:block">
+              <div className="sticky top-20 space-y-4">
+                <div className="rounded-2xl border border-linea bg-white p-5 shadow-xs">
+                  <div className="mb-3 flex items-center justify-between border-b border-linea pb-2.5">
+                    <span className="text-menor font-semibold text-tinta">
+                      Vista previa del anuncio
+                    </span>
+                    <span className="rounded-md bg-teal-50 px-2 py-0.5 text-micro font-semibold text-senal">
+                      En vivo
+                    </span>
+                  </div>
+                  <p className="mb-4 text-micro text-tinta-50">
+                    Así se presentará tu publicación a las personas que busquen en el mapa y la
+                    lista.
+                  </p>
+
+                  <FichaPropiedad
+                    propiedad={{
+                      id: 0,
+                      slug: 'vista-previa',
+                      titulo: formulario.titulo || 'Título de tu inmueble en Huánuco',
+                      descripcion: formulario.descripcion || 'Descripción del inmueble…',
+                      precio: Number(formulario.precio) || 0,
+                      moneda: formulario.moneda,
+                      tipo: formulario.tipo,
+                      tipo_inmueble: (formulario.tipo_inmueble || 'DEPARTAMENTO') as TipoInmueble,
+                      estado: formulario.estado,
+                      area_m2: formulario.area_m2 ? Number(formulario.area_m2) : null,
+                      habitaciones: Number(formulario.habitaciones) || 0,
+                      banos: Number(formulario.banos) || 0,
+                      parkederos: Number(formulario.parkederos) || 0,
+                      direccion: formulario.direccion || null,
+                      latitud: formulario.latitud ? Number(formulario.latitud) : null,
+                      longitud: formulario.longitud ? Number(formulario.longitud) : null,
+                      destacado: formulario.destacado,
+                      tour_3d_url: formulario.tour_3d_url || null,
+                      imagenes: formulario.imagenes.filter(Boolean),
+                      distrito_id: null,
+                      distrito: null,
+                      propietario: {
+                        id: usuario?.id ?? 0,
+                        nombre: usuario?.nombre ?? 'Tú',
+                        identidad_verificada: usuario?.identidad_verificada ?? false,
+                      },
+                      fecha_creacion: new Date().toISOString(),
+                      fecha_actualizacion: new Date().toISOString(),
+                      vistas: 0,
+                    }}
+                  />
+                </div>
               </div>
             </div>
-          )}
-        </section>
-
-        {/* ---------- Publicar ---------- */}
-        <div className="flex flex-col gap-3 border-t border-linea pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => alEnviar(undefined, 'BORRADOR')}
-              disabled={enviando}
-              className="btn btn-secundario"
-            >
-              Guardar como borrador
-            </button>
           </div>
 
-          <div className="flex gap-2">
-            <Link href="/perfil" className="btn btn-secundario">
-              Cancelar
-            </Link>
-            <button type="submit" disabled={enviando} className="btn btn-principal">
-              {enviando ? 'Guardando…' : editando ? 'Guardar cambios' : 'Publicar'}
-            </button>
+          {/* Barra de acciones inferior fija (Sticky bottom action bar) */}
+          <div className="sticky bottom-0 z-40 mt-12 -mx-4 border-t border-linea bg-white/95 px-4 py-3.5 shadow-lg backdrop-blur-md sm:-mx-6 sm:px-6">
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+              <button
+                type="button"
+                onClick={() => alEnviar(undefined, 'BORRADOR')}
+                disabled={enviando}
+                className="text-menor font-medium text-tinta-70 hover:text-tinta transition-colors"
+              >
+                Guardar borrador
+              </button>
+
+              <div className="flex items-center gap-3">
+                {faltanObligatorios && (
+                  <span className="hidden text-micro text-tinta-50 sm:inline">
+                    Faltan campos obligatorios (*)
+                  </span>
+                )}
+                <Link
+                  href="/perfil"
+                  className="rounded-full border border-linea px-4 py-2 text-menor font-medium text-tinta-70 hover:bg-papel transition-colors"
+                >
+                  Cancelar
+                </Link>
+                <button
+                  type="submit"
+                  disabled={enviando}
+                  className="btn-coral flex items-center gap-2 rounded-full px-6 py-2.5 text-menor font-bold shadow-md transition-all hover:shadow-lg disabled:opacity-50"
+                >
+                  {enviando ? (
+                    'Guardando…'
+                  ) : editando ? (
+                    'Guardar cambios'
+                  ) : (
+                    <>
+                      <svg
+                        viewBox="0 0 16 16"
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        aria-hidden="true"
+                      >
+                        <path d="M8 3.5v9M3.5 8h9" strokeLinecap="round" />
+                      </svg>
+                      Publicar propiedad
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 }
 
-/** Agrupa campos bajo un subtítulo. */
-function Seccion({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+/** Componente de tarjeta de sección blanca con número distintivo */
+function TarjetaSeccion({
+  numero,
+  titulo,
+  descripcion,
+  children,
+}: {
+  numero: string;
+  titulo: string;
+  descripcion?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <section>
-      <h2 className="mb-3 text-grande font-semibold text-tinta">{titulo}</h2>
+    <section className="rounded-2xl border border-linea bg-white p-6 shadow-2xs">
+      <div className="mb-5 flex items-start gap-3 border-b border-linea/60 pb-4">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-50 text-menor font-bold text-senal">
+          {numero}
+        </span>
+        <div>
+          <h2 className="text-lg font-semibold text-tinta leading-tight">{titulo}</h2>
+          {descripcion && <p className="mt-0.5 text-micro text-tinta-50">{descripcion}</p>}
+        </div>
+      </div>
       <div className="space-y-4">{children}</div>
     </section>
-  );
-}
-
-/** Campo de texto, numérico o área de texto. */
-function CampoTexto({
-  etiqueta,
-  value,
-  onChange,
-  placeholder,
-  type = 'text',
-  error,
-  hint,
-  multiline,
-  filas = 3,
-  minLength,
-}: {
-  etiqueta: string;
-  value: string;
-  onChange: (valor: string) => void;
-  placeholder?: string;
-  type?: string;
-  error?: string;
-  hint?: string;
-  multiline?: boolean;
-  filas?: number;
-  minLength?: number;
-}) {
-  const id = etiqueta.toLowerCase().replace(/[^a-z]/g, '-');
-
-  return (
-    <div>
-      <label htmlFor={id} className="etiqueta">
-        {etiqueta}
-      </label>
-      {multiline ? (
-        <textarea
-          id={id}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          rows={filas}
-          minLength={minLength}
-          aria-invalid={error ? 'true' : undefined}
-          className="campo resize-y"
-        />
-      ) : (
-        <input
-          id={id}
-          type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          minLength={minLength}
-          step={type === 'number' ? 'any' : undefined}
-          aria-invalid={error ? 'true' : undefined}
-          className="campo"
-        />
-      )}
-      {error ? (
-        <p className="mt-1 text-micro text-alerta">{error}</p>
-      ) : hint ? (
-        <p className="mt-1 text-micro text-tinta-30">{hint}</p>
-      ) : null}
-    </div>
   );
 }

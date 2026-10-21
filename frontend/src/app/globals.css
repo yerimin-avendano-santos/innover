@@ -53,21 +53,18 @@
    ======================================== */
 @theme {
   /* --- Superficies ---
-     Inspirado en DESIGN2 y DESIGN3:
-     Lienzo limpio y luminoso (#f8fafc) que elimina la sensación opaca
-     y resalta con nitidez las tarjetas blancas (#ffffff). */
-  --color-papel: #f8fafc;         /* Fondo de la página luminoso y limpio. */
+     Propuesta de diseño:
+     Fondo de lista y páginas #f4f7f8 para dar profundidad sobre tarjetas blancas. */
+  --color-papel: #f4f7f8;         /* Fondo de la página y lista con profundidad. */
   --color-papel-alto: #ffffff;    /* Tarjetas que deben levantarse del fondo. */
-  --color-papel-hundido: #f1f5f9; /* Zonas hundidas: campos, deshabilitados. */
+  --color-papel-hundido: #eef2f4; /* Zonas hundidas: campos, deshabilitados. */
 
   /* --- Texto sobre superficies claras ---
-     Derivan del azul marino aclarándose. Nunca un gris arbitrario: si
-     fueran grises puros, el texto se vería sucio al lado del marino. */
-  --color-tinta: #1a3e62;    /* Texto principal. El marino de la guía. */
-  --color-tinta-70: #4a5c70; /* Párrafos y descripciones. */
-  --color-tinta-50: #5b6b7d; /* Texto de apoyo. 4,9:1 — pasa AA. */
-  --color-tinta-30: #7d8b9c; /* Placeholders y pistas. 3,1:1: NO se usa
-                                para texto que haya que leer. */
+     Precios y títulos en #0b3f45 (teal muy oscuro) para armonizar con la marca. */
+  --color-tinta: #0b3f45;    /* Texto principal y precios (teal muy oscuro). */
+  --color-tinta-70: #335258; /* Párrafos y descripciones. */
+  --color-tinta-50: #4f6d72; /* Texto de apoyo. */
+  --color-tinta-30: #769196; /* Placeholders y pistas. */
 
   /* --- Azul marino de marca ---
      La superficie de máximo peso fuera de la barra: cabeceras, marcadores
@@ -83,17 +80,14 @@
   --color-sobre-senal-tenue: #c2d6da; /* 5,25:1 sobre senal-hondo. */
 
   /* --- Líneas ---
-     Finas, limpias y nítidas (hairlines según DESIGN2 y DESIGN3). */
-  --color-linea: #e2e8f0;
-  --color-linea-fuerte: #cbd5e1;
+     Bordes en #e2e8ea según propuesta. */
+  --color-linea: #e2e8ea;
+  --color-linea-fuerte: #c8d0d3;
 
-  /* --- Color de acción ---
-     Un solo color para todo lo que significa "esto es una acción" o
-     "esto está seleccionado". Si hubiera dos, competirían entre sí.
-     Es el turquesa del logo oscurecido hasta pasar AA: 5,8:1 con texto
-     blanco encima y 5,2:1 como texto sobre el fondo. */
-  --color-senal: #00707e;
-  --color-senal-hondo: #005a66;
+  /* --- Color de acción y marca principal ---
+     Header y pines principales en teal #0f5c63. */
+  --color-senal: #0f5c63;
+  --color-senal-hondo: #0f5c63;
   --color-senal-suave: #e2f1f3;
 
   /* --- Turquesa de marca ---
@@ -105,13 +99,10 @@
   --color-turquesa-hondo: #008b9b;
 
   /* --- Verde menta ---
-     El acento de confianza de la guía: "Verificado", "Dueño directo".
-     Es un fondo, no un color de texto: `menta-suave` para la etiqueta y
-     `menta-hondo` para su texto. No hay un `--color-menta` sólido
-     porque no lo usa nadie, y un relleno de menta con texto encima
-     tendría poco contraste sin necesidad. */
-  --color-menta-suave: #e9f6ee;
-  --color-menta-hondo: #1f5c3a;
+     El acento de confianza: "Verificado", "Dueño directo".
+     Verde sobre fondo #e8f7ee según propuesta. */
+  --color-menta-suave: #e8f7ee;
+  --color-menta-hondo: #15803d;
 
   /* --- Destaque pagado ---
      El modelo de negocio cobra por resaltar publicaciones. Ese dinero
@@ -121,7 +112,7 @@
      Por eso es ámbar y no turquesa: dentro de una interfaz azul, un
      matiz cálido es lo único que se distingue de un vistazo. */
   --color-destacado: #9a5a00;
-  --color-destacado-suave: #fdf3e3;
+  --color-destacado-suave: #fef7ec;
 
   /* --- Estado: pendiente ---
      Va SEPARADO de `--color-destacado` aunque los dos sean cálidos, y
@@ -330,6 +321,26 @@
     background-color: var(--color-senal-hondo);
   }
 
+  /* --- Botón de acción destacada (Coral) ---
+     Acción principal para "Publicar propiedad" (#ff6b4a). */
+  .btn-coral {
+    background-color: #ff6b4a;
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(255, 107, 74, 0.28);
+    transition: background-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  }
+
+  .btn-coral:hover:not(:disabled) {
+    background-color: #e85a39;
+    box-shadow: 0 4px 12px rgba(255, 107, 74, 0.38);
+    transform: translateY(-1px);
+  }
+
+  .btn-coral:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
   /* --- Botón de marca ---
      El turquesa del logo con el texto en marino. Es la forma de que el
      botón principal sea del color exacto de la marca sin volverse
@@ -466,20 +477,18 @@
     white-space: nowrap;
   }
 
-  /* Pagado. Ámbar. Una propiedad resaltada porque su dueño paga por
-     ello. */
+  /* Pagado. Ámbar #F5A524 con texto oscuro #3B2A00 según propuesta */
   .distintivo-destacado {
-    background-color: var(--color-destacado-suave);
-    color: var(--color-destacado);
+    background-color: #f5a524;
+    color: #3b2a00;
+    font-weight: 600;
   }
 
-  /* Destaque sólido de la tarjeta del buscador.
-     El boceto lo pinta en ámbar brillante, pero ese ámbar no pasa AA con
-     texto blanco. Se usa el ámbar hondo del sistema: blanco sobre
-     `destacado` da 5,5:1, y el distintivo sigue leyéndose como pagado. */
+  /* Destaque sólido de la tarjeta del buscador */
   .distintivo-destacado-solido {
-    background-color: var(--color-destacado);
-    color: var(--color-sobre-marino);
+    background-color: #f5a524;
+    color: #3b2a00;
+    font-weight: 600;
   }
 
   /* Pendiente. Anaranjado. Un lead sin atender, un documento sin
@@ -491,10 +500,11 @@
     color: var(--color-aviso);
   }
 
-  /* Confianza. Menta. Identidad verificada, dueño directo. */
+  /* Confianza. Menta #E8F7EE con verde #15803d según propuesta */
   .distintivo-menta {
-    background-color: var(--color-menta-suave);
-    color: var(--color-menta-hondo);
+    background-color: #e8f7ee;
+    color: #15803d;
+    font-weight: 600;
   }
 
   /* Función. Turquesa. "Tour 3D disponible" y cosas así. */
@@ -580,7 +590,9 @@
     transform: scale(1.12);
   }
 
-  /* --- Marcador Pin con Logo de Innover --- */
+  /* --- Marcador Pin con Logo de Innover ---
+     Propuesta: Teal #0F5C63 con precio en blanco (12-13px font-semibold),
+     y pin seleccionado en acento coral #FF6B4A. */
   .marcador-pin {
     display: flex;
     flex-direction: column;
@@ -590,12 +602,13 @@
     border: none;
     padding: 0;
     transition: transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
-    filter: drop-shadow(0 4px 10px rgb(15 41 90 / 0.28));
+    filter: drop-shadow(0 4px 8px rgba(11, 63, 69, 0.28));
   }
 
-  .marcador-pin:hover {
-    transform: translateY(-4px) scale(1.12);
-    z-index: 20;
+  .marcador-pin:hover,
+  .marcador-pin-resaltado {
+    transform: translateY(-5px) scale(1.15) !important;
+    z-index: 25 !important;
   }
 
   .marcador-pin-cuerpo {
@@ -605,12 +618,12 @@
     justify-content: center;
     width: 38px;
     height: 38px;
-    background-color: var(--color-papel-alto);
-    border: 2px solid var(--color-linea-fuerte);
+    background-color: #0f5c63; /* Teal primario según propuesta */
+    border: 2.5px solid #ffffff;
     border-radius: 50% 50% 50% 0;
     transform: rotate(-45deg);
-    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.8);
-    transition: border-color 150ms ease, background-color 150ms ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+    transition: border-color 150ms ease, background-color 150ms ease, transform 150ms ease;
   }
 
   .marcador-pin-cuerpo svg {
@@ -620,72 +633,69 @@
   }
 
   .marcador-pin-precio {
-    margin-top: 2px;
-    padding: 2px 6px;
+    margin-top: 3px;
+    padding: 2.5px 8px;
     border-radius: 9999px;
-    background-color: var(--color-papel-alto);
-    border: 1px solid var(--color-linea);
-    color: var(--color-tinta);
-    font-size: 10px;
-    font-weight: 700;
+    background-color: #0f5c63; /* Teal primario */
+    border: 1.5px solid #ffffff;
+    color: #ffffff; /* Precio en blanco */
+    font-size: 12px; /* 12-13px según propuesta */
+    font-weight: 600;
     line-height: 1.2;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
-    box-shadow: 0 2px 6px rgb(15 41 90 / 0.15);
+    box-shadow: 0 2px 6px rgba(15, 92, 99, 0.35);
+    transition: background-color 150ms ease, border-color 150ms ease;
   }
 
   .marcador-pin-destacado .marcador-pin-cuerpo {
-    border-color: var(--color-turquesa);
-    box-shadow: 0 0 0 3px var(--color-turquesa-claro), 0 4px 12px rgb(0 210 184 / 0.35);
+    background-color: #f5a524; /* Ámbar para destacado */
+    border-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(245, 165, 36, 0.35), 0 4px 12px rgba(245, 165, 36, 0.45);
   }
 
   .marcador-pin-destacado .marcador-pin-precio {
-    background-color: var(--color-destacado);
-    color: var(--color-sobre-marino);
-    border-color: var(--color-destacado);
+    background-color: #f5a524;
+    color: #3b2a00;
+    border-color: #ffffff;
   }
 
-  .marcador-pin-seleccionado {
-    transform: translateY(-6px) scale(1.22) !important;
-    z-index: 30;
+  .marcador-pin-seleccionado,
+  .marcador-pin-seleccionado:hover {
+    transform: translateY(-7px) scale(1.22) !important;
+    z-index: 35 !important;
   }
 
   .marcador-pin-seleccionado .marcador-pin-cuerpo {
-    border-color: var(--color-marino);
-    background-color: var(--color-marino);
+    border-color: #ffffff;
+    background-color: #ff6b4a; /* Pin seleccionado en acento coral */
+    box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.35), 0 4px 14px rgba(255, 107, 74, 0.45);
   }
 
   .marcador-pin-seleccionado .marcador-pin-precio {
-    background-color: var(--color-marino);
-    color: var(--color-sobre-marino);
-    border-color: var(--color-marino);
+    background-color: #ff6b4a; /* Coral */
+    color: #ffffff;
+    border-color: #ffffff;
   }
 
-  /* --- Grupo de chinchetas ---
-     Sustituye a las chinchetas sueltas cuando hay muchas juntas: a la
-     distancia a la que dos precios se pisan, un número dice más que veinte
-     cajas amontonadas.
+  .marcador-pin-resaltado .marcador-pin-cuerpo {
+    border-color: #5eead4;
+  }
 
-     Va en azul marino, NO en el turquesa de acción: el turquesa brillante
-     está reservado para la propiedad destacada (ver `.marcador-destacado`), y
-     si el grupo lo usara, un grupo cualquiera se leería como un anuncio
-     pagado. El grupo no es un anuncio: es un resumen de lo que hay ahí.
-
-     También por eso el grupo no tiene estado "seleccionado": lo que se
-     selecciona es una propiedad, y una propiedad no está en un grupo —está
-     debajo—; al elegirla, el mapa se acerca hasta que sale suelta. */
+  /* --- Grupo de chinchetas (Cluster) ---
+     Propuesta: Teal #0F5C63 con borde blanco. */
   .marcador-grupo {
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 9999px;
-    border: 2px solid white;
-    background-color: var(--color-marino);
-    color: white;
-    font-weight: 600;
+    border: 2.5px solid #ffffff; /* Borde blanco */
+    background-color: #0f5c63; /* Teal #0F5C63 */
+    color: #ffffff;
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
     cursor: pointer;
-    box-shadow: 0 2px 6px rgb(15 41 90 / 0.4);
+    box-shadow: 0 3px 10px rgba(15, 92, 99, 0.4);
     transition: transform 120ms ease;
   }
 
