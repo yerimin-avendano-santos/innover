@@ -312,32 +312,34 @@ export default function PaginaPublicar() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-      <div className="mb-6">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 rounded-full border border-linea bg-papel-alto px-3.5 py-1.5 text-menor font-medium text-tinta-70 shadow-2xs transition-colors hover:border-linea-fuerte hover:text-tinta"
-        >
-          <svg
-            viewBox="0 0 16 16"
-            className="h-4 w-4 text-tinta-50"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            aria-hidden="true"
-          >
-            <path d="M10 13l-5-5 5-5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Volver al buscador
-        </Link>
-      </div>
-
       <header className="mb-8">
-        <h1 className="text-titulo font-semibold text-tinta">
-          {editando ? 'Editar publicación' : 'Publicar propiedad'}
-        </h1>
-        <p className="mt-1 text-cuerpo text-tinta-50">
-          Los campos marcados con * son obligatorios.
-        </p>
+        <div className="flex items-center gap-3.5">
+          <Link
+            href="/"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-linea bg-papel-alto text-tinta-70 shadow-2xs transition-colors hover:border-linea-fuerte hover:bg-papel hover:text-tinta"
+            title="Volver al buscador"
+            aria-label="Volver al buscador"
+          >
+            <svg
+              viewBox="0 0 16 16"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <path d="M10 13l-5-5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </Link>
+          <div>
+            <h1 className="text-titulo font-bold tracking-tight text-tinta">
+              {editando ? 'Editar publicación' : 'Publicar propiedad'}
+            </h1>
+            <p className="mt-0.5 text-menor text-tinta-50">
+              Los campos marcados con * son obligatorios.
+            </p>
+          </div>
+        </div>
       </header>
 
       {error && (

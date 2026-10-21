@@ -251,7 +251,7 @@ export function Buscador() {
         En escritorio la lista se acomoda en un carril lateral de 390px
         y el mapa se expande para ocupar todo el espacio restante (~65%-72% del ancho).
       */}
-      <div className="grid min-h-0 flex-1 grid-rows-[380px_minmax(0,1fr)] lg:grid-cols-[minmax(350px,390px)_1fr] lg:grid-rows-1">
+      <div className="grid min-h-0 flex-1 grid-rows-[380px_minmax(0,1fr)] lg:grid-cols-[minmax(360px,410px)_1fr] lg:grid-rows-1">
         {/* ============ LISTA (izquierda en escritorio) ============ */}
         <section
           aria-label="Lista de propiedades"

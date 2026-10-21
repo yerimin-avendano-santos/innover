@@ -817,23 +817,14 @@ function BotonUbicacion({
   precision: number | null;
   alPulsar: () => void;
 }) {
-  const segunda =
-    estado === 'activo'
-      ? textoPrecision(precision)
-      : estado === 'buscando'
-        ? 'Buscando…'
-        : estado === 'error'
-          ? 'Revisa el permiso'
-          : 'Ubicación actual';
-
   const etiqueta =
     estado === 'buscando'
-      ? 'Buscando tu ubicación'
+      ? 'Buscando tu ubicación…'
       : estado === 'activo'
-        ? `Mi ubicación, ${textoPrecision(precision).toLowerCase()}. Pulsa para volver a centrar.`
+        ? `Centrado en tu ubicación (${textoPrecision(precision)})`
         : estado === 'error'
-          ? 'Volver a intentar usar mi ubicación'
-          : 'Usar mi ubicación para centrar el mapa';
+          ? 'Error al obtener ubicación. Pulsa para reintentar.'
+          : 'Centrar en mi ubicación';
 
   return (
     <button
@@ -841,30 +832,26 @@ function BotonUbicacion({
       onClick={alPulsar}
       disabled={estado === 'buscando'}
       aria-label={etiqueta}
-      aria-busy={estado === 'buscando'}
-      className="absolute bottom-[76px] right-3 z-10 flex max-w-[200px] items-center gap-2 rounded-full border border-linea bg-papel-alto py-2 pl-2 pr-3 text-left shadow-md transition-colors hover:bg-papel disabled:cursor-wait disabled:opacity-80"
+      title={etiqueta}
+      className={`absolute bottom-[76px] right-3 z-10 flex h-[29px] w-[29px] items-center justify-center rounded-medio border border-linea bg-papel-alto shadow-2xs transition-all hover:border-linea-fuerte hover:bg-papel disabled:cursor-wait ${
+        estado === 'activo'
+          ? 'border-senal bg-senal text-sobre-marino hover:bg-senal-hondo'
+          : estado === 'buscando'
+            ? 'animate-pulse text-senal'
+            : 'text-tinta-70 hover:text-senal'
+      }`}
     >
-      <span
+      <svg
+        viewBox="0 0 20 20"
+        className="h-4 w-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
         aria-hidden="true"
-        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
-          estado === 'activo' ? 'bg-senal text-sobre-marino' : 'bg-senal-suave text-senal'
-        }`}
       >
-        <svg
-          viewBox="0 0 20 20"
-          className="h-4 w-4"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-        >
-          <path d="M10 2.5 15.5 17 10 14 4.5 17 10 2.5Z" strokeLinejoin="round" />
-        </svg>
-      </span>
-
-      <span className="min-w-0">
-        <span className="block text-menor font-semibold text-tinta">Mi ubicación</span>
-        <span className="block truncate text-micro text-tinta-50">{segunda}</span>
-      </span>
+        <circle cx="10" cy="10" r="3.5" />
+        <path d="M10 2v3M10 15v3M2 10h3M15 10h3" strokeLinecap="round" />
+      </svg>
     </button>
   );
 }

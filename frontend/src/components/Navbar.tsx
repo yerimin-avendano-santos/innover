@@ -63,45 +63,42 @@ export function Navbar() {
           sin el primero, el logotipo empuja el bloque de sesión fuera
           de la pantalla en móviles estrechos. */}
       <div className="mx-auto flex h-14 max-w-[1600px] items-center justify-between gap-3 px-4 sm:gap-6 sm:px-6">
-        {/* --- Marca ---
-            El icono es decorativo (no lleva `titulo`) porque la palabra
-            "Innover" está escrita a su lado: si ambos se anunciaran, un
-            lector de pantalla diría "Innover Innover". */}
-        <Link
-          href="/"
-          className="flex min-w-0 shrink items-center gap-2.5"
-          aria-label="Innover, ir al inicio"
-        >
-          <Logo className="h-7 w-7 shrink-0" />
-          {/* El espaciado y las mayúsculas son los de la entrega nueva del
-              logo (10 unidades de tracking sobre un tamaño de 130). */}
-          <span className="truncate text-normal font-extrabold uppercase tracking-[0.07em] text-sobre-marino">
-            Innover
-          </span>
-        </Link>
-
-        {/* --- Regresar al buscador (cuando se está en otra pantalla) --- */}
-        {ruta !== '/' ? (
+        {/* --- Marca y retorno --- */}
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-menor font-medium text-sobre-marino transition-colors hover:bg-senal hover:text-sobre-marino"
-            title="Volver al buscador principal"
+            className="flex min-w-0 shrink-0 items-center gap-2.5"
+            aria-label="Innover, ir al inicio"
           >
-            <svg
-              viewBox="0 0 16 16"
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-            >
-              <path d="M10 13l-5-5 5-5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span>Volver al buscador</span>
+            <Logo className="h-7 w-7 shrink-0" />
+            {/* El espaciado y las mayúsculas son los de la entrega nueva del
+                logo (10 unidades de tracking sobre un tamaño de 130). */}
+            <span className="truncate text-normal font-extrabold uppercase tracking-[0.07em] text-sobre-marino">
+              Innover
+            </span>
           </Link>
-        ) : (
-          <div className="flex-1" />
-        )}
+
+          {ruta !== '/' && (
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-senal/40 px-3 py-1 text-menor font-medium text-sobre-marino transition-colors hover:bg-senal"
+              title="Volver al buscador principal"
+            >
+              <svg
+                viewBox="0 0 16 16"
+                className="h-3.5 w-3.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path d="M10 13l-5-5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className="hidden sm:inline">Volver al buscador</span>
+              <span className="sm:hidden">Volver</span>
+            </Link>
+          )}
+        </div>
 
         {/* --- Sesión --- */}
         <div className="relative" ref={menuRef}>

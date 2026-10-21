@@ -57,70 +57,58 @@ export function FichaPropiedad({ propiedad, seleccionada, alSeleccionar }: Props
 
   return (
     <article
-      className={`ficha grid grid-cols-[minmax(140px,42%)_1fr] overflow-hidden rounded-grande shadow-xs transition-all duration-200 hover:shadow-md xl:grid-cols-[210px_1fr] ${
+      className={`ficha grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] overflow-hidden rounded-grande shadow-xs transition-all duration-200 hover:shadow-md ${
         alSeleccionar ? 'cursor-pointer' : 'cursor-default'
       } ${seleccionada ? 'border-senal ring-2 ring-senal/20' : ''}`}
       onClick={() => alSeleccionar?.(propiedad.id)}
     >
-      {/* --- Foto ---
-          El 42 % del ancho mantiene el equilibrio y permite a las tarjetas
-          compactas respirar en la columna lateral del buscador. */}
+      {/* --- Foto --- */}
       <FotoCarrusel propiedad={propiedad} />
 
-      <div className="flex min-w-0 flex-col p-3.5">
-        {/* --- Distintivos --- */}
-        <div className="mb-1.5 flex items-center gap-2">
-          {propiedad.destacado && (
-            <span className="distintivo distintivo-destacado-solido">Destacado</span>
-          )}
-          <span
-            className={`distintivo ml-auto ${
-              propiedad.tipo === 'ALQUILER' ? 'distintivo-senal' : 'distintivo-neutro'
-            }`}
-          >
-            {operacion}
-          </span>
+      <div className="flex min-w-0 flex-col justify-between p-3">
+        {/* Encabezado: Precio + Distintivos */}
+        <div>
+          <div className="flex items-center justify-between gap-1.5">
+            <p className="cifra whitespace-nowrap text-normal sm:text-grande font-bold text-tinta">
+              {formatearPrecio(propiedad.precio, propiedad.moneda)}
+            </p>
+            <div className="flex shrink-0 items-center gap-1">
+              {propiedad.destacado && (
+                <span className="distintivo distintivo-destacado-solido">Destacado</span>
+              )}
+              <span
+                className={`distintivo ${
+                  propiedad.tipo === 'ALQUILER' ? 'distintivo-senal' : 'distintivo-neutro'
+                }`}
+              >
+                {operacion}
+              </span>
+            </div>
+          </div>
+
+          {/* Título compacto */}
+          <h3 className="mt-1 text-menor font-semibold leading-tight text-tinta">
+            <Link
+              href={`/propiedad/${propiedad.slug}`}
+              prefetch={false}
+              onClick={(evento) => evento.stopPropagation()}
+              title={propiedad.titulo}
+              className="line-clamp-1 transition-colors hover:text-senal"
+            >
+              {propiedad.titulo}
+            </Link>
+          </h3>
+
+          {/* Metadatos */}
+          <p className="mt-0.5 truncate text-micro leading-snug text-tinta-50">
+            {etiquetaTipo(propiedad.tipo_inmueble)}
+            {propiedad.distrito && ` · ${propiedad.distrito.nombre}`}
+            {porM2 && ` · ${porM2}`}
+          </p>
         </div>
 
-        {/* --- Título ---
-            Dos líneas como máximo y una altura mínima de dos: así el
-            precio queda a la misma altura en todas las tarjetas aunque un
-            título sea corto. La altura es en `em` para que siga a la
-            escala tipográfica. */}
-        <h3 className="min-h-[2.75em] text-normal font-semibold leading-snug text-tinta">
-          <Link
-            href={`/propiedad/${propiedad.slug}`}
-            prefetch={false}
-            onClick={(evento) => evento.stopPropagation()}
-            title={propiedad.titulo}
-            className="line-clamp-2 transition-colors hover:text-senal"
-          >
-            {propiedad.titulo}
-          </Link>
-        </h3>
-
-        {/* --- Precio ---
-            En tinta, no en turquesa: el precio es el dato que se compara,
-            y el color de acción se reserva para lo que se pulsa. */}
-        <p className="cifra mt-1 text-grande font-semibold text-tinta">
-          {formatearPrecio(propiedad.precio, propiedad.moneda)}
-        </p>
-
-        {/* --- Metadatos ---
-            Tipo y distrito, más el precio por m², que es la cifra con la
-            que se decide entre dos anuncios del mismo precio. Sin
-            `truncate`: en 1024 puede ocupar dos líneas; esconder el
-            precio/m² sería esconder justo la comparación. */}
-        <p className="mt-0.5 text-menor leading-snug text-tinta-50">
-          {etiquetaTipo(propiedad.tipo_inmueble)}
-          {propiedad.distrito && ` · ${propiedad.distrito.nombre}`}
-          {porM2 && ` · ${porM2}`}
-        </p>
-
-        {/* --- Chips ---
-            Datos en pastillas inspiradas en el sistema de diseño:
-            icono en micro-badge circular y cifra tabular limpia. */}
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
+        {/* Chips en micro-formato */}
+        <div className="my-2 flex flex-wrap items-center gap-1">
           <Dato
             icono={<IconoArea />}
             texto={propiedad.area_m2 ? `${propiedad.area_m2} m²` : '—'}
@@ -136,24 +124,23 @@ export function FichaPropiedad({ propiedad, seleccionada, alSeleccionar }: Props
             texto={propiedad.banos ? `${propiedad.banos} Baños` : '—'}
             variante="neutro"
           />
-          <Dato
-            icono={<IconoAuto />}
-            texto={propiedad.parkederos ? `${propiedad.parkederos} Auto` : '—'}
-            variante="neutro"
-          />
+          {Boolean(propiedad.parkederos) && (
+            <Dato
+              icono={<IconoAuto />}
+              texto={`${propiedad.parkederos} Auto`}
+              variante="neutro"
+            />
+          )}
         </div>
 
-        {/* --- Pie ---
-            El tiempo ya no va en `tinta-30`: ese tono no pasa AA. El
-            sello de identidad verificada es la promesa central del
-            producto, por eso tiene color propio y no un texto suelto. */}
-        <footer className="mt-auto flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pt-2.5">
-          <p className="text-micro text-tinta-50">{tiempoRelativo(propiedad.fecha_creacion)}</p>
+        {/* Pie compacto */}
+        <footer className="flex items-center justify-between gap-1 border-t border-linea/60 pt-1.5 text-micro text-tinta-50">
+          <span className="truncate">{tiempoRelativo(propiedad.fecha_creacion)}</span>
 
           {verificado && (
-            <span className="distintivo distintivo-menta">
+            <span className="distintivo distintivo-menta shrink-0">
               <IconoVerificado />
-              Propietario verificado
+              Verificado
             </span>
           )}
         </footer>
@@ -182,7 +169,7 @@ function FotoCarrusel({ propiedad }: { propiedad: Propiedad }) {
     return (
       <div
         aria-hidden="true"
-        className="flex min-h-[150px] items-center justify-center bg-papel-hundido"
+        className="flex h-full min-h-[130px] items-center justify-center bg-papel-hundido"
       >
         <IconoFoto />
       </div>
@@ -196,7 +183,7 @@ function FotoCarrusel({ propiedad }: { propiedad: Propiedad }) {
   };
 
   return (
-    <div className="relative min-h-[150px] overflow-hidden bg-papel-hundido">
+    <div className="relative h-full min-h-[130px] overflow-hidden bg-papel-hundido">
       <Link
         href={`/propiedad/${propiedad.slug}`}
         prefetch={false}
