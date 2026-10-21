@@ -381,10 +381,16 @@ function CabeceraLista({
   alLimpiar: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-2.5">
-      <p aria-live="polite" className="min-w-0 text-menor text-tinta-70">
-        {cargando ? 'Buscando…' : construirDescripcion(filtros, distritos, total)}
-      </p>
+    <div className="flex items-center justify-between gap-3 border-b border-linea/60 bg-papel px-4 py-2.5">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-linea bg-papel-alto px-2.5 py-0.5 text-micro font-semibold text-tinta shadow-2xs">
+          <span className="h-1.5 w-1.5 rounded-full bg-senal" aria-hidden="true" />
+          <span className="cifra">{cargando ? '…' : total}</span>
+        </span>
+        <p aria-live="polite" className="truncate text-menor font-medium text-tinta-70">
+          {cargando ? 'Buscando inmuebles…' : construirDescripcion(filtros, distritos, total)}
+        </p>
+      </div>
 
       {/*
         Con cero resultados no se pinta aquí: el estado vacío tiene su
@@ -396,8 +402,18 @@ function CabeceraLista({
         <button
           type="button"
           onClick={alLimpiar}
-          className="btn btn-fantasma shrink-0 px-2 py-1 text-menor"
+          className="btn btn-fantasma inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-micro font-medium"
         >
+          <svg
+            viewBox="0 0 12 12"
+            className="h-3 w-3"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
+            <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" strokeLinecap="round" />
+          </svg>
           Limpiar filtros
         </button>
       )}

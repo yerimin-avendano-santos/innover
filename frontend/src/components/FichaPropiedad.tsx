@@ -35,6 +35,12 @@
 
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
+import {
+  IconoArea,
+  IconoHabitacion,
+  IconoBano,
+  IconoAuto,
+} from '@/components/IconosPropiedad';
 import { formatearPrecio, precioPorM2, tiempoRelativo, etiquetaTipo } from '@/lib/api';
 import type { Propiedad } from '@/lib/tipos';
 
@@ -112,25 +118,28 @@ export function FichaPropiedad({ propiedad, seleccionada, alSeleccionar }: Props
         </p>
 
         {/* --- Chips ---
-            Datos en pastillas, no en una tabla con divisores. El icono
-            ayuda a reconocer la columna de un vistazo y la etiqueta
-            ("Hab.", "Baños") evita que un 3 se lea como un precio. */}
+            Datos en pastillas inspiradas en el sistema de diseño:
+            icono en micro-badge circular y cifra tabular limpia. */}
         <div className="mt-2.5 flex flex-wrap gap-1.5">
           <Dato
             icono={<IconoArea />}
             texto={propiedad.area_m2 ? `${propiedad.area_m2} m²` : '—'}
+            variante="senal"
           />
           <Dato
             icono={<IconoHabitacion />}
             texto={propiedad.habitaciones ? `${propiedad.habitaciones} Hab.` : '—'}
+            variante="neutro"
           />
           <Dato
             icono={<IconoBano />}
             texto={propiedad.banos ? `${propiedad.banos} Baños` : '—'}
+            variante="neutro"
           />
           <Dato
             icono={<IconoAuto />}
             texto={propiedad.parkederos ? `${propiedad.parkederos} Auto` : '—'}
+            variante="neutro"
           />
         </div>
 
@@ -263,12 +272,29 @@ function FotoCarrusel({ propiedad }: { propiedad: Propiedad }) {
   );
 }
 
-/** Una pastilla de dato con icono. */
-function Dato({ icono, texto }: { icono: ReactNode; texto: string | number }) {
+/** Una pastilla de dato con micro-badge de icono. */
+function Dato({
+  icono,
+  texto,
+  variante = 'neutro',
+}: {
+  icono: ReactNode;
+  texto: string | number;
+  variante?: 'senal' | 'menta' | 'neutro';
+}) {
+  const fondoIcono =
+    variante === 'senal'
+      ? 'bg-senal-suave text-senal-hondo'
+      : variante === 'menta'
+        ? 'bg-menta-suave text-menta-hondo'
+        : 'bg-papel-hundido text-tinta-70';
+
   return (
-    <span className="inline-flex items-center gap-1 rounded-chico bg-papel px-1.5 py-1 text-micro text-tinta-70">
-      {icono}
-      <span className="cifra font-medium text-tinta">{texto}</span>
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-linea bg-papel-alto py-0.5 pl-1 pr-2 text-micro text-tinta-70 shadow-2xs">
+      <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${fondoIcono}`}>
+        {icono}
+      </span>
+      <span className="cifra font-semibold text-tinta">{texto}</span>
     </span>
   );
 }
@@ -276,79 +302,6 @@ function Dato({ icono, texto }: { icono: ReactNode; texto: string | number }) {
 // ========================================
 // Iconos
 // ========================================
-//
-// Son SVG en línea y `currentColor` a propósito: el color lo decide la
-// clase del contenedor, no un atributo. Así el mismo icono sirve en la
-// tarjeta clara y en cualquier superficie futura sin duplicarlo.
-const CLASE_ICONO = 'h-3 w-3 shrink-0 text-tinta-50';
-
-function IconoArea() {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      className={CLASE_ICONO}
-      aria-hidden="true"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-    >
-      <path
-        d="M9 2h5v5M14 2 8 8M7 14H2V9M2 14l6-6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function IconoHabitacion() {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      className={CLASE_ICONO}
-      aria-hidden="true"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-    >
-      <path d="M2 12V7.5A1.5 1.5 0 0 1 3.5 6h9A1.5 1.5 0 0 1 14 7.5V12" />
-      <path d="M2 10h12M4 6V4.5A1.5 1.5 0 0 1 5.5 3h5A1.5 1.5 0 0 1 12 4.5V6" />
-    </svg>
-  );
-}
-
-function IconoBano() {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      className={CLASE_ICONO}
-      aria-hidden="true"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-    >
-      <path d="M2 8h12v1a3.5 3.5 0 0 1-3.5 3.5h-5A3.5 3.5 0 0 1 2 9V8Z" />
-      <path d="M4 8V4a2 2 0 0 1 4 0M5 12.5v1M11 12.5v1" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconoAuto() {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      className={CLASE_ICONO}
-      aria-hidden="true"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-    >
-      <path d="M2 11h12M3.5 11V8L5 5h6l1.5 3v3" strokeLinejoin="round" />
-      <circle cx="5" cy="11" r="1.5" />
-      <circle cx="11" cy="11" r="1.5" />
-    </svg>
-  );
-}
 
 function IconoVerificado() {
   return (

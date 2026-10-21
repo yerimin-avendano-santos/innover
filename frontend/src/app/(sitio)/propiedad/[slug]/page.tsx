@@ -48,6 +48,12 @@ import AccionesCompartir from '@/components/AccionesCompartir';
 import BotonFavorito from '@/components/BotonFavorito';
 import CalculadoraHipotecaria from '@/components/CalculadoraHipotecaria';
 import Galeria from '@/components/Galeria';
+import {
+  IconoArea,
+  IconoHabitacion,
+  IconoBano,
+  IconoAuto,
+} from '@/components/IconosPropiedad';
 import { Mapa } from '@/components/Mapa';
 import Tour3DViewer from '@/components/Tour3DViewer';
 import { formatearPrecio, precioPorM2, etiquetaTipo } from '@/lib/api';
@@ -236,7 +242,7 @@ export default async function PaginaPropiedad({
         </div>
 
         <div className="flex items-start justify-between gap-4">
-          <h1 className="text-titulo font-semibold leading-tight text-tinta">
+          <h1 className="text-titulo font-bold tracking-tight leading-tight text-tinta">
             {propiedad.titulo}
           </h1>
 
@@ -320,14 +326,31 @@ export default async function PaginaPropiedad({
           )}
 
           {/* --- Especificaciones --- */}
-          <dl className="mb-6 grid grid-cols-2 gap-px overflow-hidden rounded-medio border border-linea bg-linea sm:grid-cols-4">
+          <dl className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Celda
+              icono={<IconoArea className="h-full w-full" />}
               etiqueta="Área"
               valor={propiedad.area_m2 ? `${propiedad.area_m2} m²` : '—'}
+              variante="senal"
             />
-            <Celda etiqueta="Habitaciones" valor={propiedad.habitaciones || '—'} />
-            <Celda etiqueta="Baños" valor={propiedad.banos || '—'} />
-            <Celda etiqueta="Estacionamientos" valor={propiedad.parkederos || '—'} />
+            <Celda
+              icono={<IconoHabitacion className="h-full w-full" />}
+              etiqueta="Habitaciones"
+              valor={propiedad.habitaciones || '—'}
+              variante="neutro"
+            />
+            <Celda
+              icono={<IconoBano className="h-full w-full" />}
+              etiqueta="Baños"
+              valor={propiedad.banos || '—'}
+              variante="menta"
+            />
+            <Celda
+              icono={<IconoAuto className="h-full w-full" />}
+              etiqueta="Cochera"
+              valor={propiedad.parkederos || '—'}
+              variante="neutro"
+            />
           </dl>
 
           {/* --- Descripción --- */}
@@ -390,12 +413,38 @@ export default async function PaginaPropiedad({
   );
 }
 
-/** Celda de la tabla de especificaciones. */
-function Celda({ etiqueta, valor }: { etiqueta: string; valor: string | number }) {
+/** Celda de la tabla de especificaciones con badge circular de icono. */
+function Celda({
+  icono,
+  etiqueta,
+  valor,
+  variante = 'neutro',
+}: {
+  icono: React.ReactNode;
+  etiqueta: string;
+  valor: string | number;
+  variante?: 'senal' | 'menta' | 'neutro';
+}) {
+  const fondoIcono =
+    variante === 'senal'
+      ? 'bg-senal-suave text-senal-hondo'
+      : variante === 'menta'
+        ? 'bg-menta-suave text-menta-hondo'
+        : 'bg-papel-hundido text-tinta-70';
+
   return (
-    <div className="bg-papel-alto px-4 py-3">
-      <dt className="text-micro text-tinta-50">{etiqueta}</dt>
-      <dd className="cifra mt-0.5 text-grande font-medium text-tinta">{valor}</dd>
+    <div className="flex items-center gap-3 rounded-grande border border-linea bg-papel-alto p-3 shadow-2xs">
+      <span
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${fondoIcono}`}
+      >
+        <span className="h-4 w-4">{icono}</span>
+      </span>
+      <div className="min-w-0">
+        <dt className="text-micro font-medium uppercase tracking-wider text-tinta-50">
+          {etiqueta}
+        </dt>
+        <dd className="cifra mt-0.5 text-cuerpo font-semibold text-tinta">{valor}</dd>
+      </div>
     </div>
   );
 }

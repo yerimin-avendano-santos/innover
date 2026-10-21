@@ -457,7 +457,7 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.125rem 0.5rem;
-    border-radius: var(--radius-chico);
+    border-radius: 9999px;
     font-size: var(--text-micro);
     font-weight: 500;
     letter-spacing: 0.01em;

@@ -118,8 +118,8 @@ export function BarraFiltros({ filtros, alCambiar, distritos }: Props) {
               type="search"
               value={filtros.busqueda}
               onChange={(e) => cambiar('busqueda', e.target.value)}
-              placeholder="Buscar propiedad"
-              className="campo rounded-full py-2 pl-9 pr-3 text-cuerpo"
+              placeholder="Buscar por distrito o tipo…"
+              className="campo rounded-full py-2 pl-9 pr-3 text-menor transition-colors focus:border-senal"
             />
           </div>
 
@@ -206,7 +206,7 @@ export function BarraFiltros({ filtros, alCambiar, distritos }: Props) {
               id="orden"
               value={filtros.orden}
               onChange={(e) => cambiar('orden', e.target.value as Filtros['orden'])}
-              className="campo w-auto appearance-none rounded-full py-2 pl-3 pr-8 text-cuerpo"
+              className="campo w-auto appearance-none rounded-full py-2 pl-3 pr-8 text-menor text-tinta-70 transition-colors hover:border-linea-fuerte"
             >
               <option value="recientes">Más recientes</option>
               <option value="precio_asc">Menor precio</option>
@@ -281,8 +281,10 @@ function Selector({
         id={`filtro-${etiqueta}`}
         value={valor}
         onChange={(e) => onChange(e.target.value)}
-        className={`campo w-auto appearance-none rounded-full py-2 pl-3 pr-8 text-cuerpo ${
-          hayValor ? 'border-senal text-senal' : ''
+        className={`campo w-auto appearance-none rounded-full py-2 pl-3 pr-8 text-menor transition-colors ${
+          hayValor
+            ? 'border-senal bg-senal-suave font-medium text-senal-hondo'
+            : 'text-tinta-70 hover:border-linea-fuerte'
         }`}
       >
         <option value="">{todosLabel}</option>
@@ -298,7 +300,9 @@ function Selector({
       <svg
         aria-hidden="true"
         viewBox="0 0 12 12"
-        className="pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-tinta-50"
+        className={`pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 transition-colors ${
+          hayValor ? 'text-senal' : 'text-tinta-50'
+        }`}
       >
         <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
       </svg>
