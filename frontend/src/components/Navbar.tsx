@@ -67,15 +67,18 @@ export function Navbar() {
         <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           <Link
             href="/"
-            className="flex min-w-0 shrink-0 items-center gap-2.5"
+            className="flex min-w-0 shrink-0 items-center gap-2.5 rounded-xl border border-linea/60 bg-papel-alto px-3 py-1.5 shadow-2xs transition-transform hover:scale-[1.01]"
             aria-label="Innover, ir al inicio"
           >
             <Logo className="h-7 w-7 shrink-0" />
-            {/* El espaciado y las mayúsculas son los de la entrega nueva del
-                logo (10 unidades de tracking sobre un tamaño de 130). */}
-            <span className="truncate text-normal font-extrabold uppercase tracking-[0.07em] text-sobre-marino">
-              Innover
-            </span>
+            <div className="flex flex-col">
+              <span className="text-cuerpo font-extrabold uppercase leading-tight tracking-[0.07em] text-marino">
+                Innover
+              </span>
+              <span className="text-[10px] font-medium leading-tight text-tinta-50">
+                Propiedades en el mapa
+              </span>
+            </div>
           </Link>
 
           {ruta !== '/' && (
@@ -114,24 +117,20 @@ export function Navbar() {
                 aria-label={`${usuario!.nombre}: ${
                   menuAbierto ? 'cerrar' : 'abrir'
                 } menú de la cuenta`}
-                className="flex items-center gap-2 rounded-medio px-2 py-1.5 text-cuerpo transition-colors hover:bg-senal"
+                className="flex items-center gap-2 rounded-xl border border-linea/60 bg-papel-alto px-2.5 py-1.5 text-cuerpo shadow-2xs transition-colors hover:bg-papel"
               >
-                {/* Inicial en lugar de avatar: no todos suben foto, y
-                    un círculo vacío se ve como una imagen rota.
-                    Turquesa sobre el teal hondo, con el texto en marino:
-                    al revés —blanco sobre turquesa— daría 1,9:1. */}
                 <span
                   aria-hidden="true"
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-turquesa text-micro font-semibold text-marino"
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-turquesa text-micro font-bold text-marino"
                 >
                   {usuario!.nombre.charAt(0).toUpperCase()}
                 </span>
-                <span className="hidden max-w-[120px] truncate text-sobre-marino md:inline">
+                <span className="hidden max-w-[120px] truncate font-semibold text-tinta md:inline">
                   {usuario!.nombre.split(' ')[0]}
                 </span>
                 <svg
                   viewBox="0 0 12 12"
-                  className="h-3 w-3 text-sobre-senal-tenue"
+                  className="h-3 w-3 text-tinta-50"
                   aria-hidden="true"
                 >
                   <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" />

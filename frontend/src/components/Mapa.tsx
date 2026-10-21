@@ -833,7 +833,7 @@ function BotonUbicacion({
       disabled={estado === 'buscando'}
       aria-label={etiqueta}
       title={etiqueta}
-      className={`absolute bottom-[76px] right-3 z-10 flex h-[29px] w-[29px] items-center justify-center rounded-medio border border-linea bg-papel-alto shadow-2xs transition-all hover:border-linea-fuerte hover:bg-papel disabled:cursor-wait ${
+      className={`absolute bottom-[108px] right-3 z-10 flex h-[29px] w-[29px] items-center justify-center rounded-medio border border-linea bg-papel-alto shadow-2xs transition-all hover:border-linea-fuerte hover:bg-papel disabled:cursor-wait ${
         estado === 'activo'
           ? 'border-senal bg-senal text-sobre-marino hover:bg-senal-hondo'
           : estado === 'buscando'
