@@ -75,6 +75,11 @@ export function Buscador() {
    */
   const [sesionCaducada, setSesionCaducada] = useState(false);
   const [seleccionada, setSeleccionada] = useState<number | null>(null);
+  /**
+   * Vista activa en móviles (< lg): 'lista' o 'mapa'.
+   * En pantallas grandes (lg:) se muestran ambos en paralelo lado a lado.
+   */
+  const [vistaMovil, setVistaMovil] = useState<'lista' | 'mapa'>('lista');
 
   /**
    * Permite cancelar la petición en vuelo.
@@ -221,6 +226,11 @@ export function Buscador() {
    */
   const claveVista = useMemo(() => JSON.stringify(filtros), [filtros]);
 
+  const propiedadSeleccionada = useMemo(
+    () => (seleccionada ? propiedades.find((p) => p.id === seleccionada) ?? null : null),
+    [seleccionada, propiedades]
+  );
+
   return (
     /*
      * La altura descuenta la barra ENTERA, no solo la fila de 56 px.
@@ -247,15 +257,18 @@ export function Buscador() {
       )}
 
       {/*
-        El mapa domina la pantalla:
-        En escritorio la lista se acomoda en un carril lateral de 390px
-        y el mapa se expande para ocupar todo el espacio restante (~65%-72% del ancho).
+        El mapa y la lista se muestran en paralelo en escritorio (lg:).
+        En móvil (< lg), el usuario puede alternar fluidamente entre Lista y Mapa
+        mediante un botón flotante ergonómico, permitiendo scroll completo o navegación
+        del mapa a pantalla completa con tarjeta emergente al tocar marcadores.
       */}
-      <div className="grid min-h-0 flex-1 grid-rows-[380px_minmax(0,1fr)] lg:grid-cols-[minmax(360px,410px)_1fr] lg:grid-rows-1">
-        {/* ============ LISTA (izquierda en escritorio) ============ */}
+      <div className="relative min-h-0 flex-1 lg:grid lg:grid-cols-[minmax(360px,410px)_1fr]">
+        {/* ============ LISTA (izquierda en escritorio; en móvil según vistaMovil) ============ */}
         <section
           aria-label="Lista de propiedades"
-          className="order-2 flex min-h-0 flex-col border-linea bg-papel lg:order-1 lg:border-r"
+          className={`min-h-0 flex-1 flex-col border-linea bg-papel lg:flex lg:border-r ${
+            vistaMovil === 'lista' ? 'flex h-full' : 'hidden lg:flex'
+          }`}
         >
           {/* La cabecera vive fuera del scroll: el contador de lo que
               hay y "Limpiar filtros" no desaparecen al bajar por la
@@ -320,10 +333,12 @@ export function Buscador() {
           </div>
         </section>
 
-        {/* ============ MAPA (derecha en escritorio) ============ */}
+        {/* ============ MAPA (derecha en escritorio; en móvil según vistaMovil) ============ */}
         <section
           aria-label="Mapa de propiedades"
-          className="order-1 min-h-[360px] border-linea lg:order-2 lg:min-h-0"
+          className={`relative min-h-0 flex-1 border-linea lg:block ${
+            vistaMovil === 'mapa' ? 'flex h-full' : 'hidden lg:block'
+          }`}
         >
           {/*
             En escritorio el mapa llena la altura disponible. `h-full`
@@ -348,7 +363,73 @@ export function Buscador() {
             propiedades={propiedades}
             className="h-full w-full"
           />
+
+          {/* Tarjeta flotante emergente en móvil cuando se selecciona una propiedad */}
+          {vistaMovil === 'mapa' && propiedadSeleccionada && (
+            <div className="pointer-events-auto absolute bottom-20 left-3 right-3 z-30 mx-auto max-w-sm sm:left-6 sm:right-auto sm:w-80">
+              <div className="relative rounded-2xl border border-linea/80 bg-papel-alto p-2 shadow-2xl">
+                <button
+                  type="button"
+                  onClick={() => setSeleccionada(null)}
+                  className="absolute right-3 top-3 z-30 flex h-7 w-7 items-center justify-center rounded-full bg-papel-hundido text-tinta-70 shadow-sm transition hover:bg-linea-fuerte hover:text-tinta"
+                  aria-label="Cerrar vista previa"
+                >
+                  <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
+                  </svg>
+                </button>
+                <FichaPropiedad
+                  propiedad={propiedadSeleccionada}
+                  seleccionada={true}
+                />
+              </div>
+            </div>
+          )}
         </section>
+
+        {/* ============ BOTÓN FLOTANTE MÓVIL (< lg) ============ */}
+        <div className="pointer-events-none fixed bottom-5 left-1/2 z-30 -translate-x-1/2 lg:hidden">
+          <button
+            type="button"
+            onClick={() => {
+              setVistaMovil((v) => (v === 'lista' ? 'mapa' : 'lista'));
+            }}
+            className="pointer-events-auto flex items-center gap-2 rounded-full border border-white/20 bg-marino px-5 py-2.5 text-menor font-semibold text-sobre-marino shadow-xl transition-all active:scale-95 hover:bg-marino/90"
+            aria-label={vistaMovil === 'lista' ? 'Cambiar a vista de mapa' : 'Cambiar a vista de lista'}
+          >
+            {vistaMovil === 'lista' ? (
+              <>
+                <svg
+                  viewBox="0 0 20 20"
+                  className="h-4 w-4 text-turquesa"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                >
+                  <polygon points="3 6 7 4 13 7 17 5 17 15 13 17 7 14 3 16" />
+                </svg>
+                <span>Ver mapa</span>
+              </>
+            ) : (
+              <>
+                <svg
+                  viewBox="0 0 20 20"
+                  className="h-4 w-4 text-turquesa"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                >
+                  <line x1="4" y1="6" x2="16" y2="6" strokeLinecap="round" />
+                  <line x1="4" y1="10" x2="16" y2="10" strokeLinecap="round" />
+                  <line x1="4" y1="14" x2="12" y2="14" strokeLinecap="round" />
+                </svg>
+                <span>Ver lista ({propiedades.length})</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

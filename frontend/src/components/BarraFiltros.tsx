@@ -93,12 +93,12 @@ export function BarraFiltros({ filtros, alCambiar, distritos }: Props) {
           es cuando más lo necesita. Así los filtros pueden seguir
           desplazándose sin esconder la acción.
         */}
-        <div className="sin-barra flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+        <div className="sin-barra touch-pan-x flex min-w-0 flex-1 items-center gap-2 overflow-x-auto py-0.5">
           {/* --- Buscador ---
               La lupa va dentro del campo y no al lado: es una pista de
               qué hace el control, no un botón. El `pl-9` le deja sitio
               al icono sin que el texto empiece debajo de él. */}
-          <div className="relative min-w-[200px] flex-1 sm:max-w-[240px]">
+          <div className="relative min-w-[180px] flex-1 sm:max-w-[240px]">
             <label htmlFor="busqueda" className="solo-lector">
               Buscar por nombre del distrito o tipo de inmueble
             </label>

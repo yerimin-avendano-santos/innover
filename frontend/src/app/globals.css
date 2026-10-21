@@ -53,12 +53,12 @@
    ======================================== */
 @theme {
   /* --- Superficies ---
-     Tres niveles, no cinco. Cada uno tiene un trabajo concreto.
-     Gris frío, no blanco: la guía pide reducir la fatiga visual, y
-     sobre blanco puro el mapa (que ya es claro) se come la página. */
-  --color-papel: #f0f2f5;         /* Fondo de la página. */
+     Inspirado en DESIGN2 y DESIGN3:
+     Lienzo limpio y luminoso (#f8fafc) que elimina la sensación opaca
+     y resalta con nitidez las tarjetas blancas (#ffffff). */
+  --color-papel: #f8fafc;         /* Fondo de la página luminoso y limpio. */
   --color-papel-alto: #ffffff;    /* Tarjetas que deben levantarse del fondo. */
-  --color-papel-hundido: #e6e9ee; /* Zonas hundidas: campos, deshabilitados. */
+  --color-papel-hundido: #f1f5f9; /* Zonas hundidas: campos, deshabilitados. */
 
   /* --- Texto sobre superficies claras ---
      Derivan del azul marino aclarándose. Nunca un gris arbitrario: si
@@ -83,9 +83,9 @@
   --color-sobre-senal-tenue: #c2d6da; /* 5,25:1 sobre senal-hondo. */
 
   /* --- Líneas ---
-     Finas y frías. El borde separa sin dibujar una caja. */
-  --color-linea: #e0e3e8;
-  --color-linea-fuerte: #c6cdd7;
+     Finas, limpias y nítidas (hairlines según DESIGN2 y DESIGN3). */
+  --color-linea: #e2e8f0;
+  --color-linea-fuerte: #cbd5e1;
 
   /* --- Color de acción ---
      Un solo color para todo lo que significa "esto es una acción" o
@@ -429,21 +429,23 @@
   }
 
   /* --- Tarjeta de propiedad ---
-     El borde hace el trabajo de separar; la sombra solo aparece al
-     pasar por encima, para que la tarjeta responda al puntero sin que
-     la lista entera parezca un montón de cajas flotando. */
+     Inspirado en DESIGN2 y DESIGN3:
+     Fondo blanco puro, hairline border (#e2e8f0), elevación sutil y
+     respuesta táctil/hover limpia y moderna. */
   .ficha {
     background-color: var(--color-papel-alto);
     border: 1px solid var(--color-linea);
-    border-radius: var(--radius-medio);
+    border-radius: var(--radius-grande);
+    box-shadow: 0 1px 3px 0 rgb(15 41 90 / 0.04);
     transition:
-      border-color 120ms ease,
-      box-shadow 120ms ease;
+      border-color 150ms ease,
+      box-shadow 150ms ease,
+      transform 150ms ease;
   }
 
   .ficha:hover {
     border-color: var(--color-linea-fuerte);
-    box-shadow: 0 2px 8px rgb(15 41 90 / 0.07);
+    box-shadow: 0 6px 16px -2px rgb(15 41 90 / 0.09);
   }
 
   /* --- Distintivo ---

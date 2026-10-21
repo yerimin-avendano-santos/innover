@@ -67,15 +67,15 @@ export function Navbar() {
         <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           <Link
             href="/"
-            className="flex min-w-0 shrink-0 items-center gap-2.5 rounded-xl border border-linea/60 bg-papel-alto px-3 py-1.5 shadow-2xs transition-transform hover:scale-[1.01]"
+            className="flex min-w-0 shrink-0 items-center gap-2 rounded-xl border border-linea/60 bg-papel-alto px-2.5 py-1 sm:gap-2.5 sm:px-3 sm:py-1.5 shadow-2xs transition-transform hover:scale-[1.01]"
             aria-label="Innover, ir al inicio"
           >
-            <Logo className="h-7 w-7 shrink-0" />
+            <Logo className="h-6 w-6 sm:h-7 sm:w-7 shrink-0" />
             <div className="flex flex-col">
               <span className="text-cuerpo font-extrabold uppercase leading-tight tracking-[0.07em] text-marino">
                 Innover
               </span>
-              <span className="text-[10px] font-medium leading-tight text-tinta-50">
+              <span className="text-[9px] sm:text-[10px] font-medium leading-tight text-tinta-50">
                 Propiedades en el mapa
               </span>
             </div>

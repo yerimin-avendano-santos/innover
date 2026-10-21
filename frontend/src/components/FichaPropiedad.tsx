@@ -57,7 +57,7 @@ export function FichaPropiedad({ propiedad, seleccionada, alSeleccionar }: Props
 
   return (
     <article
-      className={`ficha grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] overflow-hidden rounded-grande shadow-xs transition-all duration-200 hover:shadow-md ${
+      className={`ficha grid grid-cols-[130px_1fr] sm:grid-cols-[160px_1fr] overflow-hidden rounded-grande shadow-xs transition-all duration-200 hover:shadow-md ${
         alSeleccionar ? 'cursor-pointer' : 'cursor-default'
       } ${seleccionada ? 'border-senal ring-2 ring-senal/20' : ''}`}
       onClick={() => alSeleccionar?.(propiedad.id)}
@@ -65,10 +65,10 @@ export function FichaPropiedad({ propiedad, seleccionada, alSeleccionar }: Props
       {/* --- Foto --- */}
       <FotoCarrusel propiedad={propiedad} />
 
-      <div className="flex min-w-0 flex-col justify-between p-3">
+      <div className="flex min-w-0 flex-col justify-between p-2.5 sm:p-3">
         {/* Encabezado: Precio + Distintivos */}
         <div>
-          <div className="flex items-center justify-between gap-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-1">
             <p className="cifra whitespace-nowrap text-normal sm:text-grande font-bold text-tinta">
               {formatearPrecio(propiedad.precio, propiedad.moneda)}
             </p>

@@ -389,6 +389,15 @@ export function Mapa({
 
     mapa.current = instancia;
 
+    // Redimensionado automático para cambios de orientación móvil o alternancia de vistas
+    let observadorRedimension: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && contenedor.current) {
+      observadorRedimension = new ResizeObserver(() => {
+        instancia.resize();
+      });
+      observadorRedimension.observe(contenedor.current);
+    }
+
     // 📌 La limpieza captura una COPIA del ref. Si escribiéramos
     // `marcadores.current.clear()` dentro del return, el linter avisa
     // (y con razón): entre el efecto y su limpieza el ref puede haber
@@ -480,6 +489,7 @@ export function Mapa({
     }
 
     return () => {
+      observadorRedimension?.disconnect();
       instancia.off('moveend', alTerminarMovimiento);
       quitarEscuchasUbicacion?.();
       registro.clear();

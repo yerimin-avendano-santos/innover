@@ -261,12 +261,12 @@ export default async function PaginaPropiedad({
           )}
         </div>
 
-        <div className="flex items-start justify-between gap-4">
-          <h1 className="text-titulo font-bold tracking-tight leading-tight text-tinta">
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <h1 className="text-2xl sm:text-titulo font-bold tracking-tight leading-tight text-tinta">
             {propiedad.titulo}
           </h1>
 
-          <div className="flex shrink-0 flex-col items-end gap-2">
+          <div className="flex shrink-0 items-center justify-between sm:flex-col sm:items-end gap-2">
             {/*
               Guardar es lo ÚNICO de esta página que hace alguien que todavía
               no es cliente, así que va arriba y con nombre: un corazón suelto
@@ -328,8 +328,8 @@ export default async function PaginaPropiedad({
         {/* ---------- Columna principal ---------- */}
         <div>
           {/* --- Precio: lo primero que se lee --- */}
-          <div className="mb-6 flex items-baseline gap-4 border-y border-linea py-4">
-            <p className="cifra text-display font-semibold text-senal">
+          <div className="mb-6 flex flex-wrap items-baseline gap-2 sm:gap-4 border-y border-linea py-3 sm:py-4">
+            <p className="cifra text-3xl sm:text-display font-semibold text-senal">
               {formatearPrecio(propiedad.precio, propiedad.moneda)}
             </p>
             {porM2 && <p className="cifra text-cuerpo text-tinta-50">{porM2}</p>}
