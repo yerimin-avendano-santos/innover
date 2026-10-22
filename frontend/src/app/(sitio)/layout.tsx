@@ -1,4 +1,5 @@
 import { Navbar } from '@/components/Navbar';
+import { AsistenteVirtual } from '@/components/AsistenteVirtual';
 
 /**
  * El armazón del producto: barra de navegación, contenido y pie.
@@ -23,6 +24,8 @@ export default function LayoutSitio({
       <main id="contenido" className="flex-1">
         {children}
       </main>
+
+      <AsistenteVirtual />
 
       <footer className="border-t border-linea bg-papel-alto">
         <div className="mx-auto flex max-w-[1600px] flex-col gap-2 px-4 py-6 text-micro text-tinta-50 sm:flex-row sm:items-center sm:justify-between sm:px-6">

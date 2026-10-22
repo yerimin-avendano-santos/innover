@@ -51,6 +51,7 @@ import {
 } from '@/lib/clustering';
 import type { PuntoMapa, Propiedad } from '@/lib/tipos';
 import { formatearPrecio, etiquetaTipo } from '@/lib/api';
+import { resolverFotosPropiedad } from '@/lib/fotos';
 
 /**
  * Centro por defecto del mapa.
@@ -510,9 +511,18 @@ export function Mapa({
       };
     }
 
+    const alHacerClicMapa = (e: mapboxgl.MapMouseEvent) => {
+      const target = e.originalEvent?.target as HTMLElement | null;
+      if (target && target.tagName === 'CANVAS') {
+        refSeleccionar.current?.(null as unknown as number);
+      }
+    };
+    instancia.on('click', alHacerClicMapa);
+
     return () => {
       observadorRedimension?.disconnect();
       instancia.off('moveend', alTerminarMovimiento);
+      instancia.off('click', alHacerClicMapa);
       quitarEscuchasUbicacion?.();
       registro.clear();
       instancia.remove();
@@ -566,36 +576,51 @@ export function Mapa({
     const instancia = mapa.current;
     if (!instancia) return;
 
-    // Deseleccionar cancela el globo que estuviera esperando: si no, aparecería
-    // solo, más tarde, al mover el mapa.
+    // Deseleccionar cancela el globo y cierra cualquier popup abierto
     if (seleccionada === null || seleccionada === undefined) {
       globoPendiente.current = null;
+      for (const [clave, marcador] of pintados.current) {
+        if (!clave.startsWith('p:')) continue;
+        const el = marcador.getElement();
+        el.classList.remove('marcador-pin-seleccionado', 'marcador-seleccionado');
+        const popup = marcador.getPopup();
+        if (popup && popup.isOpen()) popup.remove();
+      }
       return;
     }
 
-    // Resaltado: el color y el tamaño no se escriben aquí, se enciende y se
-    // apaga la clase.
-    //
-    // Antes esto era `style.backgroundColor = activo ? '#14181a' : '#0f6b70'`,
-    // y con el marcador destacado habría fallado en silencio: ese marcador se
-    // pinta con una imagen de fondo, y una imagen de fondo se dibuja ENCIMA del
-    // color. El marcador destacado se habría quedado verde al seleccionarlo,
-    // sin ningún error. Con clases, cuál gana lo decide el CSS.
+    // Resaltado y control de popups: solo la seleccionada tiene el popup abierto
     for (const [clave, marcador] of pintados.current) {
       if (!clave.startsWith('p:')) continue; // los grupos no se seleccionan
-      const esSel = Number(clave.slice(2)) === seleccionada;
+      const id = Number(clave.slice(2));
+      const esSel = id === seleccionada;
       const el = marcador.getElement();
       el.classList.toggle('marcador-pin-seleccionado', esSel);
       el.classList.toggle('marcador-seleccionado', esSel);
+
+      const popup = marcador.getPopup();
+      if (esSel) {
+        if (popup && !popup.isOpen()) {
+          marcador.togglePopup();
+        }
+      } else {
+        if (popup && popup.isOpen()) {
+          popup.remove();
+        }
+      }
     }
 
     globoPendiente.current = seleccionada;
 
-    // Caso 1: se ve suelta. Solo se centra: el zoom que eligió el usuario no se
-    // toca.
+    // Caso 1: se ve suelta. Solo se centra: el zoom que eligió el usuario no se toca
     const suelta = pintados.current.get(`p:${seleccionada}`);
     if (suelta) {
-      instancia.easeTo({ center: suelta.getLngLat(), duration: 600 });
+      const popup = suelta.getPopup();
+      if (popup && !popup.isOpen()) {
+        suelta.togglePopup();
+      }
+      globoPendiente.current = null;
+      instancia.easeTo({ center: suelta.getLngLat(), duration: 500 });
       return;
     }
 
@@ -1088,11 +1113,18 @@ function crearMarcador(
     .setLngLat([elemento.longitud, elemento.latitud]);
 
   if (elemento.tipo === 'propiedad') {
-    marcador.setPopup(
-      new mapboxgl.Popup({ offset: 28, closeButton: true, maxWidth: '290px' }).setDOMContent(
-        crearGlobo(elemento.punto, detalle)
-      )
-    );
+    const popup = new mapboxgl.Popup({
+      offset: 28,
+      closeButton: true,
+      closeOnClick: false,
+      maxWidth: '300px',
+    }).setDOMContent(crearGlobo(elemento.punto, detalle));
+
+    popup.on('close', () => {
+      acciones.alSeleccionar(null as unknown as number);
+    });
+
+    marcador.setPopup(popup);
   }
 
   return marcador.addTo(instancia);
@@ -1111,7 +1143,8 @@ function crearGlobo(punto: PuntoMapa, detalle?: Propiedad): HTMLElement {
   const contenedorImagen = document.createElement('div');
   contenedorImagen.className = 'globo-tarjeta-imagen';
 
-  const fotoUrl = detalle?.imagenes?.[0];
+  const fotos = resolverFotosPropiedad(detalle ?? punto);
+  const fotoUrl = fotos[0];
   if (fotoUrl) {
     const img = document.createElement('img');
     img.src = fotoUrl;

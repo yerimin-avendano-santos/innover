@@ -22,6 +22,7 @@ import {
   IconoAuto,
 } from '@/components/IconosPropiedad';
 import { formatearPrecio, precioPorM2, tiempoRelativo, etiquetaTipo } from '@/lib/api';
+import { resolverFotosPropiedad } from '@/lib/fotos';
 import type { Propiedad } from '@/lib/tipos';
 
 interface Props {
@@ -146,7 +147,7 @@ export function FichaPropiedad({
  */
 function FotoCarrusel({ propiedad }: { propiedad: Propiedad }) {
   const [indice, setIndice] = useState(0);
-  const fotos = propiedad.imagenes ?? [];
+  const fotos = resolverFotosPropiedad(propiedad);
   const total = fotos.length;
   const tieneFotos = total > 0;
   const tieneVarias = total > 1;

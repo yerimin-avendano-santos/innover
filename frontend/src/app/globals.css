@@ -601,14 +601,22 @@
     background: transparent;
     border: none;
     padding: 0;
-    transition: transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
     filter: drop-shadow(0 4px 8px rgba(11, 63, 69, 0.28));
   }
 
   .marcador-pin:hover,
   .marcador-pin-resaltado {
-    transform: translateY(-5px) scale(1.15) !important;
     z-index: 25 !important;
+  }
+
+  .marcador-pin:hover .marcador-pin-cuerpo,
+  .marcador-pin-resaltado .marcador-pin-cuerpo {
+    transform: rotate(-45deg) scale(1.14);
+  }
+
+  .marcador-pin:hover .marcador-pin-precio,
+  .marcador-pin-resaltado .marcador-pin-precio {
+    transform: scale(1.08);
   }
 
   .marcador-pin-cuerpo {
@@ -645,7 +653,7 @@
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
     box-shadow: 0 2px 6px rgba(15, 92, 99, 0.35);
-    transition: background-color 150ms ease, border-color 150ms ease;
+    transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
   }
 
   .marcador-pin-destacado .marcador-pin-cuerpo {
@@ -662,7 +670,6 @@
 
   .marcador-pin-seleccionado,
   .marcador-pin-seleccionado:hover {
-    transform: translateY(-7px) scale(1.22) !important;
     z-index: 35 !important;
   }
 
@@ -670,12 +677,14 @@
     border-color: #ffffff;
     background-color: #ff6b4a; /* Pin seleccionado en acento coral */
     box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.35), 0 4px 14px rgba(255, 107, 74, 0.45);
+    transform: rotate(-45deg) scale(1.2);
   }
 
   .marcador-pin-seleccionado .marcador-pin-precio {
     background-color: #ff6b4a; /* Coral */
     color: #ffffff;
     border-color: #ffffff;
+    transform: scale(1.12);
   }
 
   .marcador-pin-resaltado .marcador-pin-cuerpo {

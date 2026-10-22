@@ -49,6 +49,7 @@ import AccionesCompartir from '@/components/AccionesCompartir';
 import BotonFavorito from '@/components/BotonFavorito';
 import CalculadoraHipotecaria from '@/components/CalculadoraHipotecaria';
 import Galeria from '@/components/Galeria';
+import { resolverFotosPropiedad } from '@/lib/fotos';
 import {
   IconoArea,
   IconoHabitacion,
@@ -320,9 +321,8 @@ export default async function PaginaPropiedad({
           Van después del encabezado y antes que todo lo demás, fuera de la
           rejilla de dos columnas, porque son lo primero que mira quien entra:
           la foto decide si esa visita sigue leyendo el precio. */}
-      {(propiedad.imagenes?.length ?? 0) > 0 && (
-        <Galeria imagenes={propiedad.imagenes} titulo={propiedad.titulo} />
-      )}
+      {/* --- Fotos de alta calidad --- */}
+      <Galeria imagenes={resolverFotosPropiedad(propiedad)} titulo={propiedad.titulo} />
 
       <div className="grid gap-8 lg:grid-cols-[1.6fr_1fr]">
         {/* ---------- Columna principal ---------- */}
