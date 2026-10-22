@@ -71,23 +71,30 @@ export function BarraFiltros({ filtros, alCambiar, distritos }: Props) {
     (filtros.precioMax ? 1 : 0) +
     (filtros.orden !== 'recientes' ? 1 : 0);
 
-  // Cerrar panel al hacer clic afuera
+  // Cerrar panel al hacer clic afuera o presionar Escape
   useEffect(() => {
     function clickAfuera(e: MouseEvent) {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
         setPanelFiltrosAbierto(false);
       }
     }
+    function teclaEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setPanelFiltrosAbierto(false);
+      }
+    }
     if (panelFiltrosAbierto) {
       document.addEventListener('mousedown', clickAfuera);
+      document.addEventListener('keydown', teclaEscape);
     }
     return () => {
       document.removeEventListener('mousedown', clickAfuera);
+      document.removeEventListener('keydown', teclaEscape);
     };
   }, [panelFiltrosAbierto]);
 
   return (
-    <div className="border-b border-linea bg-papel-alto">
+    <div className="relative z-30 border-b border-linea bg-papel-alto">
       <div className="mx-auto flex max-w-[1600px] items-center gap-2 px-4 py-2.5 sm:px-6">
         <div className="sin-barra touch-pan-x flex min-w-0 flex-1 items-center gap-2.5 overflow-x-auto py-0.5">
           {/* --- Buscador con mayor amplitud y placeholder conciso --- */}
@@ -159,9 +166,10 @@ export function BarraFiltros({ filtros, alCambiar, distritos }: Props) {
             opciones={distritos.map((d) => ({ valor: d.id, etiqueta: d.nombre }))}
             todosLabel="Todos los distritos"
           />
+        </div>
 
-          {/* --- Botón agrupador "Filtros" con popover --- */}
-          <div className="relative shrink-0" ref={panelRef}>
+        {/* --- Botón agrupador "Filtros" con popover (FUERA del scroll horizontal) --- */}
+        <div className="relative shrink-0" ref={panelRef}>
             <button
               type="button"
               onClick={() => setPanelFiltrosAbierto((prev) => !prev)}
@@ -205,7 +213,7 @@ export function BarraFiltros({ filtros, alCambiar, distritos }: Props) {
 
             {/* Panel flotante de filtros */}
             {panelFiltrosAbierto && (
-              <div className="absolute right-0 top-full z-40 mt-2 w-80 rounded-2xl border border-linea bg-papel-alto p-4 shadow-xl">
+              <div className="absolute right-0 top-full z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-linea bg-papel-alto p-4 shadow-xl">
                 <div className="mb-3 flex items-center justify-between border-b border-linea pb-2.5">
                   <span className="text-menor font-semibold text-tinta">Filtros adicionales</span>
                   {secundariosActivos > 0 && (
@@ -306,9 +314,8 @@ export function BarraFiltros({ filtros, alCambiar, distritos }: Props) {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
 /**
  * Menú desplegable con etiqueta integrada.
