@@ -6,6 +6,7 @@
   "main": "server.js",
   "scripts": {
     "dev": "nodemon --watch server.js --watch src --watch .env server.js",
+    "build": "prisma generate",
     "start": "node server.js",
     "prueba": "node scripts/pruebas.mjs",
     "backup": "node scripts/backup-datos.mjs",
