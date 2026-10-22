@@ -29,7 +29,7 @@ export default function LayoutSitio({
 
       <footer className="border-t border-linea bg-papel-alto">
         <div className="mx-auto flex max-w-[1600px] flex-col gap-2 px-4 py-6 text-micro text-tinta-50 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>Innover · Proyecto de aprendizaje full-stack</p>
+          
           <p>Precios de referencia. Verifica siempre antes de firmar.</p>
         </div>
       </footer>

@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint src",
     "verificar:contraste": "node scripts/verificar-contraste.mjs",
     "verificar:tokens": "node scripts/verificar-tokens.mjs",
     "verificar:clases": "node scripts/verificar-clases.mjs",

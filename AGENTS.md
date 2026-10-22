@@ -1,4 +1,4 @@
-﻿# AGENTS.md · INNOVER
+# AGENTS.md · INNOVER
 
 Instrucciones para agentes que trabajan en este repo. Node ≥ 20, npm workspaces.
 
@@ -202,9 +202,23 @@ El pase corto es autocontenido (se verifica con la firma, sin tocar la base) y p
 - **El plan no se acepta del usuario en ningún endpoint.** Se cambia con `PATCH /api/usuarios/:id/plan`, que exige `ADMIN`. `actualizarUsuarioAdminSchema` no incluye `plan`: Zod lo descarta en silencio, así que `PUT /api/usuarios/5 { "plan": "PRO" }` no hace nada.
 - **El PRO se pierde al vencer, pero el 3D ya publicado se conserva.** `resolverTour3D` compara contra el valor guardado: *reenviar* el recorrido que ya estaba no es usarlo, *cambiarlo* sí. Sin esa distinción, a quien se le vence el plan no le dejaría ni editar el precio de su propia casa — el formulario reenvía todos los campos y recibiría un 403.
 
-### El recorrido 3D vacío significa "bórralo", no "no lo toques"
+### El recorrido 3D y visor interactivo (.glb + iframe)
+
+`tour_3d_url` acepta tanto recorridos virtuales Matterport / iframe como modelos 3D en formato `.glb` o `.gltf`. En el frontend, `frontend/src/components/Tour3DViewer.tsx` detecta el tipo:
+- Si es `.glb`/`.gltf`, carga dinámicamente `<model-viewer>` de Google con controles orbitales 360°, zoom, sombras y botón de pantalla completa inmersiva.
+- Si es un enlace de Matterport / Kuula / recorrido virtual, lo incrusta en un `<iframe>` responsivo con permisos de acelerómetro y giroscopio.
+- `frontend/src/lib/fotos.ts` cuenta con `resolverTour3D(propiedad)` que mapea modelos locales (ej. `/inmuebles/depa1/final.glb`) o remotos.
+- En la interfaz, las propiedades con 3D activo muestran un distintivo `Tour 3D` con icono de cubo tridimensional tanto en la ficha como en el popup del mapa.
 
 `tour_3d_url` tiene tres estados, y confundir dos es un bug silencioso: ausente = no tocar; `''` o `null` = quitar; URL = poner. Antes `''` se transformaba a `undefined`, así que **era imposible borrar un recorrido 3D** — el formulario mandaba `''` al vaciar el campo y el valor se quedaba igual, sin error ni aviso.
+
+### Asistente Virtual (`AsistenteVirtual.tsx`)
+
+Vive en `frontend/src/components/AsistenteVirtual.tsx` y está montado de forma global en `frontend/src/app/(sitio)/layout.tsx`. Cuenta con un botón flotante con indicador de presencia en verde pulsante, ventana de chat interactiva con la marca INNOVER, preguntas sugeridas de rápida selección, indicador visual de escritura y motor de respuestas contextuales sobre Huánuco, Amarilis, Pillco Marca, planes de publicación y contacto.
+
+### Parpadeo de marcadores en el mapa (Mapbox)
+
+⛔ **Nunca aplicar `transform: ... !important` sobre el elemento raíz del marcador (`.marcador-pin`).** Mapbox posiciona las chinchetas aplicando `style.transform = translate(...)` en el elemento contenedor. Si se añade `transform` con `!important` en CSS para la animación de hover o selección, sobreescribe las coordenadas del mapa y la chincheta salta al origen de coordenadas 60 veces por segundo (parpadeo incontrolable). Las transformaciones visuales de hover, escala y sombra deben aplicarse exclusivamente en los elementos hijos (`.marcador-pin-cuerpo`, `.marcador-pin-precio`).
 
 ### La geografía es Huánuco, y solo Huánuco
 

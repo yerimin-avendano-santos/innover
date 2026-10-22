@@ -1,9 +1,5 @@
 'use client';
 
-// ========================================
-// 🧭 BARRA DE NAVEGACIÓN (INNOVER)
-// ========================================
-
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';

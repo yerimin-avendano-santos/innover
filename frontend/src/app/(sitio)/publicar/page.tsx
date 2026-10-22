@@ -1,19 +1,5 @@
 'use client';
 
-// ========================================
-// 📐 PUBLICAR PROPIEDAD
-// ========================================
-// Formulario de alta y edición de inmuebles.
-//
-// 📌 MEJORAS UX
-// - Secciones contenidas en tarjetas blancas con radio de 16px y padding de 24px
-// - Encabezados numerados con jerarquía visual clara
-// - Contadores de caracteres en título y descripción
-// - Placeholders nítidos y focus ring teal (#0F5C63)
-// - Barra sticky inferior de acciones con botón principal en coral (#FF6B4A)
-// - Vista previa lateral reactiva en pantallas grandes (lg:)
-// - Migas de pan y navegación clara ("Volver al mapa")
-
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';

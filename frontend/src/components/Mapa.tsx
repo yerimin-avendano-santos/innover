@@ -1,42 +1,5 @@
 'use client';
 
-// ========================================
-// 🗺️ MAPA DE PROPIEDADES
-// ========================================
-// Muestra las propiedades como marcadores sobre Mapbox.
-//
-// Este componente tenía DOS bugs serios que ya están corregidos:
-//
-// ⛔ BUG 1 — XSS. Usaba `setHTML()` con datos del usuario interpolados:
-//     .setHTML(`<div>${prop.titulo}</div>`)
-//     Un propietario podía titular su propiedad
-//     `<img src=x onerror="...robar cookie...">` y robar la sesión de
-//     quien abriera el mapa. La API pública no exige sesión, así que no
-//     hacía falta ni estar registrado.
-//
-//     Ahora el globo se construye con NODOS DE DOM y textContent.
-//     textContent treats any string as plain text, nunca as HTML.
-//     Un título con `<script>` sale escrito literal, sin ejecutarse.
-//
-// ⛔ BUG 2 — El mapa se recreaba entero en cada cambio.
-//     El efecto dependía de [properties], así que cada filtro
-//     destruía y volvía a construir el mapa: el usuario perdía el zoom
-//     y la posición cada vez que escribía en el buscador.
-//
-//     Ahora el mapa se crea UNA vez y solo se actualizan los marcadores.
-//
-// 📌 Y AHORA LOS MARCADORES SE AGRUPAN (ver `lib/clustering.ts`).
-//
-// Con 40 resultados, la conurbación Huánuco–Amarilis–Pillco Marca se llena de
-// precios pisados unos sobre otros, y un mapa de etiquetas amontonadas no
-// contesta lo único que tiene que contestar: dónde hay qué. Cuando varias
-// chinchetas caben en el mismo puñado de píxeles, se sustituyen por un número;
-// al acercarse, el número se rompe en chinchetas.
-//
-// El componente NO decide cuándo agrupar —eso es lógica pura, con sus casos
-// raros y su prueba, y vive en `lib/clustering.ts`—. Aquí solo se pinta lo que
-// dice el índice y se traduce un clic en movimiento del mapa.
-
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -51,7 +14,7 @@ import {
 } from '@/lib/clustering';
 import type { PuntoMapa, Propiedad } from '@/lib/tipos';
 import { formatearPrecio, etiquetaTipo } from '@/lib/api';
-import { resolverFotosPropiedad } from '@/lib/fotos';
+import { resolverFotosPropiedad, resolverTour3D } from '@/lib/fotos';
 
 /**
  * Centro por defecto del mapa.
@@ -1188,6 +1151,14 @@ function crearGlobo(punto: PuntoMapa, detalle?: Propiedad): HTMLElement {
     tagDestacado.className = 'distintivo distintivo-destacado-solido';
     tagDestacado.textContent = 'Destacado';
     tags.appendChild(tagDestacado);
+  }
+
+  const tour3D = resolverTour3D(detalle ?? punto);
+  if (tour3D) {
+    const tag3D = document.createElement('span');
+    tag3D.className = 'distintivo border border-teal-200 bg-teal-50 font-semibold text-senal';
+    tag3D.textContent = 'Tour 3D';
+    tags.appendChild(tag3D);
   }
   cuerpo.appendChild(tags);
 

@@ -1,4 +1,4 @@
-﻿# 🗺️ Hoja de Ruta de Desarrollo y Aprendizaje (ROADMAP)
+# 🗺️ Hoja de Ruta de Desarrollo y Aprendizaje (ROADMAP)
 
 Cada fase tiene dos listas: lo que **hay que aprender** y lo que **hay que construir**. Una casilla marcada significa que está terminado y funcionando.
 
@@ -80,22 +80,22 @@ Cada fase tiene dos listas: lo que **hay que aprender** y lo que **hay que const
 ## Fase 6: Multimedia y 3D 🏠
 
 - [ ] **Aprender:** almacenamiento de archivos en la nube (S3 / Cloudinary)
-- [x] **Desarrollo:** fotos del anuncio: se publican pegando direcciones en `/publicar` y la ficha las enseña en una galería, con la portada escrita en el HTML y como `og:image` al compartir el enlace. *El campo `imagenes` ya guardaba direcciones, así que no hizo falta tocar la base ni esperar a Cloudinary — y por eso tampoco hace falta volver atrás: cuando llegue la subida, guardará la dirección que devuelva el almacenamiento y ni la ficha ni la tarjeta del buscador cambian una línea*
-- [ ] **Desarrollo:** subida de archivos desde el formulario (lo que falta de verdad: almacenamiento y credenciales)
-- [x] **Desarrollo:** galería en la ficha
-- [x] **Desarrollo:** campo e incrustación del recorrido 3D
-- [ ] **Desarrollo:** recorrido 360° con Matterport
+- [x] **Desarrollo:** fotos del anuncio: se publican pegando direcciones en `/publicar` y la ficha las enseña en una galería, con la portada escrita en el HTML y como `og:image` al compartir el enlace.
+- [ ] **Desarrollo:** subida directa de archivos binarios al almacenamiento en la nube
+- [x] **Desarrollo:** galería en la ficha y fotos locales reales de Huánuco
+- [x] **Desarrollo:** campo e incrustación de recorrido 3D interactivo (.glb con model-viewer y recorridos virtuales Matterport / iframe)
+- [x] **Desarrollo:** distintivo y experiencia 3D en ficha de propiedad y marcadores del mapa
 
-## Fase 7: Inteligencia artificial 🤖
+## Fase 7: Inteligencia artificial y Asistencia 🤖
 
-- [ ] **Aprender:** consumo de APIs de IA
-- [ ] **Desarrollo:** asistente de "zona ideal" con test de necesidades
-- [ ] **Desarrollo:** estimación de precio por zona
+- [x] **Desarrollo:** Asistente Virtual interactivo flotante con preguntas frecuentes, orientación de zonas (Huánuco, Amarilis, Pillco Marca), asesoría de compra/alquiler y soporte
+- [ ] **Aprender:** consumo de APIs de IA generativa (Gemini API)
+- [ ] **Desarrollo:** estimación automática de precio por zona
 - [ ] **Desarrollo:** validación de identidad de propietarios (RENIEC)
 
-## Fase 8: Producción 🚀
+## Fase 8: Producción y Despliegue 🚀
 
-- [ ] **Aprender:** hosting de base de datos, backend y frontend
+- [x] **Desarrollo:** configuración para despliegue en Vercel (`vercel.json`, variables de entorno y soporte monorepo)
 - [ ] **Aprender:** dominios, DNS y certificados HTTPS
 - [ ] **Aprender:** CI/CD y despliegue automático
 - [ ] **Desarrollo:** despliegue de INNOVER en producción

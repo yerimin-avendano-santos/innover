@@ -1,16 +1,5 @@
 'use client';
 
-// ========================================
-// 🎛️ BARRA DE FILTROS
-// ========================================
-// El instrumento de búsqueda limpio y ergonómico.
-//
-// 📌 ORGANIZACIÓN DE CONTROLES
-// - Buscador ensanchado con placeholder conciso
-// - Segmentado Venta/Alquiler con contraste nítido (#0F5C63 activo)
-// - Desplegables esenciales directos: Tipo de inmueble y Distrito
-// - Panel desplegable "Filtros" para Habitaciones, Precio y Orden, con contador de activos
-
 import { useState, useRef, useEffect } from 'react';
 import type { Distrito, TipoInmueble } from '@/lib/tipos';
 

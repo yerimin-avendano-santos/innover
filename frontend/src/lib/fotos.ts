@@ -113,3 +113,50 @@ export function resolverFotosPropiedad(
       return FOTOS_POR_CATEGORIA.depa1;
   }
 }
+
+export interface Tour3DInfo {
+  url: string;
+  tipo: 'glb' | 'iframe';
+  etiqueta: string;
+}
+
+/**
+ * Determina si la propiedad cuenta con modelo 3D GLB o recorrido virtual.
+ */
+export function resolverTour3D(
+  propiedad?: Partial<Propiedad> | Partial<PuntoMapa> | null
+): Tour3DInfo | null {
+  if (!propiedad) return null;
+
+  const texto = `${propiedad.titulo ?? ''} ${(propiedad as Propiedad).slug ?? ''}`.toLowerCase();
+
+  // El modelo 3D GLB real generado para el departamento en Plaza de Armas
+  if (texto.includes('plaza de armas') || (texto.includes('departamento') && texto.includes('cuadras'))) {
+    return {
+      url: '/inmuebles/depa1/final.glb',
+      tipo: 'glb',
+      etiqueta: 'Modelo 3D Interactivo',
+    };
+  }
+
+  // Si tiene un tour_3d_url definido en la base de datos
+  const tourUrl = (propiedad as Propiedad).tour_3d_url;
+  if (tourUrl) {
+    if (tourUrl.endsWith('.glb') || tourUrl.endsWith('.gltf')) {
+      return { url: tourUrl, tipo: 'glb', etiqueta: 'Modelo 3D' };
+    }
+    return { url: tourUrl, tipo: 'iframe', etiqueta: 'Recorrido Virtual 3D' };
+  }
+
+  // Casa residencial en Amarilis con recorrido virtual
+  if (texto.includes('amarilis') || texto.includes('casa amplia')) {
+    return {
+      url: 'https://my.matterport.com/show/?m=SxQL3iGyoDo',
+      tipo: 'iframe',
+      etiqueta: 'Recorrido Virtual 3D',
+    };
+  }
+
+  return null;
+}
+

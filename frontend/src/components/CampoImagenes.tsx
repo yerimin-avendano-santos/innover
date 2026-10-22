@@ -1,12 +1,6 @@
 'use client';
 
-/* eslint-disable @next/next/no-img-element -- Las fotos provienen de subida local o URLs externas */
-
-// ========================================
-// 📷 SUBIDA Y GESTIÓN DE FOTOS
-// ========================================
-// Control interactivo con drag-and-drop, vista previa en cuadrícula,
-// selección de portada, reordenamiento y alternativa por URL.
+/* eslint-disable @next/next/no-img-element */
 
 import { useState, useRef, type DragEvent, type ChangeEvent } from 'react';
 

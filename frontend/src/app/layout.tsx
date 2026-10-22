@@ -48,7 +48,7 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Innover · Propiedades en el mapa',
+    default: 'INNOVER - Propiedades en el mapa',
     template: '%s · Innover',
   },
   description:

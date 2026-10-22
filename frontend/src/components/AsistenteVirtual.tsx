@@ -6,7 +6,7 @@
 // Widget flotante de asistencia interactiva para orientación
 // inmobiliaria en Huánuco y soporte en la plataforma.
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 interface Mensaje {
   id: string;
@@ -26,12 +26,13 @@ export function AsistenteVirtual() {
   const [abierto, setAbierto] = useState(false);
   const [entrada, setEntrada] = useState('');
   const [escribiendo, setEscribiendo] = useState(false);
+  const contadorId = useRef(1);
   const [mensajes, setMensajes] = useState<Mensaje[]>([
     {
       id: 'bienvenida',
       remitente: 'asistente',
       texto:
-        '¡Hola! 👋 Soy el Asistente Virtual de INNOVER. Estoy aquí para ayudarte a explorar casas, departamentos y terrenos en Huánuco, Amarilis y Pillco Marca, o asistirte en la publicación de tu inmueble. ¿En qué te puedo orientar hoy?',
+        '¡Hola! Soy el Asistente Virtual de INNOVER. Estoy aquí para ayudarte a explorar casas, departamentos y terrenos en Huánuco, Amarilis y Pillco Marca, o asistirte en la publicación de tu inmueble. ¿En qué te puedo orientar hoy?',
       hora: 'Ahora',
     },
   ]);
@@ -53,12 +54,14 @@ export function AsistenteVirtual() {
     }
   }, [abierto]);
 
-  const responderPregunta = (textoPregunta: string) => {
+  const responderPregunta = useCallback((textoPregunta: string) => {
+    contadorId.current += 1;
+    const idUsuario = `usr-${contadorId.current}`;
     const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     // Mensaje del usuario
     const nuevoUsuario: Mensaje = {
-      id: `usr-${Date.now()}`,
+      id: idUsuario,
       remitente: 'usuario',
       texto: textoPregunta,
       hora,
@@ -70,6 +73,8 @@ export function AsistenteVirtual() {
 
     // Generar respuesta contextual realista
     setTimeout(() => {
+      contadorId.current += 1;
+      const idBot = `bot-${contadorId.current}`;
       let respuesta =
         'Comprendo tu consulta. En INNOVER puedes usar el buscador con mapa en tiempo real y filtrar por tipo de operación (Venta o Alquiler) y distrito. ¿Deseas que te oriente en algún inmueble específico?';
 
@@ -77,23 +82,23 @@ export function AsistenteVirtual() {
 
       if (q.includes('zona') || q.includes('cotizada') || q.includes('huanuco') || q.includes('huánuco')) {
         respuesta =
-          '📍 Las zonas con mayor movimiento inmobiliario en Huánuco son la conurbación de Amarilis (Paucarbamba, Paucarbambilla), el centro histórico cerca de la Plaza de Armas, y Pillco Marca (Cayhuayna). Los precios por metro cuadrado oscilan entre S/ 1,800 y S/ 3,500.';
+          'Las zonas con mayor movimiento inmobiliario en Huánuco son la conurbación de Amarilis (Paucarbamba, Paucarbambilla), el centro histórico cerca de la Plaza de Armas, y Pillco Marca (Cayhuayna). Los precios por metro cuadrado oscilan entre S/ 1,800 y S/ 3,500.';
       } else if (q.includes('publicar') || q.includes('vender') || q.includes('alquilar')) {
         respuesta =
-          '📐 ¡Publicar es muy fácil! Puedes hacer clic en el botón naranja "+ Publicar propiedad" en la barra superior. Solo necesitas título, descripción, precio, fotos (puedes arrastrarlas directo) y marcar su ubicación en el mapa.';
+          '¡Publicar es muy fácil! Puedes hacer clic en el botón naranja "+ Publicar propiedad" en la barra superior. Solo necesitas título, descripción, precio, fotos (puedes arrastrarlas directo) y marcar su ubicación en el mapa.';
       } else if (q.includes('pro') || q.includes('3d') || q.includes('destacado') || q.includes('recorrido')) {
         respuesta =
-          '🌟 El Plan PRO te permite agregar un Recorrido Virtual 3D interactivo (compatible con Matterport y Sketchfab) y destacar tu anuncio con prioridad en los primeros resultados del mapa con distintivo ámbar.';
+          'El Plan PRO te permite agregar un Recorrido Virtual 3D interactivo (compatible con Matterport y Sketchfab) y destacar tu anuncio con prioridad en los primeros resultados del mapa con distintivo ámbar.';
       } else if (q.includes('amarilis') || q.includes('casa')) {
         respuesta =
-          '🏡 En Amarilis tenemos actualmente opciones destacadas tanto en venta como en alquiler. Puedes seleccionar "Amarilis" en el filtro de distritos de la barra superior para ver las chinchetas exactas en el mapa.';
+          'En Amarilis tenemos actualmente opciones destacadas tanto en venta como en alquiler. Puedes seleccionar "Amarilis" en el filtro de distritos de la barra superior para ver las chinchetas exactas en el mapa.';
       } else if (q.includes('departamento') || q.includes('alquiler')) {
         respuesta =
-          '🏢 En la barra de filtros activa la pastilla "Alquiler" y en Tipo elige "Departamentos". Verás instantáneamente los precios actualizados en soles y dólares.';
+          'En la barra de filtros activa la pastilla "Alquiler" y en Tipo elige "Departamentos". Verás instantáneamente los precios actualizados en soles y dólares.';
       }
 
       const nuevoBot: Mensaje = {
-        id: `bot-${Date.now()}`,
+        id: idBot,
         remitente: 'asistente',
         texto: respuesta,
         hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -102,7 +107,7 @@ export function AsistenteVirtual() {
       setMensajes((prev) => [...prev, nuevoBot]);
       setEscribiendo(false);
     }, 900);
-  };
+  }, []);
 
   const manejarEnvio = (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,7 +119,7 @@ export function AsistenteVirtual() {
   return (
     <>
       {/* Botón flotante siempre accesible en la esquina inferior derecha */}
-      <div className="fixed bottom-6 right-6 z-40 flex items-center gap-3">
+      <div className="fixed bottom-6 right-18 z-40 flex items-center gap-3">
         {!abierto && (
           <div className="hidden sm:flex items-center gap-2 rounded-full border border-linea bg-white/95 px-3.5 py-1.5 shadow-md backdrop-blur-xs transition hover:shadow-lg">
             <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -177,7 +182,7 @@ export function AsistenteVirtual() {
                 <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#0F5C63] bg-emerald-400" />
               </div>
               <div>
-                <h3 className="text-menor font-bold leading-tight">Asistente INNOVER</h3>
+                <h3 className="text-menor font-bold leading-tight">AGENTE INNOVER</h3>
                 <p className="text-micro text-teal-200">Asistente inmobiliario virtual</p>
               </div>
             </div>

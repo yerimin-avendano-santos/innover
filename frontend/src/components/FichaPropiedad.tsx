@@ -1,17 +1,6 @@
 'use client';
 
-/* eslint-disable @next/next/no-img-element -- el motivo está en components/Galeria.tsx */
-
-// ========================================
-// 📋 FICHA DE PROPIEDAD
-// ========================================
-// La tarjeta de una propiedad en la lista de búsqueda.
-//
-// 📌 MEJORAS UX
-// - Título en 2 líneas completas para lectura fluida
-// - Sincronización bidireccional de hover con el marcador en el mapa
-// - Chips de datos simplificados con diseño limpio y ligero
-// - Precios y distintivos con alta legibilidad y jerarquía
+/* eslint-disable @next/next/no-img-element */
 
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
@@ -22,7 +11,7 @@ import {
   IconoAuto,
 } from '@/components/IconosPropiedad';
 import { formatearPrecio, precioPorM2, tiempoRelativo, etiquetaTipo } from '@/lib/api';
-import { resolverFotosPropiedad } from '@/lib/fotos';
+import { resolverFotosPropiedad, resolverTour3D } from '@/lib/fotos';
 import type { Propiedad } from '@/lib/tipos';
 
 interface Props {
@@ -43,6 +32,7 @@ export function FichaPropiedad({
   const porM2 = precioPorM2(propiedad.precio, propiedad.area_m2, propiedad.moneda);
   const verificado = propiedad.propietario?.identidad_verificada === true;
   const operacion = propiedad.tipo === 'VENTA' ? 'Venta' : 'Alquiler';
+  const tour3D = resolverTour3D(propiedad);
 
   return (
     <article
@@ -72,6 +62,14 @@ export function FichaPropiedad({
             <div className="flex shrink-0 items-center gap-1">
               {propiedad.destacado && (
                 <span className="distintivo distintivo-destacado-solido">Destacado</span>
+              )}
+              {Boolean(tour3D) && (
+                <span className="distintivo border border-teal-200 bg-teal-50 font-semibold text-senal" title="Cuenta con recorrido y modelo 3D">
+                  <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M8 1.5l5.5 3.2v6.6L8 14.5l-5.5-3.2V4.7zM8 1.5v13M2.5 4.7l5.5 3.3 5.5-3.3" />
+                  </svg>
+                  3D
+                </span>
               )}
               <span
                 className={`distintivo ${

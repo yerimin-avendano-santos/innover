@@ -1,4 +1,4 @@
-﻿# 🗺️ INNOVER
+# 🗺️ INNOVER
 
 **PropTech inmobiliaria peruana.** Mapa interactivo para buscar propiedades y CRM para agentes inmobiliarios.
 
@@ -149,17 +149,48 @@ node backend/scripts/limpiar-usuarios-prueba.mjs --ejecutar # borrar
 
 ---
 
-## 🎨 Sistema de diseño
+## 🎨 Sistema de diseño y UX
 
-Tailwind v4 **CSS-first**: los tokens viven en `src/app/globals.css` dentro de `@theme`, no en un `tailwind.config.js`.
+Tailwind v4 **CSS-first**: los tokens viven en `src/app/globals.css` dentro de `@theme`.
 
-- **Tinta y papel** — grafito sobre papel técnico, no blanco puro
-- **Señal** — un único color para acciones y selección
-- **Latón** — color exclusivo del "destacado" pagado, separado de la señal
-- **Cifras tabulares** — `font-variant-numeric: tabular-nums` para que los precios se alineen en columna
-- **Accesibilidad** — foco visible, `aria-label` en marcadores, `role="alert"` en errores, `prefers-reduced-motion` respetado
+- **Paleta de Identidad y Jerarquía Visual:**
+  - **Teal Marca (`#0F5C63`):** Header con degradado suave, pines del mapa y elementos institucionales.
+  - **Acción y Destacados (`#FF6B4A` / `#F5A524`):** Botón principal "Publicar propiedad" en color coral y badges destacados en ámbar luminoso.
+  - **Confianza (`#16A34A` / `#E8F7EE`):** Badge de verificación de identidad de propietarios y agentes.
+  - **Fondo técnico contrastado (`#F4F7F8`):** Fondo suave con tarjetas blancas elevadas para máxima legibilidad.
+- **🏡 Visor 3D y Modelos GLB:**
+  - Soporte nativo para archivos 3D `.glb` mediante Google `<model-viewer>` con rotación orbital 360°, zoom interactivo y modo inmersivo a pantalla completa.
+  - Soporte para tours virtuales vía `iframe` (Matterport / Kuula).
+  - Indicadores con badge 3D en listados de tarjetas y popups del mapa.
+- **🤖 Asistente Virtual:**
+  - Widget flotante interactivo para orientación inmobiliaria en Huánuco, Amarilis y Pillco Marca.
+  - Sugerencias rápidas de búsqueda, preguntas frecuentes y asistencia para publicar propiedades.
+- **📸 Fotografías Reales:**
+  - Mapeo de inmuebles con fotos auténticas locales ubicadas en `/public/inmuebles/` (casas, departamentos, campos y locales comerciales).
+- **🗺️ Mapa Interactivo Mapbox:**
+  - Marcadores de precio estilizados en teal con acento coral al seleccionar.
+  - Animación suave de elevación sin parpadeo (flicker-free) y agrupamiento inteligente de chinchetas (*clustering*).
+  - Sincronización al pasar el cursor o hacer clic entre la lista y el mapa.
+- **📱 100% Responsivo:** Adaptación completa para smartphones y tablets con menú móvil y filtros optimizados.
 
-El mapa es la página, no una tarjeta: ocupa media pantalla desde el primer segundo y los filtros son una barra horizontal.
+---
+
+## 🚀 Despliegue en Vercel
+
+El frontend de INNOVER está preparado para desplegarse de inmediato en [Vercel](https://vercel.com):
+
+### Paso a paso:
+
+1. **Subir cambios a GitHub:** Asegúrate de tener los cambios en tu repositorio.
+2. **Importar proyecto en Vercel:**
+   - Conecta tu cuenta de GitHub y selecciona el repositorio `INMOVER`.
+   - En **Framework Preset**, selecciona **Next.js**.
+   - En **Root Directory**, selecciona la carpeta `frontend` (o mantén la raíz con el `vercel.json` incluido).
+3. **Variables de Entorno en Vercel:**
+   Agrega las siguientes variables en la sección *Environment Variables*:
+   - `BACKEND_URL`: URL pública de tu API desplegada (ej. `https://api.inmover.pe` o tu instancia en Railway/Render).
+   - `NEXT_PUBLIC_MAPBOX_TOKEN`: Tu token público de Mapbox (`pk.eyJ1...`).
+4. **Desplegar:** Haz clic en **Deploy**. Vercel compilará la aplicación utilizando Next.js 16 y Tailwind v4.
 
 ---
 
@@ -184,13 +215,17 @@ El mapa es la página, no una tarjeta: ocupa media pantalla desde el primer segu
 | `npm run migrate` | Aplica las migraciones pendientes |
 | `npm run seed` | Borra y recarga los datos de ejemplo |
 | `npm run backup` | Descarga los datos a un JSON |
+| `npm run verificar:clustering` | Prueba unitaria del agrupamiento del mapa |
+| `npm run verificar:contraste` | Comprueba contraste WCAG AA |
+| `npm run verificar:tokens` | Comprueba tokens CSS generados |
+| `npm run verificar:clases` | Comprueba clases de Tailwind |
 
 ---
 
-## ⚠️ Antes de desplegar
+## ⚠️ Antes de desplegar en producción
 
 - [ ] `JWT_SECRET` propio y aleatorio (nunca el de desarrollo)
 - [ ] `NODE_ENV=production`
-- [ ] `CORS_ORIGENES` con el dominio real, no `*`
-- [ ] `DATABASE_URL` apuntando a la base de producción
+- [ ] `CORS_ORIGENES` con el dominio real de Vercel/producción
+- [ ] `DATABASE_URL` apuntando a la base de producción (Supabase)
 - [ ] HTTPS obligatorio (la cookie usa `secure` en producción)

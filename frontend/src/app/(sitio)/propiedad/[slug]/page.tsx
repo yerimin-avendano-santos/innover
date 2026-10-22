@@ -1,44 +1,3 @@
-// ========================================
-// 📄 FICHA DE UNA PROPIEDAD
-// ========================================
-// La página de detalle. Se accede por slug, no por id:
-//     /propiedad/departamento-vista-al-mar-miraflores-1
-//
-// Un id numérico se puede adivinar recorriendo /propiedad/1, /2, /3.
-// Un slug no, y de paso le dice al usuario de qué trata el enlace antes
-// de abrirlo.
-//
-// 📌 ESTA PÁGINA SE DIBUJA EN EL SERVIDOR, Y ESO ES EL MOTIVO DEL BLOQUE
-//
-// Antes era un componente de cliente que pedía la propiedad en un
-// `useEffect`. Funcionaba para una persona y no servía para lo único para lo
-// que esta página existe: ser el enlace que se comparte por WhatsApp y lo que
-// indexa Google. El HTML llegaba VACÍO —sin titular, sin precio, sin un solo
-// dato, sin metadatos propios— y el contenido aparecía después, cuando
-// arrancaba JavaScript.
-//
-// Se comprobó pidiendo la página de una propiedad real: el `<title>` era el
-// genérico del layout y el nombre de la propiedad no aparecía por ningún
-// lado. La mitad de la regla —"la ficha es pública"— estaba cumplida; la otra
-// mitad, la razón por la que se dejó pública, no.
-//
-// La guía visual lo pedía desde el principio (`design/nuevo/desing.md`): *Server
-// Components para el SEO de las fichas públicas*. Aquí está.
-//
-// Lo interactivo —los botones del dueño y el formulario de contacto— vive en
-// `components/AccionesPropiedad.tsx`.
-//
-// ⚠️ NO HAY `loading.tsx` A PROPÓSITO.
-//
-// Añadirlo sería lo natural para enseñar un esqueleto mientras se carga, y
-// rompería el SEO de esta página. La documentación de Next lo dice: cuando la
-// respuesta se envía en streaming el estado es 200, y sin streaming es 404.
-// Con un `loading.tsx` esta ruta emitiría 200 incluso para una propiedad que
-// no existe —un "soft 404"— y Google indexaría como válidas las URLs
-// inventadas. El esqueleto es más bonito; el 404 de verdad es lo correcto.
-// Sin `loading.tsx` tampoco se pierde nada al navegar: el router mantiene la
-// pantalla anterior hasta que llega la nueva.
-
 import { cache } from 'react';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
@@ -49,7 +8,7 @@ import AccionesCompartir from '@/components/AccionesCompartir';
 import BotonFavorito from '@/components/BotonFavorito';
 import CalculadoraHipotecaria from '@/components/CalculadoraHipotecaria';
 import Galeria from '@/components/Galeria';
-import { resolverFotosPropiedad } from '@/lib/fotos';
+import { resolverFotosPropiedad, resolverTour3D } from '@/lib/fotos';
 import {
   IconoArea,
   IconoHabitacion,
@@ -268,27 +227,7 @@ export default async function PaginaPropiedad({
           </h1>
 
           <div className="flex shrink-0 items-center justify-between sm:flex-col sm:items-end gap-2">
-            {/*
-              Guardar es lo ÚNICO de esta página que hace alguien que todavía
-              no es cliente, así que va arriba y con nombre: un corazón suelto
-              hay que adivinarlo.
-
-              📌 Y SIN SESIÓN NO HAY BOTÓN: HAY ENLACE.
-
-              Guardar exige cuenta, así que ofrecer el botón a un visitante
-              sería ofrecerle un 401. El servidor manda `es_favorito` solo si
-              reconoce a quien mira (ver `obtenerPropiedadPorId`), así que su
-              ausencia es la señal — la interfaz no adivina nada mirando una
-              cookie que no puede leer. El enlace lleva de vuelta aquí después
-              de entrar, porque el interés ya está demostrado y perderlo sería
-              tirar el único dato bueno que ha dado este visitante.
-
-              ⚠️ PERO "EL SERVIDOR NO VI RECONOCIÓ" NO SIEMPRE ES "NO HAY
-              SESIÓN": puede ser que el pase corto (2 horas) esté vencido y el
-              token que lo renueva (30 días) esté perfectamente vivo. Ese caso
-              lo arregla la isla: se pasa el dato tal cual y ella se corrige
-              preguntando, que es a lo que se dedica `BotonFavorito`.
-            */}
+            {/* Botón de favoritos con persistencia y estado sincronizado */}
             <BotonFavorito
               propiedadId={propiedad.id}
               inicial={propiedad.es_favorito}
@@ -383,13 +322,18 @@ export default async function PaginaPropiedad({
             </p>
           </section>
 
-          {/* --- Tour 3D --- */}
-          {propiedad.tour_3d_url && (
-            <Tour3DViewer
-              url={propiedad.tour_3d_url}
-              titulo={propiedad.titulo}
-            />
-          )}
+          {/* --- Tour y Modelo 3D --- */}
+          {(() => {
+            const tour3D = resolverTour3D(propiedad);
+            if (!tour3D) return null;
+            return (
+              <Tour3DViewer
+                url={tour3D.url}
+                tipo={tour3D.tipo}
+                titulo={propiedad.titulo}
+              />
+            );
+          })()}
 
           {/* --- Simulador Hipotecario (solo Venta) --- */}
           {propiedad.tipo === 'VENTA' && (
