@@ -229,3 +229,4 @@ El frontend de INNOVER está preparado para desplegarse de inmediato en [Vercel]
 - [ ] `CORS_ORIGENES` con el dominio real de Vercel/producción
 - [ ] `DATABASE_URL` apuntando a la base de producción (Supabase)
 - [ ] HTTPS obligatorio (la cookie usa `secure` en producción)
+# innover
