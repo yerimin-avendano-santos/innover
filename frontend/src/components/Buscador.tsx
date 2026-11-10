@@ -244,7 +244,7 @@ export function Buscador() {
      * `vh` para que el navegador móvil no reserve la barra de direcciones
      * que ya no se ve.
      */
-    <div className="flex h-[calc(100dvh-6.1875rem)] flex-col sm:h-[calc(100dvh-3.625rem)]">
+    <div className="flex h-[calc(100dvh-4rem)] flex-col">
       <BarraFiltros filtros={filtros} alCambiar={setFiltros} distritos={distritos} />
 
       {/* --- Error --- */}
@@ -291,7 +291,7 @@ export function Buscador() {
             {sesionCaducada ? (
               <SesionVencida />
             ) : propiedades.length > 0 ? (
-              <ul className="space-y-3 p-3 sm:p-4">
+              <ul className="space-y-3 p-3 pb-24 sm:p-4 sm:pb-6">
                 {propiedades.map((propiedad) => (
                   <li key={propiedad.id}>
                     <FichaPropiedad
@@ -312,7 +312,7 @@ export function Buscador() {
                 alLimpiar={() => setFiltros({ ...FILTROS_VACIOS })}
               />
             ) : (
-              <div className="space-y-3 p-3 sm:p-4">
+              <div className="space-y-3 p-3 pb-24 sm:p-4 sm:pb-6">
                 {/* Esqueletos de carga con la forma de la tarjeta nueva:
                     foto a la izquierda y líneas a la derecha. Así la
                     página no salta cuando llegan los datos. */}

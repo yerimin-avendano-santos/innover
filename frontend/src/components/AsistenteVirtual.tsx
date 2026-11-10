@@ -119,9 +119,9 @@ export function AsistenteVirtual() {
   return (
     <>
       {/* Botón flotante siempre accesible en la esquina inferior derecha */}
-      <div className="fixed bottom-6 right-18 z-40 flex items-center gap-3">
+      <div className="fixed bottom-5 right-3.5 z-40 flex items-center gap-2 sm:bottom-6 sm:right-6">
         {!abierto && (
-          <div className="hidden sm:flex items-center gap-2 rounded-full border border-linea bg-white/95 px-3.5 py-1.5 shadow-md backdrop-blur-xs transition hover:shadow-lg">
+          <div className="hidden md:flex items-center gap-2 rounded-full border border-linea bg-white/95 px-3.5 py-1.5 shadow-md backdrop-blur-xs transition hover:shadow-lg">
             <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-micro font-medium text-tinta">¿Dudas? Chatea con nosotros</span>
           </div>
@@ -130,12 +130,12 @@ export function AsistenteVirtual() {
         <button
           type="button"
           onClick={() => setAbierto((prev) => !prev)}
-          className="group relative flex h-14 w-14 items-center justify-center rounded-full bg-[#0F5C63] text-white shadow-xl transition-all duration-200 hover:scale-105 hover:bg-[#0B4A50] focus:ring-4 focus:ring-teal-500/30"
+          className="group relative flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-[#0F5C63] text-white shadow-xl transition-all duration-200 hover:scale-105 hover:bg-[#0B4A50] focus:ring-4 focus:ring-teal-500/30"
           aria-label={abierto ? 'Cerrar asistente virtual' : 'Abrir asistente virtual de Innover'}
           title="Asistente Virtual INNOVER"
         >
           {abierto ? (
-            <svg viewBox="0 0 16 16" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg viewBox="0 0 16 16" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
             </svg>
           ) : (
@@ -143,7 +143,7 @@ export function AsistenteVirtual() {
               {/* Icono de Asistente IA */}
               <svg
                 viewBox="0 0 24 24"
-                className="h-7 w-7 transition-transform group-hover:scale-110"
+                className="h-6 w-6 sm:h-7 sm:w-7 transition-transform group-hover:scale-110"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="1.8"
@@ -169,7 +169,7 @@ export function AsistenteVirtual() {
 
       {/* Ventana de Chat del Asistente */}
       {abierto && (
-        <div className="fixed bottom-24 right-4 z-50 flex h-[510px] w-96 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-linea bg-white shadow-2xl transition-all sm:right-6">
+        <div className="fixed bottom-20 left-3 right-3 z-50 flex h-[480px] max-h-[calc(100dvh-6.5rem)] sm:left-auto sm:right-6 sm:bottom-24 sm:w-96 flex-col overflow-hidden rounded-2xl border border-linea bg-white shadow-2xl transition-all">
           {/* Cabecera del chat */}
           <div className="flex items-center justify-between border-b border-white/10 bg-gradient-to-r from-[#0B4A50] to-[#0F5C63] px-4 py-3.5 text-white">
             <div className="flex items-center gap-3">

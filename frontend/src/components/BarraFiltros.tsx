@@ -84,10 +84,11 @@ export function BarraFiltros({ filtros, alCambiar, distritos }: Props) {
 
   return (
     <div className="relative z-30 border-b border-linea bg-papel-alto">
-      <div className="mx-auto flex max-w-[1600px] items-center gap-2 px-4 py-2.5 sm:px-6">
-        <div className="sin-barra touch-pan-x flex min-w-0 flex-1 items-center gap-2.5 overflow-x-auto py-0.5">
+      <div className="mx-auto flex max-w-[1600px] flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:gap-2.5 sm:px-6 sm:py-2.5">
+        {/* Fila 1 en móvil / flujo natural de fila en escritorio: Buscador + Botón Filtros */}
+        <div className="flex items-center gap-2 sm:contents">
           {/* --- Buscador con mayor amplitud y placeholder conciso --- */}
-          <div className="relative min-w-[200px] flex-1 sm:max-w-[280px]">
+          <div className="relative min-w-0 flex-1 sm:max-w-[280px]">
             <label htmlFor="busqueda" className="solo-lector">
               Buscar por distrito o tipo
             </label>
@@ -108,63 +109,18 @@ export function BarraFiltros({ filtros, alCambiar, distritos }: Props) {
               value={filtros.busqueda}
               onChange={(e) => cambiar('busqueda', e.target.value)}
               placeholder="Buscar distrito o tipo…"
-              className="campo rounded-full py-2 pl-9 pr-3 text-menor transition-colors focus:border-senal"
+              className="campo w-full rounded-full py-1.5 pl-9 pr-3 text-menor transition-colors focus:border-senal sm:py-2"
             />
           </div>
 
-          {/* --- Segmentado Venta / Alquiler --- */}
-          <div
-            className="flex shrink-0 rounded-full border border-linea-fuerte bg-papel p-0.5 shadow-2xs"
-            role="group"
-            aria-label="Tipo de operación"
-          >
-            {(['VENTA', 'ALQUILER'] as const).map((valor) => {
-              const activo = filtros.tipo === valor;
-              return (
-                <button
-                  key={valor}
-                  type="button"
-                  onClick={() => cambiar('tipo', activo ? '' : valor)}
-                  aria-pressed={activo}
-                  className={`rounded-full px-3.5 py-1.5 text-menor font-semibold transition-all ${
-                    activo
-                      ? 'bg-senal text-sobre-marino shadow-xs'
-                      : 'text-tinta-70 hover:text-tinta'
-                  }`}
-                >
-                  {valor === 'VENTA' ? 'Venta' : 'Alquiler'}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* --- Tipo de inmueble --- */}
-          <Selector
-            etiqueta="Tipo"
-            valor={filtros.tipo_inmueble}
-            onChange={(v) => cambiar('tipo_inmueble', v as Filtros['tipo_inmueble'])}
-            opciones={TIPOS_INMUEBLE.map((t) => ({ valor: t.valor, etiqueta: t.etiqueta }))}
-            todosLabel="Todos los tipos"
-          />
-
-          {/* --- Distrito --- */}
-          <Selector
-            etiqueta="Distrito"
-            valor={filtros.distrito_id ?? ''}
-            onChange={(v) => cambiar('distrito_id', v ? Number(v) : null)}
-            opciones={distritos.map((d) => ({ valor: d.id, etiqueta: d.nombre }))}
-            todosLabel="Todos los distritos"
-          />
-        </div>
-
-        {/* --- Botón agrupador "Filtros" con popover (FUERA del scroll horizontal) --- */}
-        <div className="relative shrink-0" ref={panelRef}>
+          {/* --- Botón agrupador "Filtros" con popover --- */}
+          <div className="relative shrink-0 sm:order-last" ref={panelRef}>
             <button
               type="button"
               onClick={() => setPanelFiltrosAbierto((prev) => !prev)}
               aria-expanded={panelFiltrosAbierto}
               aria-haspopup="dialog"
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-menor font-medium transition-all ${
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-menor font-medium transition-all sm:px-3.5 sm:py-2 ${
                 secundariosActivos > 0 || panelFiltrosAbierto
                   ? 'border-senal bg-teal-50 text-senal-hondo font-semibold'
                   : 'border-linea bg-papel-alto text-tinta-70 hover:border-linea-fuerte hover:text-tinta'
@@ -301,6 +257,54 @@ export function BarraFiltros({ filtros, alCambiar, distritos }: Props) {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Fila 2 en móvil / contenido continuo en escritorio: pastillas y segmentado con scroll horizontal limpio */}
+        <div className="sin-barra touch-pan-x flex min-w-0 items-center gap-2 overflow-x-auto py-0.5 sm:flex-1 sm:gap-2.5">
+          {/* --- Segmentado Venta / Alquiler --- */}
+          <div
+            className="flex shrink-0 rounded-full border border-linea-fuerte bg-papel p-0.5 shadow-2xs"
+            role="group"
+            aria-label="Tipo de operación"
+          >
+            {(['VENTA', 'ALQUILER'] as const).map((valor) => {
+              const activo = filtros.tipo === valor;
+              return (
+                <button
+                  key={valor}
+                  type="button"
+                  onClick={() => cambiar('tipo', activo ? '' : valor)}
+                  aria-pressed={activo}
+                  className={`rounded-full px-3 py-1 sm:px-3.5 sm:py-1.5 text-menor font-semibold transition-all ${
+                    activo
+                      ? 'bg-senal text-sobre-marino shadow-xs'
+                      : 'text-tinta-70 hover:text-tinta'
+                  }`}
+                >
+                  {valor === 'VENTA' ? 'Venta' : 'Alquiler'}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* --- Tipo de inmueble --- */}
+          <Selector
+            etiqueta="Tipo"
+            valor={filtros.tipo_inmueble}
+            onChange={(v) => cambiar('tipo_inmueble', v as Filtros['tipo_inmueble'])}
+            opciones={TIPOS_INMUEBLE.map((t) => ({ valor: t.valor, etiqueta: t.etiqueta }))}
+            todosLabel="Todos los tipos"
+          />
+
+          {/* --- Distrito --- */}
+          <Selector
+            etiqueta="Distrito"
+            valor={filtros.distrito_id ?? ''}
+            onChange={(v) => cambiar('distrito_id', v ? Number(v) : null)}
+            opciones={distritos.map((d) => ({ valor: d.id, etiqueta: d.nombre }))}
+            todosLabel="Todos los distritos"
+          />
+        </div>
         </div>
       </div>
     );

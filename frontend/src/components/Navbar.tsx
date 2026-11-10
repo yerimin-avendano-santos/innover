@@ -45,17 +45,17 @@ export function Navbar() {
         background: 'linear-gradient(90deg, #0B4A50 0%, #0F5C63 100%)',
       }}
     >
-      <div className="mx-auto flex h-full max-w-[1600px] items-center justify-between gap-3 px-4 sm:px-6">
+      <div className="mx-auto flex h-full max-w-[1600px] items-center justify-between gap-2 px-3 sm:gap-3 sm:px-6">
         {/* --- 1. Logo sin tarjeta blanca (directo sobre teal) --- */}
-        <div className="flex min-w-0 items-center gap-4 lg:gap-8">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-4 lg:gap-8">
           <Link
             href="/"
-            className="flex min-w-0 shrink-0 items-center gap-2.5 transition-opacity hover:opacity-95"
+            className="flex min-w-0 shrink-0 items-center gap-2 transition-opacity hover:opacity-95"
             aria-label="Innover, ir al inicio"
           >
-            <Logo className="h-8 w-8 shrink-0 text-turquesa" />
+            <Logo className="h-7 w-7 shrink-0 text-turquesa sm:h-8 sm:w-8" />
             <div className="flex flex-col">
-              <span className="text-base font-bold uppercase tracking-wider text-white leading-tight sm:text-lg">
+              <span className="text-sm font-bold uppercase tracking-wider text-white leading-tight sm:text-lg">
                 INNOVER
               </span>
               <span className="hidden text-[11px] font-medium text-[#9FD3D6] leading-tight sm:inline">
@@ -100,15 +100,15 @@ export function Navbar() {
         </div>
 
         {/* --- 3. Lado derecho: Publicar, Notificaciones y Usuario --- */}
-        <div className="flex items-center gap-2 sm:gap-3" ref={menuRef}>
+        <div className="flex items-center gap-1.5 sm:gap-3" ref={menuRef}>
           {/* Botón "Publicar propiedad" en coral #FF6B4A destacado */}
           <Link
             href="/publicar"
-            className="btn btn-coral inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-menor shadow-md"
+            className="btn btn-coral inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs shadow-md sm:px-3.5 sm:py-2 sm:text-menor"
           >
             <svg
               viewBox="0 0 16 16"
-              className="h-4 w-4"
+              className="h-3.5 w-3.5 sm:h-4 sm:w-4"
               fill="none"
               stroke="currentColor"
               strokeWidth="2.2"
@@ -122,13 +122,13 @@ export function Navbar() {
 
           {/* Campana de avisos con dot */}
           <div
-            className="relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white/85 transition hover:bg-white/20 hover:text-white"
+            className="relative flex h-8 w-8 sm:h-9 sm:w-9 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white/85 transition hover:bg-white/20 hover:text-white"
             title="Notificaciones"
             aria-label="Notificaciones"
           >
             <svg
               viewBox="0 0 24 24"
-              className="h-4.5 w-4.5"
+              className="h-4 w-4 sm:h-4.5 sm:w-4.5"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
@@ -138,14 +138,14 @@ export function Navbar() {
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
             <span
-              className="absolute right-2 top-2 h-2 w-2 rounded-full bg-turquesa ring-2 ring-[#0F5C63]"
+              className="absolute right-1.5 top-1.5 sm:right-2 sm:top-2 h-2 w-2 rounded-full bg-turquesa ring-2 ring-[#0F5C63]"
               aria-hidden="true"
             />
           </div>
 
           {/* Menú de sesión */}
           {cargando ? (
-            <div className="h-9 w-20 animate-pulse rounded-xl bg-white/10" />
+            <div className="h-8 w-16 sm:h-9 sm:w-20 animate-pulse rounded-xl bg-white/10" />
           ) : estaConectado ? (
             <div className="relative">
               {/* Botón de usuario translúcido según propuesta */}
@@ -155,11 +155,11 @@ export function Navbar() {
                 aria-expanded={menuAbierto}
                 aria-haspopup="menu"
                 aria-label={`${usuario!.nombre}: abrir menú de usuario`}
-                className="flex items-center gap-2 rounded-xl border border-white/20 bg-white/12 px-2.5 py-1.5 text-white transition hover:bg-white/20 active:scale-95"
+                className="flex items-center gap-1.5 sm:gap-2 rounded-xl border border-white/20 bg-white/12 px-2 py-1.5 sm:px-2.5 sm:py-1.5 text-white transition hover:bg-white/20 active:scale-95"
               >
                 <span
                   aria-hidden="true"
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-turquesa text-micro font-bold text-marino shadow-xs"
+                  className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-turquesa text-[11px] sm:text-micro font-bold text-marino shadow-xs"
                 >
                   {usuario!.nombre.charAt(0).toUpperCase()}
                 </span>
