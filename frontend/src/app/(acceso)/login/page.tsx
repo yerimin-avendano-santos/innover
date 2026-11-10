@@ -269,6 +269,31 @@ function FormularioLogin() {
     }
   };
 
+  /**
+   * Permite a los jueces y evaluadores acceder con 1 toque sin escribir credenciales.
+   */
+  const entrarRapido = async (correoDemo: string, passDemo: string) => {
+    setError(null);
+    setErrorCampo({});
+    setCorreoEscrito(correoDemo);
+    setContrasena(passDemo);
+    setEnviando(true);
+
+    try {
+      await iniciarSesion(correoDemo, passDemo);
+      router.push(destino);
+      router.refresh();
+    } catch (e) {
+      if (e instanceof ErrorPeticion) {
+        setError(e.message);
+      } else {
+        setError('No pudimos iniciar sesión automáticamente. Inténtalo de nuevo.');
+      }
+    } finally {
+      setEnviando(false);
+    }
+  };
+
   return (
     <MarcoAuth
       titulo="Entra a Innover"
@@ -285,6 +310,67 @@ function FormularioLogin() {
         </>
       }
     >
+      {/* --- Módulo de Acceso Rápido para Jurado / Evaluación --- */}
+      <div className="mb-5 rounded-2xl border border-turquesa-hondo/30 bg-senal-suave/40 p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className="flex h-2 w-2 rounded-full bg-turquesa-hondo animate-pulse" aria-hidden="true" />
+            <span className="text-micro font-bold uppercase tracking-wider text-senal-hondo">
+              Demostración y Jurado
+            </span>
+          </div>
+          <span className="rounded-full bg-papel-alto px-2 py-0.5 text-micro font-medium text-tinta-70 border border-linea">
+            1 toque
+          </span>
+        </div>
+
+        <p className="mt-1.5 text-micro text-tinta-70">
+          Prueba el prototipo completo con perfil verificado y privilegios PRO:
+        </p>
+
+        <button
+          type="button"
+          disabled={enviando}
+          onClick={() => entrarRapido('agente@innover.dev', 'Demo1234')}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-marino px-4 py-2.5 text-menor font-semibold text-sobre-marino shadow-sm transition hover:bg-marino/90 active:scale-95"
+        >
+          <svg viewBox="0 0 20 20" className="h-4 w-4 text-turquesa" fill="currentColor" aria-hidden="true">
+            <path d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" />
+          </svg>
+          <span>{enviando ? 'Ingresando como Jurado…' : 'Acceso Rápido · Agente PRO (Jurado)'}</span>
+        </button>
+
+        {/* Roles alternativos para evaluación */}
+        <div className="mt-2.5 flex items-center justify-center gap-2 border-t border-linea/60 pt-2 text-micro text-tinta-50">
+          <span>O evaluar como:</span>
+          <button
+            type="button"
+            disabled={enviando}
+            onClick={() => entrarRapido('admin@innover.dev', 'Demo1234')}
+            className="font-medium text-senal underline hover:text-senal-hondo"
+          >
+            Admin
+          </button>
+          <span>·</span>
+          <button
+            type="button"
+            disabled={enviando}
+            onClick={() => entrarRapido('cliente@innover.dev', 'Demo1234')}
+            className="font-medium text-senal underline hover:text-senal-hondo"
+          >
+            Cliente
+          </button>
+        </div>
+      </div>
+
+      <div className="mb-5 flex items-center">
+        <div className="flex-grow border-t border-linea" />
+        <span className="mx-3 text-micro font-medium uppercase tracking-wider text-tinta-30">
+          o ingresa tus credenciales
+        </span>
+        <div className="flex-grow border-t border-linea" />
+      </div>
+
       <form onSubmit={alEnviar} noValidate className="space-y-5">
         <MensajeError>{error}</MensajeError>
 
