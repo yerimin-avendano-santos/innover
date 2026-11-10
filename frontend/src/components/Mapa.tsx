@@ -12,9 +12,10 @@ import {
   type IndiceMapa,
   type Limites,
 } from '@/lib/clustering';
-import type { PuntoMapa, Propiedad } from '@/lib/tipos';
+import type { PuntoMapa, Propiedad, Distrito } from '@/lib/tipos';
 import { formatearPrecio, etiquetaTipo } from '@/lib/api';
 import { resolverFotosPropiedad, resolverTour3D } from '@/lib/fotos';
+import { DISTRITOS_GEO_DATA, obtenerBBoxDistrito } from '@/lib/distritos-geo';
 
 /**
  * Centro por defecto del mapa.
@@ -73,6 +74,12 @@ interface Props {
   className?: string;
   /** Propiedades completas para alimentar las tarjetas emergentes del mapa */
   propiedades?: Propiedad[];
+  /** Distrito seleccionado para resaltar su polígono GeoJSON y encuadrar la cámara */
+  distritoSeleccionado?: number | null;
+  /** Lista maestra de distritos para mapear IDs con nombres y geometrías */
+  distritos?: Distrito[];
+  /** Se dispara al hacer clic sobre un polígono de distrito en el mapa */
+  alSeleccionarDistrito?: (id: number | null) => void;
 }
 
 /** Los estados del botón de ubicación. */
@@ -91,6 +98,9 @@ export function Mapa({
   conUbicacion = false,
   className = '',
   propiedades = [],
+  distritoSeleccionado = null,
+  distritos = [],
+  alSeleccionarDistrito,
 }: Props) {
   const contenedor = useRef<HTMLDivElement>(null);
   const mapa = useRef<mapboxgl.Map | null>(null);
@@ -183,6 +193,17 @@ export function Mapa({
   const [precisionUbicacion, setPrecisionUbicacion] = useState<number | null>(null);
   const [errorUbicacion, setErrorUbicacion] = useState<string | null>(null);
   const [lejosDeResultados, setLejosDeResultados] = useState(false);
+
+  const refDistritos = useRef(distritos);
+  const refSeleccionarDistrito = useRef(alSeleccionarDistrito);
+
+  useEffect(() => {
+    refDistritos.current = distritos;
+  }, [distritos]);
+
+  useEffect(() => {
+    refSeleccionarDistrito.current = alSeleccionarDistrito;
+  }, [alSeleccionarDistrito]);
 
   useEffect(() => {
     refSeleccionar.current = alSeleccionar;
@@ -474,7 +495,144 @@ export function Mapa({
       };
     }
 
+    // ========================================
+    // Capas vectoriales de distritos (GeoJSON)
+    // ========================================
+    const configurarCapasDistritos = () => {
+      if (!instancia.isStyleLoaded() || instancia.getSource('distritos-huanuco')) return;
+
+      instancia.addSource('distritos-huanuco', {
+        type: 'geojson',
+        data: DISTRITOS_GEO_DATA as unknown as GeoJSON.FeatureCollection,
+        generateId: true,
+      });
+
+      // Capa de relleno suave (distritos-fill)
+      instancia.addLayer({
+        id: 'distritos-fill',
+        type: 'fill',
+        source: 'distritos-huanuco',
+        paint: {
+          'fill-color': '#0f5c63',
+          'fill-opacity': [
+            'case',
+            ['boolean', ['feature-state', 'selected'], false],
+            0.24,
+            ['boolean', ['feature-state', 'hover'], false],
+            0.18,
+            0.06,
+          ],
+        },
+      });
+
+      // Capa de contorno nítido en el color de la marca (distritos-line)
+      instancia.addLayer({
+        id: 'distritos-line',
+        type: 'line',
+        source: 'distritos-huanuco',
+        paint: {
+          'line-color': [
+            'case',
+            ['boolean', ['feature-state', 'selected'], false],
+            '#0f295a',
+            '#0f5c63',
+          ],
+          'line-width': [
+            'case',
+            ['boolean', ['feature-state', 'selected'], false],
+            2.5,
+            ['boolean', ['feature-state', 'hover'], false],
+            2,
+            1.2,
+          ],
+          'line-opacity': 0.85,
+        },
+      });
+
+      // Etiquetas centradas con el nombre de cada distrito (distritos-labels)
+      instancia.addLayer({
+        id: 'distritos-labels',
+        type: 'symbol',
+        source: 'distritos-huanuco',
+        layout: {
+          'text-field': ['get', 'nombre'],
+          'text-size': 11,
+          'text-transform': 'uppercase',
+          'text-letter-spacing': 0.08,
+          'text-allow-overlap': false,
+          'text-ignore-placement': false,
+        },
+        paint: {
+          'text-color': '#0b3f45',
+          'text-halo-color': '#ffffff',
+          'text-halo-width': 2,
+          'text-opacity': 0.85,
+        },
+      });
+    };
+
+    if (instancia.isStyleLoaded()) {
+      configurarCapasDistritos();
+    } else {
+      instancia.once('load', configurarCapasDistritos);
+    }
+
+    let hoveredFeatureId: string | number | null = null;
+    let clicEnDistrito = false;
+
+    const alMoverDistrito = (e: mapboxgl.MapLayerMouseEvent) => {
+      if (e.features && e.features.length > 0) {
+        instancia.getCanvas().style.cursor = 'pointer';
+        const featureId = e.features[0].id;
+        if (featureId !== undefined && featureId !== hoveredFeatureId) {
+          if (hoveredFeatureId !== null) {
+            instancia.setFeatureState(
+              { source: 'distritos-huanuco', id: hoveredFeatureId },
+              { hover: false }
+            );
+          }
+          hoveredFeatureId = featureId;
+          instancia.setFeatureState(
+            { source: 'distritos-huanuco', id: featureId },
+            { hover: true }
+          );
+        }
+      }
+    };
+
+    const alSalirDistrito = () => {
+      instancia.getCanvas().style.cursor = '';
+      if (hoveredFeatureId !== null) {
+        instancia.setFeatureState(
+          { source: 'distritos-huanuco', id: hoveredFeatureId },
+          { hover: false }
+        );
+        hoveredFeatureId = null;
+      }
+    };
+
+    const alHacerClicDistrito = (e: mapboxgl.MapLayerMouseEvent) => {
+      if (e.features && e.features.length > 0) {
+        clicEnDistrito = true;
+        const nombre = e.features[0].properties?.nombre as string;
+        const dist = refDistritos.current?.find(
+          (d) => d.nombre.toLowerCase() === nombre?.toLowerCase()
+        );
+        if (dist) {
+          refSeleccionarDistrito.current?.(dist.id);
+        }
+      }
+    };
+
+    instancia.on('mousemove', 'distritos-fill', alMoverDistrito);
+    instancia.on('mouseleave', 'distritos-fill', alSalirDistrito);
+    instancia.on('click', 'distritos-fill', alHacerClicDistrito);
+
     const alHacerClicMapa = (e: mapboxgl.MapMouseEvent) => {
+      if (clicEnDistrito) {
+        clicEnDistrito = false;
+        return;
+      }
       const target = e.originalEvent?.target as HTMLElement | null;
       if (target && target.tagName === 'CANVAS') {
         refSeleccionar.current?.(null as unknown as number);
@@ -486,6 +644,9 @@ export function Mapa({
       observadorRedimension?.disconnect();
       instancia.off('moveend', alTerminarMovimiento);
       instancia.off('click', alHacerClicMapa);
+      instancia.off('mousemove', 'distritos-fill', alMoverDistrito);
+      instancia.off('mouseleave', 'distritos-fill', alSalirDistrito);
+      instancia.off('click', 'distritos-fill', alHacerClicDistrito);
       quitarEscuchasUbicacion?.();
       registro.clear();
       instancia.remove();
@@ -493,6 +654,61 @@ export function Mapa({
       geolocalizador.current = null;
     };
   }, [token, conUbicacion]);
+
+  // ========================================
+  // 1.5. Sincronizar distrito seleccionado y zoom
+  // ========================================
+  useEffect(() => {
+    const instancia = mapa.current;
+    if (!instancia) return;
+
+    const sincronizarDistrito = () => {
+      if (!instancia.getSource('distritos-huanuco')) return;
+
+      const dist = distritos?.find((d) => d.id === distritoSeleccionado);
+
+      try {
+        const features = instancia.querySourceFeatures('distritos-huanuco');
+        for (const feat of features) {
+          if (feat.id !== undefined) {
+            const nombre = feat.properties?.nombre as string;
+            const coincide = dist
+              ? nombre?.toLowerCase() === dist.nombre.toLowerCase()
+              : false;
+            instancia.setFeatureState(
+              { source: 'distritos-huanuco', id: feat.id },
+              { selected: coincide }
+            );
+          }
+        }
+      } catch {
+        // Silencioso si el mapa aún no renderizó la capa
+      }
+
+      if (dist) {
+        const bbox = obtenerBBoxDistrito(dist.nombre);
+        if (bbox) {
+          instancia.fitBounds(
+            [
+              [bbox[0], bbox[1]],
+              [bbox[2], bbox[3]],
+            ],
+            {
+              padding: { top: 60, bottom: 60, left: 60, right: 60 },
+              duration: 900,
+              essential: true,
+            }
+          );
+        }
+      }
+    };
+
+    if (instancia.isStyleLoaded()) {
+      sincronizarDistrito();
+    } else {
+      instancia.once('load', sincronizarDistrito);
+    }
+  }, [distritoSeleccionado, distritos]);
 
   // ========================================
   // 2. Preparar el índice y encuadrar la búsqueda

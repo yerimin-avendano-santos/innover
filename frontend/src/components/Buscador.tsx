@@ -33,6 +33,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Mapa } from '@/components/Mapa';
 import { FichaPropiedad } from '@/components/FichaPropiedad';
+import { PanelMetricasDistrito } from '@/components/PanelMetricasDistrito';
 import {
   BarraFiltros,
   FILTROS_VACIOS,
@@ -81,6 +82,11 @@ export function Buscador() {
    * En pantallas grandes (lg:) se muestran ambos en paralelo lado a lado.
    */
   const [vistaMovil, setVistaMovil] = useState<'lista' | 'mapa'>('lista');
+
+  /**
+   * Modo Mapa al 100%: oculta la columna de la lista para una vista inmersiva.
+   */
+  const [listaOculta, setListaOculta] = useState(false);
 
   /**
    * Permite cancelar la petición en vuelo.
@@ -232,6 +238,11 @@ export function Buscador() {
     [seleccionada, propiedades]
   );
 
+  const distritoActivo = useMemo(
+    () => distritos.find((d) => d.id === filtros.distrito_id) ?? null,
+    [distritos, filtros.distrito_id]
+  );
+
   return (
     /*
      * La altura descuenta la barra ENTERA, no solo la fila de 56 px.
@@ -263,12 +274,22 @@ export function Buscador() {
         mediante un botón flotante ergonómico, permitiendo scroll completo o navegación
         del mapa a pantalla completa con tarjeta emergente al tocar marcadores.
       */}
-      <div className="relative min-h-0 flex-1 lg:grid lg:grid-cols-[minmax(360px,410px)_1fr]">
+      <div
+        className={`relative min-h-0 flex-1 transition-all duration-300 ${
+          listaOculta
+            ? 'lg:grid lg:grid-cols-1'
+            : 'lg:grid lg:grid-cols-[minmax(360px,410px)_1fr]'
+        }`}
+      >
         {/* ============ LISTA (izquierda en escritorio; en móvil según vistaMovil) ============ */}
         <section
           aria-label="Lista de propiedades"
-          className={`min-h-0 flex-1 flex-col border-linea bg-papel lg:flex lg:border-r ${
-            vistaMovil === 'lista' ? 'flex h-full' : 'hidden lg:flex'
+          className={`min-h-0 flex-1 flex-col border-linea bg-papel lg:border-r ${
+            listaOculta
+              ? 'hidden'
+              : vistaMovil === 'lista'
+                ? 'flex h-full'
+                : 'hidden lg:flex'
           }`}
         >
           {/* La cabecera vive fuera del scroll: el contador de lo que
@@ -284,6 +305,7 @@ export function Buscador() {
               total={datos?.paginacion.total ?? 0}
               cargando={cargando}
               alLimpiar={() => setFiltros({ ...FILTROS_VACIOS })}
+              alOcultarLista={() => setListaOculta(true)}
             />
           )}
 
@@ -340,7 +362,7 @@ export function Buscador() {
         <section
           aria-label="Mapa de propiedades"
           className={`relative min-h-0 flex-1 border-linea lg:block ${
-            vistaMovil === 'mapa' ? 'flex h-full' : 'hidden lg:block'
+            vistaMovil === 'mapa' || listaOculta ? 'flex h-full' : 'hidden lg:block'
           }`}
         >
           {/*
@@ -366,8 +388,52 @@ export function Buscador() {
             claveVista={claveVista}
             conUbicacion
             propiedades={propiedades}
+            distritoSeleccionado={filtros.distrito_id}
+            distritos={distritos}
+            alSeleccionarDistrito={(id) =>
+              setFiltros((prev) => ({ ...prev, distrito_id: id }))
+            }
             className="h-full w-full"
           />
+
+          {/* Botón flotante para reabrir la lista cuando está colapsada (Modo Mapa 100%) */}
+          {listaOculta && (
+            <div className="absolute left-4 top-4 z-20 hidden lg:block">
+              <button
+                type="button"
+                onClick={() => setListaOculta(false)}
+                className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-linea/80 bg-papel-alto/95 px-4 py-2 text-menor font-semibold text-tinta shadow-lg backdrop-blur-md transition-all hover:bg-papel hover:shadow-xl active:scale-95"
+                aria-label="Mostrar lista de inmuebles"
+              >
+                <svg
+                  viewBox="0 0 16 16"
+                  className="h-4 w-4 text-turquesa-hondo"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  aria-hidden="true"
+                >
+                  <rect x="2" y="2" width="12" height="12" rx="2" />
+                  <path d="M7 2v12" />
+                  <path d="M4 6l2 2-2 2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span>Mostrar lista ({datos?.paginacion.total ?? propiedades.length})</span>
+              </button>
+            </div>
+          )}
+
+          {/* Panel flotante de métricas inmobiliarias por m² cuando hay un distrito seleccionado */}
+          {distritoActivo && (
+            <div className="pointer-events-none absolute right-3 top-3 z-20 max-w-sm sm:right-4 sm:top-4 sm:max-w-md">
+              <div className="pointer-events-auto">
+                <PanelMetricasDistrito
+                  distrito={distritoActivo}
+                  propiedades={propiedades}
+                  alCerrar={() => setFiltros((prev) => ({ ...prev, distrito_id: null }))}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Tarjeta flotante emergente en móvil cuando se selecciona una propiedad */}
           {vistaMovil === 'mapa' && propiedadSeleccionada && (
@@ -459,12 +525,14 @@ function CabeceraLista({
   total,
   cargando,
   alLimpiar,
+  alOcultarLista,
 }: {
   filtros: Filtros;
   distritos: Distrito[];
   total: number;
   cargando: boolean;
   alLimpiar: () => void;
+  alOcultarLista?: () => void;
 }) {
   return (
     <div className="flex items-center justify-between gap-3 border-b border-linea/60 bg-papel px-4 py-2.5">
@@ -478,31 +546,58 @@ function CabeceraLista({
         </p>
       </div>
 
-      {/*
-        Con cero resultados no se pinta aquí: el estado vacío tiene su
-        propio "Limpiar filtros" y dos botones iguales en la misma
-        pantalla se estorban. Mientras carga tampoco: el número aún no
-        es el definitivo.
-      */}
-      {!cargando && total > 0 && tieneFiltrosActivos(filtros) && (
-        <button
-          type="button"
-          onClick={alLimpiar}
-          className="btn btn-fantasma inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-micro font-medium"
-        >
-          <svg
-            viewBox="0 0 12 12"
-            className="h-3 w-3"
-            aria-hidden="true"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
+      <div className="flex items-center gap-1.5">
+        {/*
+          Con cero resultados no se pinta aquí: el estado vacío tiene su
+          propio "Limpiar filtros" y dos botones iguales en la misma
+          pantalla se estorban. Mientras carga tampoco: el número aún no
+          es el definitivo.
+        */}
+        {!cargando && total > 0 && tieneFiltrosActivos(filtros) && (
+          <button
+            type="button"
+            onClick={alLimpiar}
+            className="btn btn-fantasma inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-micro font-medium"
           >
-            <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" strokeLinecap="round" />
-          </svg>
-          Limpiar filtros
-        </button>
-      )}
+            <svg
+              viewBox="0 0 12 12"
+              className="h-3 w-3"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
+              <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" strokeLinecap="round" />
+            </svg>
+            Limpiar filtros
+          </button>
+        )}
+
+        {/* Botón ergonómico de colapso de lista (Modo Mapa 100%) */}
+        {alOcultarLista && (
+          <button
+            type="button"
+            onClick={alOcultarLista}
+            className="btn btn-fantasma hidden lg:inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-micro font-medium text-tinta-70 hover:text-tinta"
+            title="Ocultar lista y expandir mapa al 100%"
+            aria-label="Ocultar lista de inmuebles"
+          >
+            <svg
+              viewBox="0 0 16 16"
+              className="h-3.5 w-3.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              aria-hidden="true"
+            >
+              <rect x="2" y="2" width="12" height="12" rx="2" />
+              <path d="M7 2v12" />
+              <path d="M11 6l-2 2 2 2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span>Ocultar lista</span>
+          </button>
+        )}
+      </div>
     </div>
   );
 }
